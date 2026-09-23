@@ -59,6 +59,13 @@ body {
   gap: 8px;
 }
 
+/* Fixed 28x20 box from the SVG's own viewBox, so it can never stretch or squash. */
+.brand-mark {
+  display: block;
+  flex: none;
+  color: var(--stop);
+}
+
 .brand-name {
   font-family: var(--font-sign);
   font-size: 15px;
