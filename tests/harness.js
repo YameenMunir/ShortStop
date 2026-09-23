@@ -12,7 +12,6 @@
  *   plan.phases[]                          SPA-navigate to another URL, check data-expect-<name>
  *   plan.redirects[]                       [from, to|null] pairs for resolveRedirect
  *   plan.spaRedirect                       [from, to]: pushState to `from` must redirect to `to`
- *   plan.blockSite                         whole site should be sent to the blocked page
  *   plan.cover / phase.cover               { title, links } if the page must be covered, false if not
  *   phase.settings                         settings to apply before that phase's navigation
  *   plan.initialWait                       ms to wait before the first checks (default 500)
@@ -39,7 +38,6 @@
       state.counted += amount;
       return Promise.resolve();
     },
-    blockedPageUrl: (from) => `blocked://${from}`,
   });
 
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -93,6 +91,10 @@
     if (main) check(`${label}: content area hidden behind the panel`, !main.checkVisibility());
     const title = host.shadowRoot.querySelector('.title').textContent;
     if (expected.title) check(`${label}: panel title`, title === expected.title, `got "${title}"`);
+    if (expected.message) {
+      const message = host.shadowRoot.querySelector('.message').textContent;
+      check(`${label}: panel message`, message === expected.message, `got "${message}"`);
+    }
     if (expected.links) {
       const links = Array.from(host.shadowRoot.querySelectorAll('.links a')).map((a) => a.textContent);
       check(`${label}: panel links`, JSON.stringify(links) === JSON.stringify(expected.links), JSON.stringify(links));
@@ -113,19 +115,43 @@
     check('engine started for this host', engine);
     if (!engine) return;
 
-    if (plan.blockSite) {
-      const [first] = state.navigations;
-      check('site is sent to the blocked page', first && first.url === `blocked://${plan.url}`, JSON.stringify(first));
-      check('blocked-page redirect replaces history', first && first.replace === true);
-      await wait(1600);
-      check('block is counted once', state.counted === 1, `counted ${state.counted}`);
-      return;
-    }
-
     check('generated stylesheet injected', document.getElementById(`shortstop-${plan.platform}`));
     checkExpectations('data-expect', 'initial');
     if (plan.cover !== undefined) checkCover(plan.cover, 'initial');
     if (plan.cover && document.querySelector('video')) check('covered feed media paused', pauses > 0, `${pauses} pauses`);
+
+    // Feed keys (next video / scroll) must not reach the site while covered,
+    // but typing in a field must still work.
+    if (plan.keyTest) {
+      let siteSaw = 0;
+      const siteListener = () => (siteSaw += 1);
+      document.addEventListener('keydown', siteListener);
+      for (const key of ['ArrowDown', 'ArrowUp', 'PageDown', ' ', 'j']) {
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      }
+      check('covered: feed keys are swallowed', siteSaw === 0, `site saw ${siteSaw}`);
+      const field = document.querySelector('input');
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+      check('covered: keys still work while typing in a field', siteSaw === 1, `site saw ${siteSaw}`);
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+      check('covered: other keys still reach the site', siteSaw === 2, `site saw ${siteSaw}`);
+      document.removeEventListener('keydown', siteListener);
+
+      // A video behind the panel that starts playing is stopped at once.
+      const before = pauses;
+      document.querySelector('video').dispatchEvent(new Event('play'));
+      check('covered: media that starts playing is paused', pauses > before, `${pauses - before} pauses`);
+    }
+
+    // The panel's own search box goes to the search results page.
+    if (plan.searchTest) {
+      const form = document.querySelector('shortstop-cover').shadowRoot.querySelector('form');
+      check('panel search box shown', form && !form.hidden);
+      form.querySelector('input').value = plan.searchTest.query;
+      form.requestSubmit();
+      const last = state.navigations[state.navigations.length - 1];
+      check('panel search goes to results', last && last.url === plan.searchTest.expect, JSON.stringify(last));
+    }
 
     // The site re-renders and throws the panel away: it must come back.
     if (plan.cover) {

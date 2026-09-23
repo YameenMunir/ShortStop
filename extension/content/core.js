@@ -13,16 +13,17 @@
  *      (text matching, "closest ancestor" targets).
  *   3. SPA navigations (pushState hook, yt-navigate-finish, popstate, URL
  *      polling) trigger redirects away from Shorts/Reels URLs.
- *   4. Whole routes (e.g. Instagram's Home feed) can be "covered": the page's
- *      content area is hidden from the first paint and replaced by a ShortStop
- *      panel, re-applied whenever the route or the DOM changes.
+ *   4. Whole routes (e.g. Instagram's Home feed, TikTok's For You) can be
+ *      "covered": the page's content area is hidden from the first paint and
+ *      replaced by a ShortStop panel, re-applied whenever the route or the DOM
+ *      changes. On covered routes, scroll/next-video keys are swallowed and any
+ *      media that starts playing is paused at once.
  *   5. Settings changes apply live, without reloading the tab.
  *
  * Config shape (see the platform files for real examples):
  *   {
  *     id: 'youtube',                        // key in the settings object
  *     hosts: ['youtube.com'],               // hostnames (subdomains included)
- *     blockSite: false,                     // true = send every page to the blocked page
  *     navigationEvents: ['yt-navigate-finish'], // extra SPA events fired on document
  *     pages: { explore: /^\/explore\// },   // named pathname patterns, first match wins
  *     options: {                            // extra switches stored in settings
@@ -30,10 +31,12 @@
  *     },
  *     redirects: [{ name, match: /regex on pathname/, when?(url), to(match, url) }],
  *     cover: {                              // replace whole pages with a ShortStop panel
- *       target: 'main',                     // the content area to hide
+ *       target: 'main' | ['#feed', 'main'], // the content area; first selector that exists wins
+ *       title: 'Shown on every covered page',
  *       message: 'Shown on every covered page',
- *       pages: { home: { title, message?, onlyIf?(options) } },
+ *       pages: { home: { title?, message?, onlyIf?(options) } },
  *       links: (options) => [{ label, href }],
+ *       search: { label, placeholder, url: (query) => '/search?q=...' }, // optional search box
  *     },
  *     rules: [{
  *       name: 'Human readable description',
@@ -66,6 +69,9 @@
   const COUNT_FLUSH_MS = 1500; // Batch counter updates to spare storage writes.
   const URL_POLL_MS = 1000; // Last-resort check for navigations nothing else caught.
   const MAX_REDIRECT_WAIT_MS = 300; // How long a redirect waits for the counter write.
+
+  // Keys that scroll a page or jump to the next/previous video in a feed.
+  const FEED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'j', 'k', 'J', 'K']);
 
   // Styles for elements marked by the JS scan. Generated per-rule CSS is appended.
   const BASE_CSS = `
@@ -141,10 +147,33 @@ a {
 a:hover { border-color: #16233a; }
 a:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
 .foot { margin: 20px 0 0; font-size: 13px; }
+form { display: flex; gap: 8px; margin: 0 0 8px; }
+form[hidden] { display: none; }
+input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #c9d2dc;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+button {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #d62839;
+  color: #fff;
+  font: 600 15px/1.2 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+}
+input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
 @media (prefers-color-scheme: dark) {
   :host { background: #111b2b; color: #e8edf1; }
   p { color: #9aa8bb; }
-  a { background: #182538; border-color: #2b3b53; color: #e8edf1; }
+  a, input { background: #182538; border-color: #2b3b53; color: #e8edf1; }
+  button { background: #ff5a67; color: #111b2b; }
   a:hover { border-color: #e8edf1; }
   a:focus-visible { outline-color: #6ea8ff; }
 }`;
@@ -195,9 +224,6 @@ a:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
             resolve();
           }
         });
-      },
-      blockedPageUrl(from) {
-        return `${api.runtime.getURL('blocked/blocked.html')}?from=${encodeURIComponent(from)}`;
       },
     };
   }
@@ -281,10 +307,23 @@ a:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
     panel.setAttribute('aria-label', 'Blocked by ShortStop');
     const links = make('nav', 'links');
     links.setAttribute('aria-label', 'Places you can still go');
+
+    // Optional search box (hidden unless the platform config asks for one).
+    const form = make('form', 'search');
+    form.setAttribute('role', 'search');
+    form.hidden = true;
+    const input = make('input');
+    input.type = 'search';
+    input.name = 'q';
+    input.required = true;
+    input.autocomplete = 'off';
+    form.append(input, make('button', null, 'Search'));
+
     panel.append(
       mark,
       make('h1', 'title'),
       make('p', 'message'),
+      form,
       links,
       make('p', 'foot', 'Blocked by ShortStop. You can change this in its toolbar menu.')
     );
@@ -319,15 +358,13 @@ a:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
     boot() {
       const { config, env: environment } = this;
 
-      // A URL we are about to redirect (or a fully blocked site) stays invisible
-      // until settings arrive, so Shorts never paint for a split second.
-      if (config.blockSite || this.resolveRedirect(this.lastHref)) this.setCloak(true);
+      // A URL we are about to redirect stays invisible until settings arrive,
+      // so Shorts never paint for a split second.
+      if (this.resolveRedirect(this.lastHref)) this.setCloak(true);
 
-      if (!config.blockSite) {
-        this.updatePage();
-        this.injectStyle();
-        this.listenForNavigation();
-      }
+      this.updatePage();
+      this.injectStyle();
+      this.listenForNavigation();
 
       const apply = (settings) => this.applySettings(settings);
       environment.getSettings().then(apply);
@@ -361,10 +398,6 @@ a:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
     }
 
     activate() {
-      if (this.config.blockSite) {
-        this.redirect(this.env.blockedPageUrl(this.env.href()), { replace: true });
-        return;
-      }
       if (this.redirectIfNeeded()) return;
       this.setCloak(false);
       this.injectStyle();
@@ -410,10 +443,16 @@ a:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
       // stop the page scrolling if the panel had to cover the whole viewport.
       const cover = this.config.cover;
       if (cover) {
+        // With several candidate content areas, a later one is only hidden when
+        // it does not contain an earlier one (which is where the panel goes).
+        const targets = asList(cover.target);
+        const hide = targets
+          .map((target, i) => (i === 0 ? target : `${target}${targets.slice(0, i).map((t) => `:not(:has(${t}))`).join('')}`))
+          .join(', ');
         for (const page of Object.keys(cover.pages)) {
           if (!this.coverSpec(page)) continue;
           blocks.push(
-            `/* Covered page: ${page} */\nhtml[${ATTR_PAGE}="${page}"] ${cover.target} { display: none !important; }`
+            `/* Covered page: ${page} */\nhtml[${ATTR_PAGE}="${page}"] :is(${hide}) { display: none !important; }`
           );
         }
         blocks.push(
@@ -508,7 +547,7 @@ a:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
       // A covered feed must not keep playing video or audio behind the panel.
       pauseMedia();
 
-      const target = document.querySelector(this.config.cover.target);
+      const target = this.coverTarget();
       if (target && target.parentElement) {
         // Normal case: sit right where the feed was, leaving the site's own
         // navigation (messages, search, profile) usable.
@@ -533,11 +572,33 @@ a:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
       }
     }
 
+    // The first configured content area that exists on the page.
+    coverTarget() {
+      for (const selector of asList(this.config.cover.target)) {
+        const element = document.querySelector(selector);
+        if (element) return element;
+      }
+      return null;
+    }
+
     renderCover(spec) {
       const cover = this.config.cover;
       const shadow = this.cover.host.shadowRoot;
-      shadow.querySelector('.title').textContent = spec.title;
+      shadow.querySelector('.title').textContent = spec.title || cover.title || '';
       shadow.querySelector('.message').textContent = spec.message || cover.message || '';
+
+      const form = shadow.querySelector('form');
+      if (cover.search && form.hidden) {
+        form.hidden = false;
+        const input = form.querySelector('input');
+        input.placeholder = cover.search.placeholder || '';
+        input.setAttribute('aria-label', cover.search.label || 'Search');
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          const query = input.value.trim();
+          if (query) this.env.navigate(new URL(cover.search.url(query), this.env.href()).href, false);
+        });
+      }
     }
 
     renderCoverLinks() {
@@ -618,6 +679,42 @@ a:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
       }, URL_POLL_MS);
       // Capture phase on window runs before the site's own click handlers.
       window.addEventListener('click', (event) => this.onClick(event), true);
+
+      if (this.config.cover) {
+        // A hidden feed can still react to the keyboard (TikTok skips to the
+        // next video on arrow keys). Swallow those keys on covered pages,
+        // except while typing in a field (including the panel's search box).
+        window.addEventListener(
+          'keydown',
+          (event) => {
+            if (!this.isCovered() || !FEED_KEYS.has(event.key)) return;
+            const origin = event.composedPath()[0];
+            const typing =
+              origin instanceof Element &&
+              (origin.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(origin.tagName));
+            if (typing) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          },
+          true
+        );
+        // Media events do not bubble, but they do go through the capture phase:
+        // anything that starts playing behind the panel is stopped at once.
+        document.addEventListener(
+          'play',
+          (event) => {
+            if (this.isCovered() && event.target instanceof HTMLMediaElement) {
+              event.target.muted = true;
+              event.target.pause();
+            }
+          },
+          true
+        );
+      }
+    }
+
+    isCovered() {
+      return this.enabled && !this.redirecting && this.coverSpec(this.page) !== null;
     }
 
     onNavigate() {

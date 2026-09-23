@@ -5,12 +5,113 @@
     <title>TikTok fixture</title>
     <script src="../../extension/content/core.js"></script>
     <script type="application/json" id="plan">
-      { "platform": "tiktok", "url": "https://www.tiktok.com/foryou", "blockSite": true }
+      {
+        "platform": "tiktok",
+        "url": "https://www.tiktok.com/",
+        "cover": {
+          "title": "Scrolling is blocked by your focus settings.",
+          "message": "TikTok's For You feed is switched off.",
+          "links": ["Messages", "Upload a video", "Your profile"]
+        },
+        "keyTest": true,
+        "searchTest": { "query": "cat dance", "expect": "https://www.tiktok.com/search?q=cat%20dance" },
+        "phases": [
+          { "name": "foryou", "url": "https://www.tiktok.com/foryou", "cover": { "message": "TikTok's For You feed is switched off." } },
+          { "name": "locale", "url": "https://www.tiktok.com/en/", "cover": { "message": "TikTok's For You feed is switched off." } },
+          { "name": "following", "url": "https://www.tiktok.com/following", "cover": { "message": "The Following feed is switched off." } },
+          { "name": "friends", "url": "https://www.tiktok.com/friends", "cover": { "message": "The Friends feed is switched off." } },
+          { "name": "live", "url": "https://www.tiktok.com/live", "cover": { "message": "LIVE is switched off." } },
+          { "name": "livestream", "url": "https://www.tiktok.com/@somecreator/live", "cover": { "message": "LIVE is switched off." } },
+          { "name": "explore", "url": "https://www.tiktok.com/explore", "cover": { "message": "Explore and discovery feeds are switched off." } },
+          { "name": "hashtag", "url": "https://www.tiktok.com/tag/cats", "cover": { "message": "Explore and discovery feeds are switched off." } },
+          { "name": "sound", "url": "https://www.tiktok.com/music/original-sound-7123456789", "cover": { "message": "Explore and discovery feeds are switched off." } },
+          { "name": "discover", "url": "https://www.tiktok.com/discover/funny-cats", "cover": { "message": "Explore and discovery feeds are switched off." } },
+          { "name": "channel", "url": "https://www.tiktok.com/channel/comedy", "cover": { "message": "Explore and discovery feeds are switched off." } },
+          { "name": "search", "url": "https://www.tiktok.com/search?q=cats", "cover": false },
+          { "name": "searchusers", "url": "https://www.tiktok.com/search/user?q=cats", "cover": false },
+          { "name": "profile", "url": "https://www.tiktok.com/@natgeo", "cover": false },
+          { "name": "video", "url": "https://www.tiktok.com/@natgeo/video/7300000000000000000", "cover": false },
+          { "name": "messages", "url": "https://www.tiktok.com/messages", "cover": false },
+          { "name": "upload", "url": "https://www.tiktok.com/tiktokstudio/upload", "cover": false },
+          { "name": "settings", "url": "https://www.tiktok.com/setting", "cover": false },
+          { "name": "notifications", "url": "https://www.tiktok.com/notifications", "cover": { "message": "Notifications are switched off. Turn on \"Allow notifications\" in the ShortStop menu if you need them." } },
+          {
+            "name": "notifallowed",
+            "settings": { "tiktok": true, "tiktokNotifications": true },
+            "url": "https://www.tiktok.com/notifications",
+            "cover": false
+          },
+          {
+            "name": "backtofeed",
+            "settings": { "tiktok": true },
+            "url": "https://www.tiktok.com/following",
+            "cover": { "message": "The Following feed is switched off." }
+          }
+        ]
+      }
     </script>
     <script src="../harness.js"></script>
     <script src="../../extension/content/tiktok.js"></script>
   </head>
   <body>
-    <p>For You feed</p>
+    <div id="app">
+      <!-- Top bar: search, upload, messages and notifications live outside the feed. -->
+      <div data-e2e="top-bar">
+        <input type="search" placeholder="Search" data-name="top search box" data-expect="visible" />
+        <a href="/upload" data-name="Upload link" data-expect="visible">Upload</a>
+        <a href="/messages" data-e2e="top-dm-icon" data-name="Messages link" data-expect="visible">Messages</a>
+        <div data-e2e="inbox-icon" data-name="Notifications inbox" data-expect="hidden" data-expect-notifallowed="visible">Inbox</div>
+      </div>
+
+      <div class="body">
+        <!-- Side navigation: links into feeds disappear, the rest stays. -->
+        <nav>
+          <a href="/" data-e2e="nav-foryou" data-name="For You link" data-expect="hidden">For You</a>
+          <a href="/shortdrama" data-e2e="nav-short-drama" data-name="Short drama link" data-expect="hidden">Short drama</a>
+          <a href="/explore" data-e2e="nav-explore" data-name="Explore link" data-expect="hidden">Explore</a>
+          <a href="/following" data-e2e="nav-following" data-name="Following link" data-expect="hidden">Following</a>
+          <a href="/friends" data-e2e="nav-friends" data-name="Friends link" data-expect="hidden">Friends</a>
+          <a href="/live" data-e2e="nav-live" data-name="LIVE link" data-expect="hidden">LIVE</a>
+          <a href="/messages" data-e2e="nav-messages" data-name="sidebar Messages link" data-expect="visible">Messages</a>
+          <a href="/@me_user" data-e2e="nav-profile" data-name="Own profile link" data-expect="visible">Profile</a>
+          <div data-e2e="suggest-accounts" data-name="Suggested accounts in sidebar" data-expect="hidden">
+            <p>Suggested accounts</p>
+            <a href="/@someone">someone</a>
+          </div>
+        </nav>
+
+        <!-- The feed column TikTok calls main-content-<page>. -->
+        <div id="main-content-homepage_hot" data-name="feed column">
+          <div data-e2e="recommend-list-item-container" data-name="For You video" data-expect="hidden">
+            <video muted></video>
+            <a href="/@creator/video/7111111111111111111">video</a>
+          </div>
+
+          <!-- Profile page content -->
+          <div data-e2e="user-page" data-name="profile header" data-expect-profile="visible">
+            <h1>natgeo</h1>
+            <a href="/@natgeo/video/7222222222222222222" data-name="profile video" data-expect-profile="visible">video</a>
+          </div>
+          <div data-name="You may like section" data-expect-profile="hidden" data-expect-video="hidden">
+            <h2>You may like</h2>
+            <a href="/@other/video/7333333333333333333">recommended video</a>
+          </div>
+
+          <!-- Video page content -->
+          <div data-name="video player" data-expect-video="visible">
+            <video muted></video>
+            <p>Comments</p>
+          </div>
+
+          <!-- Search results stay usable -->
+          <a href="/@natgeo" data-name="account search result" data-expect-search="visible" data-expect-searchusers="visible">natgeo</a>
+        </div>
+      </div>
+    </div>
+
+    <template id="dynamic">
+      <a href="/live" data-e2e="nav-live" data-name="LIVE link rendered later" data-expect-dynamic="hidden">LIVE</a>
+      <a href="/@natgeo" data-name="profile link rendered later" data-expect-dynamic="visible">natgeo</a>
+    </template>
   </body>
 </html>

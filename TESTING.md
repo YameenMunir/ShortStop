@@ -74,23 +74,40 @@ in place of the content, with Instagram's own sidebar or bottom bar still usable
 
 ## TikTok
 
-- [ ] `https://www.tiktok.com/` shows the "TikTok is blocked" page.
-- [ ] A deep link (e.g. `https://www.tiktok.com/@tiktok`) is blocked too.
-- [ ] Arriving from another site, **Go back** returns you there. In a fresh tab the button is hidden.
-- [ ] With the blocked page still open, switch TikTok **off** in the popup. The tab
-      immediately opens the TikTok URL you originally requested.
+Feeds should show the ShortStop panel ("Scrolling is blocked by your focus settings.")
+in place of the videos, with TikTok's sidebar and top bar still usable.
+
+- [ ] **For You:** open tiktok.com. The panel appears straight away and no video plays or
+      makes sound. Arrow keys, Page Down, Space, J/K and the mouse wheel don't move to another video.
+- [ ] **No switching around it:** the sidebar has no For You, Following, Friends, Explore or
+      LIVE links. Typing `/following`, `/friends`, `/live` or `/explore` in the address bar
+      shows the panel each time.
+- [ ] **Discovery pages:** a hashtag (`/tag/cats`) and a sound page (any `/music/…` link) show the panel.
+- [ ] **In-app navigation:** from a profile, click the TikTok logo. The panel appears without a
+      page reload. Go back and the profile works normally again.
+- [ ] **Search:** the panel's search box and TikTok's own search bar both show results, and
+      opening a result plays that video.
+- [ ] **Profiles:** a profile you searched for shows its videos, with no "You may like" or
+      suggested-accounts section.
+- [ ] **Single video:** a `/@user/video/<id>` link (for example from a DM) plays, with comments,
+      and without the recommendations panel.
+- [ ] **Messages** open from the panel and the top bar.
+- [ ] **Upload:** the panel's "Upload a video" opens TikTok Studio.
+- [ ] **Notifications off (default):** the inbox/notifications button is gone.
+- [ ] **Notifications on:** turn on *Allow notifications* under TikTok in the popup. The button
+      comes back without a reload. Turn it off again.
 
 ## Popup and switches
 
 - [ ] Switch **YouTube off** with a YouTube tab open. Shorts shelves reappear **without reloading**.
       Switch it back on and they disappear again.
-- [ ] Repeat for Instagram and Facebook.
+- [ ] Repeat for Instagram, Facebook and TikTok (the panel disappears and the feed returns).
 - [ ] With YouTube off, a `/shorts/…` link plays as a Short (no redirect).
 - [ ] The **counter** has gone up compared with the number you noted at the start, and the
       per-platform numbers add up to the big number.
 - [ ] Close and reopen the browser. Switches keep their state and today's counter is kept.
 - [ ] (Optional) Change the system clock to tomorrow. "Today" resets to 0 and the all-time total is kept.
-- [ ] Dark mode (switch your OS theme): the popup and blocked page are readable,
+- [ ] Dark mode (switch your OS theme): the popup and the blocking panels are readable,
       and keyboard Tab reaches every switch with a visible focus ring.
 
 ## Privacy spot-check
@@ -105,5 +122,7 @@ in place of the content, with Instagram's own sidebar or bottom bar still usable
       `/shorts/<id>` link opens in the normal player.
 - [ ] instagram.com in Safari: the Home feed shows "Your feed is off", and Messages and search still work.
 - [ ] Set `BLOCK_INSTAGRAM_REELS = false`, save and reload Instagram. The feed is back.
+- [ ] tiktok.com in Safari: the For You feed shows "Scrolling is blocked by your focus
+      settings.", and search still works. (Safari may offer to open the TikTok app. Stay in Safari.)
 
 If something fails, see "When a site changes: updating selectors" in the README.

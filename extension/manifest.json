@@ -3,7 +3,7 @@
   "name": "ShortStop: Shorts & Reels Blocker",
   "short_name": "ShortStop",
   "version": "1.0.0",
-  "description": "Blocks YouTube Shorts, Instagram Reels, Facebook Reels and TikTok while keeping the rest of each site usable. No tracking.",
+  "description": "Blocks YouTube Shorts, Facebook Reels, and the scrolling feeds on Instagram and TikTok, while keeping search, messages and profiles usable. No tracking.",
   "minimum_chrome_version": "111",
   "icons": {
     "16": "icons/icon16.png",
@@ -23,7 +23,9 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "*://www.youtube.com/*",
     "*://m.youtube.com/*",
@@ -41,37 +43,57 @@
         "*://www.instagram.com/*",
         "*://www.facebook.com/*",
         "*://web.facebook.com/*",
-        "*://m.facebook.com/*"
+        "*://m.facebook.com/*",
+        "*://*.tiktok.com/*"
       ],
-      "js": ["content/nav-hook.js"],
+      "js": [
+        "content/nav-hook.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["*://www.youtube.com/*", "*://m.youtube.com/*"],
-      "js": ["content/core.js", "content/youtube.js"],
+      "matches": [
+        "*://www.youtube.com/*",
+        "*://m.youtube.com/*"
+      ],
+      "js": [
+        "content/core.js",
+        "content/youtube.js"
+      ],
       "run_at": "document_start"
     },
     {
-      "matches": ["*://www.instagram.com/*"],
-      "js": ["content/core.js", "content/instagram.js"],
+      "matches": [
+        "*://www.instagram.com/*"
+      ],
+      "js": [
+        "content/core.js",
+        "content/instagram.js"
+      ],
       "run_at": "document_start"
     },
     {
-      "matches": ["*://www.facebook.com/*", "*://web.facebook.com/*", "*://m.facebook.com/*"],
-      "js": ["content/core.js", "content/facebook.js"],
+      "matches": [
+        "*://www.facebook.com/*",
+        "*://web.facebook.com/*",
+        "*://m.facebook.com/*"
+      ],
+      "js": [
+        "content/core.js",
+        "content/facebook.js"
+      ],
       "run_at": "document_start"
     },
     {
-      "matches": ["*://*.tiktok.com/*"],
-      "js": ["content/core.js", "content/tiktok.js"],
+      "matches": [
+        "*://*.tiktok.com/*"
+      ],
+      "js": [
+        "content/core.js",
+        "content/tiktok.js"
+      ],
       "run_at": "document_start"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["blocked/blocked.html"],
-      "matches": ["*://*.tiktok.com/*"]
     }
   ]
 }

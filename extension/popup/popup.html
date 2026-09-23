@@ -68,10 +68,21 @@
         <label class="platform-row" for="toggle-tiktok">
           <span class="platform-text">
             <span class="platform-name">TikTok</span>
-            <span class="platform-detail">Whole site blocked</span>
+            <span class="platform-detail">All feeds and LIVE off</span>
           </span>
           <span class="platform-count" id="count-tiktok" title="Blocked today">0</span>
           <input class="switch" type="checkbox" role="switch" id="toggle-tiktok" data-platform="tiktok" checked />
+        </label>
+        <label class="option-row" for="option-tiktok-notifications">
+          <span>Allow notifications</span>
+          <input
+            class="switch switch-small"
+            type="checkbox"
+            role="switch"
+            id="option-tiktok-notifications"
+            data-setting="tiktokNotifications"
+            data-parent="tiktok"
+          />
         </label>
       </li>
     </ul>

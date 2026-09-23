@@ -18,7 +18,7 @@ const { PLATFORMS, todayKey, normalizeStats } = globalThis.ShortStopStats;
 // extra options (e.g. instagramNotifications) default to off and are kept as-is.
 chrome.runtime.onInstalled.addListener(async () => {
   const { settings = {} } = await chrome.storage.sync.get('settings');
-  const complete = { instagramNotifications: false, ...settings };
+  const complete = { instagramNotifications: false, tiktokNotifications: false, ...settings };
   for (const platform of PLATFORMS) complete[platform] = settings[platform] !== false;
   await chrome.storage.sync.set({ settings: complete });
 });

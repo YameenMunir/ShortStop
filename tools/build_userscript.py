@@ -17,13 +17,13 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTENT = ROOT / "extension" / "content"
 OUTPUT = ROOT / "userscript" / "shortstop.user.js"
 
-PLATFORM_FILES = ("youtube.js", "instagram.js", "facebook.js")
+PLATFORM_FILES = ("youtube.js", "instagram.js", "facebook.js", "tiktok.js")
 
 HEADER = """// ==UserScript==
 // @name         ShortStop: Shorts & Reels Blocker
 // @namespace    https://github.com/YOUR_GITHUB_USERNAME/shortstop
 // @version      __VERSION__
-// @description  Blocks YouTube Shorts, Facebook Reels, and Instagram's feed, Explore, Reels and Stories while keeping the useful parts usable. No tracking.
+// @description  Blocks YouTube Shorts, Facebook Reels, and the scrolling feeds on Instagram and TikTok, while keeping search, messages and profiles usable. No tracking.
 // @author       Yameen Munir
 // @license      MIT
 // @match        *://www.youtube.com/*
@@ -32,6 +32,7 @@ HEADER = """// ==UserScript==
 // @match        *://www.facebook.com/*
 // @match        *://web.facebook.com/*
 // @match        *://m.facebook.com/*
+// @match        *://*.tiktok.com/*
 // @run-at       document-start
 // @inject-into  content
 // @noframes
@@ -52,6 +53,9 @@ const BLOCK_FACEBOOK_REELS = true;
 /* Instagram blocks the Home feed, Explore, Reels and Stories.      */
 /* Set this to true to keep Instagram notifications reachable.      */
 const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
+/* TikTok blocks For You, Following, Friends, LIVE and Explore.     */
+const BLOCK_TIKTOK_FEEDS = true;
+const ALLOW_TIKTOK_NOTIFICATIONS = false;
 /* ================================================================ */
 
 (function () {
@@ -62,6 +66,8 @@ const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
     instagram: BLOCK_INSTAGRAM_REELS,
     facebook: BLOCK_FACEBOOK_REELS,
     instagramNotifications: ALLOW_INSTAGRAM_NOTIFICATIONS,
+    tiktok: BLOCK_TIKTOK_FEEDS,
+    tiktokNotifications: ALLOW_TIKTOK_NOTIFICATIONS,
   };
 """
 
@@ -76,7 +82,6 @@ ShortStop.useEnv({
   getSettings: () => Promise.resolve(SETTINGS),
   onSettingsChanged() {},
   count: () => Promise.resolve(),
-  blockedPageUrl: () => 'about:blank',
 });
 """
 

@@ -6,7 +6,7 @@
 
 <p align="center">
   A free, open-source browser extension that blocks short-form video and endless feeds
-  (YouTube Shorts, Instagram's feed, Explore, Reels and Stories, Facebook Reels and TikTok)
+  (YouTube Shorts, Facebook Reels, and every scrolling feed on Instagram and TikTok)
   while keeping the useful parts of each site working.
 </p>
 
@@ -23,9 +23,9 @@
 | **YouTube** | `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`) instead. Shorts shelves are removed from home, search, subscriptions, channel and watch pages. The Shorts entries in the sidebar, mini sidebar, channel tabs, search filter chips and the m.youtube.com bottom bar are removed. |
 | **Instagram** | **Focus mode.** The Home feed, Explore (including hashtag, place and suggested-people pages), Reels and Stories are all blocked the same way. Their content is replaced by a ShortStop panel before it paints, so there's nothing to scroll and no way round it through the Home feed. The panel links to what still works: **Messages**, **account search**, **your profile**, and posting through Instagram's own menu. Profiles and single posts you open on purpose still work, minus the Reels tab and "Suggested for you" accounts. Reels shared in DMs are blurred and can't be opened. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 | **Facebook** | The Reels shortcut and Page/profile Reels tabs are hidden. Feed posts and "Reels and short videos" carousels are removed. `/reel/…` and `/reels/` URLs send you to your home feed. |
-| **TikTok** | The whole site is replaced with a simple "TikTok is blocked" page, because it's short-form end to end. |
+| **TikTok** | **Focus mode.** Every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 
-The popup has an on/off switch per platform, plus *Allow notifications* under Instagram.
+The popup has an on/off switch per platform, plus *Allow notifications* under Instagram and TikTok.
 Changes apply to open tabs straight away, without a reload. It also shows how many
 Shorts, Reels and feeds were blocked today.
 
@@ -87,13 +87,13 @@ Temporary add-ons are removed when Firefox restarts. To keep it installed, sign 
 
 iOS Safari extensions can't be side-loaded, so ShortStop also ships as a single
 userscript: [`userscript/shortstop.user.js`](userscript/shortstop.user.js). It covers
-YouTube, Instagram (the same focus mode) and Facebook. For TikTok on iPhone, use Screen Time's website limits.
+YouTube, Facebook, and the same Instagram and TikTok focus modes.
 
 1. Install **Userscripts** (by Justin Wasack, free) from the App Store.
 2. Open the Userscripts app and choose a folder for your scripts, for example
    `iCloud Drive/Userscripts`.
 3. Turn the extension on: **Settings → Apps → Safari → Extensions → Userscripts**.
-   Enable it and set **youtube.com, instagram.com and facebook.com** (or All Websites) to **Allow**.
+   Enable it and set **youtube.com, instagram.com, facebook.com and tiktok.com** (or All Websites) to **Allow**.
    On older iOS versions this is under **Settings → Safari → Extensions**.
 4. Put `shortstop.user.js` in that folder. Either:
    - open the raw file on GitHub in Safari, tap the **Userscripts** icon in the address
@@ -108,6 +108,8 @@ const BLOCK_YOUTUBE_SHORTS = true;
 const BLOCK_INSTAGRAM_REELS = true;          // Instagram focus mode: feed, Explore, Reels, Stories
 const BLOCK_FACEBOOK_REELS = false;          // Facebook Reels allowed
 const ALLOW_INSTAGRAM_NOTIFICATIONS = false; // true keeps Instagram notifications reachable
+const BLOCK_TIKTOK_FEEDS = true;             // TikTok focus mode: For You, Following, LIVE, Explore
+const ALLOW_TIKTOK_NOTIFICATIONS = false;    // true keeps TikTok notifications reachable
 ```
 
 The userscript has no popup or daily counter, because Safari userscripts have no shared storage.
@@ -118,16 +120,15 @@ The userscript has no popup or daily counter, because Safari userscripts have no
 extension/
 ├── manifest.json            MV3 manifest: storage + the four sites, nothing else
 ├── background.js            Service worker: keeps the daily counter (one write queue for all tabs)
-├── shared/stats.js          Counter helpers shared by background, popup and blocked page
+├── shared/stats.js          Counter helpers shared by the background worker and popup
 ├── content/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
 │   ├── youtube.js           YouTube selectors + redirects (one config object)
 │   ├── instagram.js         Instagram focus mode: covered routes, selectors, redirects
 │   ├── facebook.js          Facebook selectors + redirects
-│   └── tiktok.js            TikTok: block the whole site
-├── popup/                   On/off switches and today's counter
-├── blocked/                 The page shown instead of TikTok
+│   └── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
+├── popup/                   On/off switches, notification options and today's counter
 └── icons/                   16, 32, 48 and 128 px PNGs
 userscript/shortstop.user.js Generated from content/*.js for iOS Safari
 tools/                       Icon generator, userscript builder, zip packager (Python, no dependencies)
@@ -149,8 +150,9 @@ Each platform file is a single config object, and `core.js` does the work:
    for a `pushState`/`replaceState` hook (`nav-hook.js`), YouTube's `yt-navigate-finish`,
    `popstate`, and a one-second URL check as a safety net. It also catches clicks on
    Short/Reel links before the site's router plays them.
-4. **Covered routes.** A config can list whole routes to cover (Instagram's Home,
-   Explore, Reels and Stories). On those, the content area (`main`) is hidden by the same
+4. **Covered routes.** A config can list whole routes to cover (Instagram's Home, Explore,
+   Reels and Stories, and every TikTok feed). On those, the content area (Instagram's `main`,
+   TikTok's `div#main-content-…` or `main`) is hidden by the same
    `document_start` stylesheet, and a ShortStop panel takes its place. The panel is built in
    a shadow root so the site's CSS can't touch it. Any playing media is paused. The route is
    re-checked on every navigation and every DOM change, so the panel comes back if the site
@@ -212,7 +214,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 260 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 354 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -227,9 +229,11 @@ platform it checks:
 - the counter total, with no double counting
 - switching off and back on
 - page-scoped rules (Explore, DMs)
-- Instagram's covered routes: the panel's title and links, media paused, the panel
-  re-mounting after the site removes it, the full-viewport fallback, and the
-  notifications option
+- Instagram's and TikTok's covered routes: the panel's title, message and links, media
+  paused, the panel re-mounting after the site removes it, the full-viewport fallback, and
+  the notifications options
+- TikTok's feed keys being swallowed (but not while typing), autoplay being stopped, and the
+  panel's search box
 - every redirect rule
 - redirects triggered by SPA navigation
 
@@ -248,6 +252,11 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 - Instagram profile grids stay visible so you can look at an account on purpose. Opening a
   Reel from one shows the "Reels are off" panel.
 - The "Suggested for you" block on profiles is found by its English heading.
+- TikTok's "You may like" and similar recommendation sections on profiles and video pages
+  are found by their English headings. The sidebar's suggested accounts use TikTok's
+  `data-e2e` attribute and work in any language.
+- TikTok shows a "Short drama" feed to some users. Its sidebar link is hidden, but its URL
+  wasn't visible during testing, so the route itself isn't covered yet.
 - m.facebook.com gets the redirects but its hiding rules are less complete than on www.
 
 ## License
