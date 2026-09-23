@@ -18,6 +18,20 @@
 
 ---
 
+## At a glance
+
+- **Focus mode on YouTube, Instagram, Facebook and TikTok.** Endless feeds, Shorts, Reels,
+  Stories, LIVE and autoplay are replaced by a calm panel, so there's nothing to scroll.
+- **Still useful.** Search, messages, profiles, groups, uploading and a video you open on
+  purpose keep working, so the sites stay usable as communication tools.
+- **Hard to switch off on impulse.** Blocking pauses for 10 minutes and comes back by itself,
+  and turning it off for good takes a 30-second wait.
+- **Private by design.** No data collection, no analytics, no network requests, and only
+  the permissions it needs.
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 684
+  automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
+  Safari userscript.
+
 ## What it does
 
 | Platform | What ShortStop changes |
@@ -30,7 +44,7 @@
 The popup has a switch per platform, plus *Allow notifications* under Instagram,
 Facebook and TikTok, and *Allow Marketplace search* under Facebook.
 Changes apply to open tabs straight away, without a reload. It also shows how many
-Shorts, Reels and feeds were blocked today.
+Shorts, Reels and feeds were blocked today (visiting a blocked feed page counts once).
 
 ### Pausing blocking on purpose
 
@@ -57,8 +71,9 @@ the constants at the top of [popup.js](extension/popup/popup.js).
   calls `fetch`, loads no remote code and uses no third-party libraries.
 - **Minimum permissions:** `storage`, plus host access to the four sites it works on.
   It can't see any other website.
-- Your on/off switches are saved with `chrome.storage.sync`, so they follow your
-  browser profile. The daily counter lives in `chrome.storage.local` on your device only.
+- Your platform switches and options are saved with `chrome.storage.sync`, so they follow
+  your browser profile. The daily counter, temporary pauses and any pending turn-off
+  request live in `chrome.storage.local`, on your device only.
 
 ## Install
 
@@ -122,20 +137,21 @@ focus modes for YouTube, Instagram, Facebook and TikTok.
 **Changing settings on iPhone:** edit the constants at the very top of the file, then save:
 
 ```js
-const BLOCK_YOUTUBE_SHORTS = true;                // YouTube focus mode: Shorts, home feed, Up next, autoplay
+const BLOCK_YOUTUBE_SHORTS = true;              // Shorts, home feed, Up next, autoplay
 
-const BLOCK_INSTAGRAM_REELS = true;             // Instagram focus mode: feed, Explore, Reels, Stories
+const BLOCK_INSTAGRAM_REELS = true;             // Home feed, Explore, Reels, Stories
 const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
 
-const BLOCK_FACEBOOK_FEEDS = true;              // Facebook focus mode: News Feed, Reels, Watch, Stories…
+const BLOCK_FACEBOOK_FEEDS = true;              // News Feed, Reels, Watch, Stories, Marketplace browsing
 const ALLOW_FACEBOOK_NOTIFICATIONS = false;
 const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
 
-const BLOCK_TIKTOK_FEEDS = true;                // TikTok focus mode: For You, Following, LIVE, Explore
+const BLOCK_TIKTOK_FEEDS = true;                // For You, Following, Friends, LIVE, Explore
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
 ```
 
-The userscript has no popup or daily counter, because Safari userscripts have no shared storage.
+The userscript has no popup, daily counter or pause flow, because Safari userscripts have no
+shared storage. To pause a platform, set its constant to `false` and set it back later.
 
 ## How it works
 
@@ -151,11 +167,12 @@ extension/
 │   ├── instagram.js         Instagram focus mode: covered routes, selectors, redirects
 │   ├── facebook.js          Facebook focus mode: covered feeds, Marketplace rules, selectors
 │   └── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
-├── popup/                   On/off switches, notification options and today's counter
+├── popup/                   Platform switches, pause flow, options and today's counter
 └── icons/                   16, 32, 48 and 128 px PNGs
 userscript/shortstop.user.js Generated from content/*.js for iOS Safari
 tools/                       Icon generator, userscript builder, zip packager (Python, no dependencies)
-tests/                       Fixture pages + a headless-Chrome test runner
+tests/                       Fixture pages, a test harness and a headless-Chrome test runner
+docs/                        Screenshots used in this README
 ```
 
 Each platform file is a single config object, and `core.js` does the work:
@@ -173,16 +190,20 @@ Each platform file is a single config object, and `core.js` does the work:
    for a `pushState`/`replaceState` hook (`nav-hook.js`), YouTube's `yt-navigate-finish`,
    `popstate`, and a one-second URL check as a safety net. It also catches clicks on
    Short/Reel links before the site's router plays them.
-4. **Covered routes.** A config can list whole routes to cover (every feed on YouTube,
-   Instagram, Facebook and TikTok). A route is a pathname pattern, or a test on the whole URL when the
-   site keeps the feed choice in the query string. On those, the content area (`main`,
-   Facebook's `div[role="main"]`, TikTok's `div#main-content-…`, YouTube's `ytd-browse`) is
-   hidden by the same
-   `document_start` stylesheet, and a ShortStop panel takes its place. The panel is built in
-   a shadow root so the site's CSS can't touch it. Any playing media is paused. The route is
-   re-checked on every navigation and every DOM change, so the panel comes back if the site
-   re-renders it away. If the site has no `main` element, for example while loading or after
-   a redesign, the panel covers the whole viewport and locks scrolling instead.
+4. **Covered routes.** A config can list whole routes to cover: every feed on YouTube,
+   Instagram, Facebook and TikTok. A route is a pathname pattern, or a test on the whole URL
+   when the site keeps the feed choice in the query string. On those routes the content area
+   (`main`, Facebook's `div[role="main"]`, TikTok's `div#main-content-…`, YouTube's
+   `ytd-browse`) is hidden by the same `document_start` stylesheet, and a ShortStop panel takes
+   its place.
+   - The panel is built in a shadow root, so the site's CSS can't touch it. It can carry a
+     search box and links that differ per page (Marketplace search, "Open this video only").
+   - While a feed is covered, feed keys are swallowed (except when typing) and any media that
+     starts playing is paused. A platform can opt out of either: YouTube does, so its
+     miniplayer keeps playing and working.
+   - The route is re-checked on every navigation and DOM change, so the panel comes back if
+     the site re-renders it away. If there is no content area (still loading, or after a
+     redesign), the panel covers the whole viewport and locks scrolling instead.
 5. **Effects.** Some things can't be hidden, only changed: YouTube's autoplay is switched off
    through its own toggle, and a running autoplay countdown is cancelled. Effects run after
    every scan and are safe to repeat.
@@ -194,17 +215,20 @@ Each platform file is a single config object, and `core.js` does the work:
 
 ## When a site changes: updating selectors
 
-YouTube, Instagram and Facebook change their markup regularly. When something slips
-through, the fix is usually one line in one file.
+All four sites change their markup regularly. When something slips through, the fix is
+usually one line in one file.
 
-1. **Find the element.** Right-click the Short/Reel that got through → **Inspect**. Walk up
-   the DOM to the element that wraps the whole thing (the shelf, card or list item).
+1. **Find the element.** Right-click the Short, Reel or recommendation that got through →
+   **Inspect**. Walk up the DOM to the element that wraps the whole thing (the shelf, card or
+   list item).
 2. **Pick a stable selector.** In order of preference:
    - a custom element name: `ytd-reel-shelf-renderer`
    - an attribute: `[is-shorts]`, `[tab-title="Shorts"]`, `[role="tab"]`
    - a URL pattern: `a[href^="/shorts/"]`, `a[href*="/reel/"]`
    - `:has()` to target a container by what's inside it:
      `ytd-rich-item-renderer:has(a[href^="/shorts/"])`
+   - a test attribute the site uses for its own testing, such as TikTok's
+     `[data-e2e="nav-foryou"]` (these change far less than class names)
    - ARIA labels (`[aria-label="Reels"]`) work, but depend on the site's language
 
    Avoid generated class names like `.x1lliihq` or `.style-scope-abc123`. They change with every deploy.
@@ -225,10 +249,14 @@ through, the fix is usually one line in one file.
    `text: /^Shorts$/` requires the matched element's text to match, and
    `onlyIf: (options) => !options.notifications` ties the rule to a popup option.
 
-   **To block a whole route instead** (Instagram), add its pathname pattern to `pages` and
-   list it under `cover.pages` with a title. If the site stops using `<main>` for its content
-   area, update `cover.target`. Put container rules (shelves, sections)
-   **above** item rules so items inside them aren't counted twice.
+   **To block a whole route instead**, add a pattern to `pages` (a pathname RegExp, or a
+   function of the URL) and list that name under `cover.pages` with a message. A page can
+   override the panel's `search` and `links`. If the site stops using the same content area,
+   update `cover.target` (a list of selectors, first match wins). `cover.pauseMedia` and
+   `cover.blockKeys` can be set to `false` where a site needs its own playback and keys.
+   For something that has to be *done* rather than hidden, add an entry to `effects`.
+   Put container rules (shelves, sections) **above** item rules so items inside them aren't
+   counted twice.
 5. **Reload the extension** (the ↻ button on `chrome://extensions`), then refresh the site.
 6. **Rebuild the userscript** so iPhone gets the same fix:
    `python tools/build_userscript.py`
@@ -259,11 +287,10 @@ platform it checks:
 - the counter total, with no double counting
 - switching off and back on
 - page-scoped rules (Explore, DMs)
-- Instagram's, Facebook's and TikTok's covered routes: the panel's title, message, links
-  and search box, media
-  paused, the panel re-mounting after the site removes it, the full-viewport fallback, and
-  the notifications options
-- Feed keys being swallowed (but not while typing), autoplay being stopped, and the panel's
+- covered routes on all four platforms: the panel's title, message, links and search box,
+  the panel re-mounting after the site removes it, the full-viewport fallback, and the
+  notification options
+- feed keys being swallowed (but not while typing), media being paused, and the panel's
   search box going to the right results page
 - Temporary pauses on every platform: blocking pauses, comes back by itself when the time
   runs out, ignores an expired pause or another platform's, and "block again" is instant
@@ -279,6 +306,22 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 
 ## Known limitations
 
+- **Testing coverage.** The engine is tested against mock pages for every platform, and
+  YouTube and TikTok were also checked on the live sites (signed out) in Edge. Instagram and
+  Facebook need a signed-in account, so run their sections of [TESTING.md](TESTING.md) on real
+  accounts. The Firefox build and the iPhone userscript haven't been run on a real Firefox or
+  iPhone yet, so treat them as untested.
+- **This is friction, not a lock.** The pause and 30-second wait stop impulsive switching-off.
+  Someone determined can still change settings in the browser's developer tools or uninstall
+  the extension.
+- **Private windows.** Browsers don't run extensions in private/incognito windows unless you
+  allow it under the extension's details, so blocking doesn't apply there by default.
+- Pauses are stored per device. Your platform switches sync with your browser profile, but a
+  10-minute pause on one computer doesn't pause your others.
+- The smaller options (*Allow notifications*, *Allow Marketplace search*) switch instantly,
+  without the pause flow.
+- YouTube's "For you" / "People also watched" shelves in search are matched by their English
+  titles, and the m.youtube.com "related videos" rule hasn't been checked on a phone.
 - Instagram and Facebook selectors that use ARIA labels (the DM Reel badge, the
   "Reels and short videos" carousel) match English labels. URL-based rules work in
   any language.
