@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Instagram fixture</title>
+    <script src="../../extension/content/core.js"></script>
+    <script type="application/json" id="plan">
+      {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/",
+        "phases": [
+          { "name": "explore", "url": "https://www.instagram.com/explore/" },
+          { "name": "direct", "url": "https://www.instagram.com/direct/t/1234567890/" }
+        ],
+        "redirects": [
+          ["https://www.instagram.com/reels/", "https://www.instagram.com/"],
+          ["https://www.instagram.com/reels/C1a2b3c4d5e/", "https://www.instagram.com/"],
+          ["https://www.instagram.com/reel/C1a2b3c4d5e/", "https://www.instagram.com/"],
+          ["https://www.instagram.com/reel/C1a2b3c4d5e/?igsh=abc", "https://www.instagram.com/"],
+          ["https://www.instagram.com/natgeo/reel/C1a2b3c4d5e/", "https://www.instagram.com/"],
+          ["https://www.instagram.com/natgeo/reels/", "https://www.instagram.com/natgeo/"],
+          ["https://www.instagram.com/natgeo/", null],
+          ["https://www.instagram.com/p/C1a2b3c4d5e/", null],
+          ["https://www.instagram.com/explore/", null],
+          ["https://www.instagram.com/direct/inbox/", null]
+        ],
+        "spaRedirect": ["https://www.instagram.com/reels/", "https://www.instagram.com/"]
+      }
+    </script>
+    <script src="../harness.js"></script>
+    <script src="../../extension/content/instagram.js"></script>
+  </head>
+  <body>
+    <nav>
+      <a href="/" data-name="Home link" data-expect="visible">Home</a>
+      <a href="/explore/" data-name="Explore link" data-expect="visible">Explore</a>
+      <a href="/reels/" data-name="Reels link" data-expect="hidden">Reels</a>
+      <a href="/direct/inbox/" data-name="Messages link" data-expect="visible">Messages</a>
+    </nav>
+
+    <div>
+      <a role="tab" href="/natgeo/" data-name="profile Posts tab" data-expect="visible">Posts</a>
+      <a role="tab" href="/natgeo/reels/" data-name="profile Reels tab" data-expect="hidden">Reels</a>
+      <a role="tab" href="/natgeo/tagged/" data-name="profile Tagged tab" data-expect="visible">Tagged</a>
+    </div>
+
+    <main>
+      <!-- Home feed: on "/", reel posts disappear; elsewhere they are left alone. -->
+      <article data-name="feed photo post" data-expect="visible" data-expect-explore="visible">
+        <a href="/p/PHOTO111111/"><time>2h</time></a>
+      </article>
+      <article data-name="feed reel post" data-expect="hidden" data-count data-expect-explore="visible">
+        <a href="/reel/REEL1111111/"><time>3h</time></a>
+      </article>
+
+      <!-- Explore grid tiles -->
+      <div>
+        <a href="/p/EXPLOREPHOTO/" data-name="Explore photo tile" data-expect="visible" data-expect-explore="visible">Photo</a>
+        <a href="/reel/EXPLOREREEL1/" data-name="Explore reel tile" data-expect="visible" data-expect-explore="hidden">Reel</a>
+        <a href="/p/EXPLOREVID11/" data-name="Explore tile with Reel badge" data-expect="visible" data-expect-explore="hidden">
+          <svg aria-label="Clip" width="10" height="10"></svg>Clip
+        </a>
+      </div>
+    </main>
+
+    <!-- DM thread -->
+    <section>
+      <div data-name="DM text message" data-expect="visible" data-expect-direct="visible">See you at 6</div>
+      <div role="button" data-name="DM reel card (outer row)" data-expect-direct="visible">
+        <div role="button" data-name="DM reel card" data-expect="visible" data-expect-direct="blurred">
+          <svg aria-label="Clip" width="10" height="10"></svg><span>Shared reel</span>
+        </div>
+      </div>
+      <a href="/reel/DMREEL11111/" data-name="DM reel link" data-expect="visible" data-expect-direct="blurred">reel link</a>
+      <a href="/p/DMPOST11111/" data-name="DM post link" data-expect="visible" data-expect-direct="visible">post link</a>
+    </section>
+
+    <template id="dynamic">
+      <article data-name="reel post loaded by scrolling" data-expect-dynamic="hidden" data-count><a href="/reel/SCROLL11111/">1m</a></article>
+      <article data-name="photo post loaded by scrolling" data-expect-dynamic="visible"><a href="/p/SCROLL22222/">1m</a></article>
+    </template>
+  </body>
+</html>

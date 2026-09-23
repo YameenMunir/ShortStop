@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>YouTube fixture</title>
+    <script src="../../extension/content/core.js"></script>
+    <script type="application/json" id="plan">
+      {
+        "platform": "youtube",
+        "url": "https://www.youtube.com/",
+        "redirects": [
+          ["https://www.youtube.com/shorts/abc123DEF45", "https://www.youtube.com/watch?v=abc123DEF45"],
+          ["https://www.youtube.com/shorts/abc123DEF45?feature=share", "https://www.youtube.com/watch?v=abc123DEF45"],
+          ["https://m.youtube.com/shorts/Zz_-9yyyyyy", "https://m.youtube.com/watch?v=Zz_-9yyyyyy"],
+          ["https://www.youtube.com/shorts/", "https://www.youtube.com/"],
+          ["https://www.youtube.com/watch?v=abc123DEF45", null],
+          ["https://www.youtube.com/@creator/shorts", null],
+          ["https://www.youtube.com/results?search_query=shorts", null]
+        ],
+        "spaRedirect": ["https://www.youtube.com/shorts/spaSPA12345", "https://www.youtube.com/watch?v=spaSPA12345"]
+      }
+    </script>
+    <script src="../harness.js"></script>
+    <script src="../../extension/content/youtube.js"></script>
+  </head>
+  <body>
+    <!-- Desktop sidebar -->
+    <ytd-guide-entry-renderer data-name="sidebar Shorts" data-expect="hidden"><a id="endpoint" title="Shorts">Shorts</a></ytd-guide-entry-renderer>
+    <ytd-guide-entry-renderer data-name="sidebar Subscriptions" data-expect="visible"><a id="endpoint" href="/feed/subscriptions" title="Subscriptions">Subscriptions</a></ytd-guide-entry-renderer>
+    <ytd-mini-guide-entry-renderer data-name="mini sidebar Shorts" aria-label="Shorts" data-expect="hidden">Shorts</ytd-mini-guide-entry-renderer>
+    <ytd-mini-guide-entry-renderer data-name="mini sidebar Home" aria-label="Home" data-expect="visible">Home</ytd-mini-guide-entry-renderer>
+
+    <!-- Home feed -->
+    <ytd-rich-section-renderer data-name="home Shorts section" data-expect="hidden" data-count>
+      <ytd-rich-shelf-renderer is-shorts>
+        <ytm-shorts-lockup-view-model><a href="/shorts/aaaaaaaaaaa">Short A</a></ytm-shorts-lockup-view-model>
+        <ytm-shorts-lockup-view-model><a href="/shorts/bbbbbbbbbbb">Short B</a></ytm-shorts-lockup-view-model>
+      </ytd-rich-shelf-renderer>
+    </ytd-rich-section-renderer>
+    <ytd-rich-section-renderer data-name="home non-Shorts section" data-expect="visible">
+      <ytd-rich-shelf-renderer>Breaking news</ytd-rich-shelf-renderer>
+    </ytd-rich-section-renderer>
+    <ytd-rich-item-renderer data-name="home normal video" data-expect="visible"><a href="/watch?v=normal12345">Normal video</a></ytd-rich-item-renderer>
+    <ytd-rich-item-renderer data-name="subscriptions Short" data-expect="hidden" data-count><a href="/shorts/subshort123">A Short</a></ytd-rich-item-renderer>
+    <ytd-rich-item-renderer data-name="recycled item" data-count data-recycle-href="/watch?v=recycled123"><a href="/shorts/recycle1234">Recycled</a></ytd-rich-item-renderer>
+
+    <!-- Search -->
+    <ytd-reel-shelf-renderer data-name="search Shorts shelf" data-expect="hidden" data-count>
+      <ytd-reel-item-renderer><a href="/shorts/ccccccccccc">Short C</a></ytd-reel-item-renderer>
+    </ytd-reel-shelf-renderer>
+    <grid-shelf-view-model data-name="search grid shelf (2025)" data-expect="hidden" data-count>
+      <ytm-shorts-lockup-view-model-v2><a href="/shorts/ddddddddddd">Short D</a></ytm-shorts-lockup-view-model-v2>
+    </grid-shelf-view-model>
+    <grid-shelf-view-model data-name="non-Shorts grid shelf" data-expect="visible"><a href="/watch?v=grid1234567">Grid video</a></grid-shelf-view-model>
+    <ytd-video-renderer data-name="search result Short" data-expect="hidden" data-count><a id="thumbnail" href="/shorts/eeeeeeeeeee">Short E</a></ytd-video-renderer>
+    <ytd-video-renderer data-name="search result video" data-expect="visible"><a id="thumbnail" href="/watch?v=fffffffffff">Video F</a></ytd-video-renderer>
+    <yt-chip-cloud-chip-renderer data-name="Shorts filter chip" data-expect="hidden"><chip-shape> Shorts </chip-shape></yt-chip-cloud-chip-renderer>
+    <yt-chip-cloud-chip-renderer data-name="Videos filter chip" data-expect="visible"><chip-shape>Videos</chip-shape></yt-chip-cloud-chip-renderer>
+    <yt-chip-cloud-chip-renderer data-name="chip mentioning shorts in a longer label" data-expect="visible"><chip-shape>Shorts tutorials</chip-shape></yt-chip-cloud-chip-renderer>
+
+    <!-- Channel page -->
+    <yt-tab-shape data-name="channel Shorts tab" tab-title="Shorts" data-expect="hidden">Shorts</yt-tab-shape>
+    <yt-tab-shape data-name="channel Videos tab" tab-title="Videos" data-expect="visible">Videos</yt-tab-shape>
+    <ytd-grid-video-renderer data-name="channel grid Short" data-expect="hidden" data-count><a href="/shorts/ggggggggggg">Short G</a></ytd-grid-video-renderer>
+
+    <!-- Watch page sidebar -->
+    <ytd-compact-video-renderer data-name="watch sidebar Short" data-expect="hidden" data-count><a href="/shorts/hhhhhhhhhhh">Short H</a></ytd-compact-video-renderer>
+    <ytd-compact-video-renderer data-name="watch sidebar video" data-expect="visible"><a href="/watch?v=iiiiiiiiiii">Video I</a></ytd-compact-video-renderer>
+
+    <!-- m.youtube.com -->
+    <ytm-pivot-bar-item-renderer data-name="mobile Shorts tab" data-expect="hidden"><div class="pivot-bar-item-tab pivot-shorts">Shorts</div></ytm-pivot-bar-item-renderer>
+    <ytm-pivot-bar-item-renderer data-name="mobile Home tab" data-expect="visible"><div class="pivot-bar-item-tab pivot-w2w">Home</div></ytm-pivot-bar-item-renderer>
+    <ytm-rich-section-renderer data-name="mobile Shorts section" data-expect="hidden" data-count><ytm-reel-shelf-renderer><a href="/shorts/jjjjjjjjjjj">Short J</a></ytm-reel-shelf-renderer></ytm-rich-section-renderer>
+    <ytm-video-with-context-renderer data-name="mobile Short in list" data-expect="hidden" data-count><a href="/shorts/kkkkkkkkkkk">Short K</a></ytm-video-with-context-renderer>
+    <ytm-video-with-context-renderer data-name="mobile video in list" data-expect="visible"><a href="/watch?v=lllllllllll">Video L</a></ytm-video-with-context-renderer>
+
+    <template id="dynamic">
+      <ytd-rich-item-renderer data-name="Short loaded by infinite scroll" data-expect-dynamic="hidden" data-count><a href="/shorts/scroll12345">Scrolled Short</a></ytd-rich-item-renderer>
+      <ytd-rich-item-renderer data-name="video loaded by infinite scroll" data-expect-dynamic="visible"><a href="/watch?v=scroll67890">Scrolled video</a></ytd-rich-item-renderer>
+    </template>
+  </body>
+</html>

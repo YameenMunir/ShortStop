@@ -1,0 +1,9 @@
+# Build output (attach the zips to a GitHub Release instead of committing them)
+dist/
+*.crx
+*.pem
+
+# Python / OS noise
+__pycache__/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Facebook fixture</title>
+    <script src="../../extension/content/core.js"></script>
+    <script type="application/json" id="plan">
+      {
+        "platform": "facebook",
+        "url": "https://www.facebook.com/",
+        "redirects": [
+          ["https://www.facebook.com/reel/1234567890123456", "https://www.facebook.com/"],
+          ["https://www.facebook.com/reel/?s=tab", "https://www.facebook.com/"],
+          ["https://www.facebook.com/reels/", "https://www.facebook.com/"],
+          ["https://web.facebook.com/reel/1234567890123456", "https://web.facebook.com/"],
+          ["https://www.facebook.com/natgeo/reels/", "https://www.facebook.com/natgeo/"],
+          ["https://www.facebook.com/profile.php?id=100000000001&sk=reels_tab", "https://www.facebook.com/profile.php?id=100000000001"],
+          ["https://www.facebook.com/profile.php?id=100000000001", null],
+          ["https://www.facebook.com/watch/?v=1234567890", null],
+          ["https://www.facebook.com/natgeo/videos/", null],
+          ["https://www.facebook.com/", null]
+        ],
+        "spaRedirect": ["https://www.facebook.com/reel/9999999999", "https://www.facebook.com/"]
+      }
+    </script>
+    <script src="../harness.js"></script>
+    <script src="../../extension/content/facebook.js"></script>
+  </head>
+  <body>
+    <div role="navigation">
+      <ul>
+        <li data-name="nav Friends" data-expect="visible"><a href="https://www.facebook.com/friends/">Friends</a></li>
+        <li data-name="nav Reels" data-expect="hidden"><a href="https://www.facebook.com/reel/?s=tab">Reels</a></li>
+        <li data-name="nav Groups" data-expect="visible"><a href="https://www.facebook.com/groups/">Groups</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <a role="tab" href="https://www.facebook.com/natgeo/videos/" data-name="Page Videos tab" data-expect="visible">Videos</a>
+      <a role="tab" href="https://www.facebook.com/natgeo/reels/" data-name="Page Reels tab" data-expect="hidden">Reels</a>
+      <a role="tab" href="https://www.facebook.com/profile.php?id=1&amp;sk=reels_tab" data-name="profile Reels tab" data-expect="hidden">Reels</a>
+    </div>
+
+    <div role="feed">
+      <div data-name="feed text post" data-expect="visible"><a href="https://www.facebook.com/natgeo/posts/1">Status update</a></div>
+      <div data-name="feed Reel post" data-expect="hidden" data-count>
+        <div><a href="https://www.facebook.com/reel/1111111111/">A reel</a></div>
+      </div>
+      <div data-name="Reels and short videos carousel" data-expect="hidden" data-count>
+        <div aria-label="Reels and short videos">
+          <a href="/reel/2222222222/">Reel 1</a><a href="/reel/3333333333/">Reel 2</a>
+        </div>
+      </div>
+      <div data-name="feed video post (not a reel)" data-expect="visible"><a href="https://www.facebook.com/watch/?v=44444">Video</a></div>
+    </div>
+
+    <aside>
+      <div aria-label="Reels" data-name="Reels carousel outside the feed" data-expect="hidden" data-count><span>Reels</span></div>
+      <p data-name="search result paragraph" data-expect="visible">Result text <a href="/reel/5555555555/" data-name="loose Reel link" data-expect="hidden">reel</a></p>
+    </aside>
+
+    <template id="dynamic">
+      <div role="feed">
+        <div data-name="Reel post loaded by scrolling" data-expect-dynamic="hidden" data-count><a href="/reel/6666666666/">reel</a></div>
+        <div data-name="text post loaded by scrolling" data-expect-dynamic="visible"><a href="/groups/1/posts/2">post</a></div>
+      </div>
+    </template>
+  </body>
+</html>

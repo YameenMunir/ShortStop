@@ -1,0 +1,212 @@
+/*
+ * ShortStop popup
+ * Road-signage vernacular: enamel background, navy ink, stop-sign red.
+ * System fonts only (no network requests). Bahnschrift is Windows' DIN
+ * road-sign face; other systems fall back to their condensed sans.
+ */
+
+:root {
+  --enamel: #e8edf1;
+  --ink: #16233a;
+  --slate: #56657a;
+  --rule: #c9d2dc;
+  --stop: #d62839;
+  --knob: #ffffff;
+  --focus: #1f6feb;
+
+  --font-sign: "Bahnschrift", "DIN Alternate", "DIN Condensed", "Roboto Condensed", "Arial Narrow",
+    system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --enamel: #111b2b;
+    --ink: #e8edf1;
+    --slate: #9aa8bb;
+    --rule: #2b3b53;
+    --stop: #ff5a67;
+    --knob: #f4f7fa;
+    --focus: #6ea8ff;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  width: 300px;
+  padding: 16px 18px 14px;
+  background: var(--enamel);
+  color: var(--ink);
+  font: 13px/1.4 var(--font-body);
+}
+
+/* ---- Brand line ---- */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-name {
+  font-family: var(--font-sign);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* ---- The tally: the one loud thing on the page ---- */
+
+.tally {
+  margin: 14px 0 16px;
+  padding-left: 12px;
+  border-left: 4px solid var(--stop);
+}
+
+.tally-number {
+  margin: 0;
+  font-family: var(--font-sign);
+  font-size: 68px;
+  font-weight: 700;
+  font-stretch: 75%;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+}
+
+.tally-label {
+  margin: 6px 0 0;
+  color: var(--slate);
+}
+
+/* ---- Platform rows ---- */
+
+.platforms {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+
+.platform {
+  border-bottom: 1px solid var(--rule);
+}
+
+.platform-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.platform-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.platform-name {
+  font-family: var(--font-sign);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.platform-detail {
+  color: var(--slate);
+  font-size: 12px;
+}
+
+.platform-count {
+  min-width: 2ch;
+  font-family: var(--font-sign);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--slate);
+}
+
+/* Off rows fade back so it is obvious at a glance what is not being blocked. */
+.platform-row:has(.switch:not(:checked)) .platform-text,
+.platform-row:has(.switch:not(:checked)) .platform-count {
+  opacity: 0.55;
+}
+
+/* ---- Switch (a styled native checkbox, so keyboard and screen readers just work) ---- */
+
+.switch {
+  appearance: none;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border-radius: 10px;
+  background: var(--rule);
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+
+.switch::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--knob);
+  transition: transform 140ms ease;
+}
+
+.switch:checked {
+  background: var(--stop);
+}
+
+.switch:checked::before {
+  transform: translateX(16px);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---- Footer ---- */
+
+.footer {
+  margin-top: 12px;
+  color: var(--slate);
+  font-size: 12px;
+}
+
+.footer p {
+  margin: 0 0 2px;
+}
+
+.status:empty {
+  display: none;
+}
+
+.status {
+  color: var(--stop);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch::before {
+    transition: none;
+  }
+}

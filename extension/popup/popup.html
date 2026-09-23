@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ShortStop</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="brand">
+      <img src="../icons/icon48.png" alt="" width="22" height="22" />
+      <span class="brand-name">ShortStop</span>
+    </header>
+
+    <section class="tally" aria-labelledby="tally-label">
+      <p class="tally-number" id="today-total" aria-live="polite">0</p>
+      <p class="tally-label" id="tally-label">Shorts and Reels blocked today</p>
+    </section>
+
+    <!-- One row per platform. The switch saves instantly; open tabs update live. -->
+    <ul class="platforms">
+      <li class="platform">
+        <label class="platform-row" for="toggle-youtube">
+          <span class="platform-text">
+            <span class="platform-name">YouTube</span>
+            <span class="platform-detail">Shorts open in the normal player</span>
+          </span>
+          <span class="platform-count" id="count-youtube" title="Blocked today">0</span>
+          <input class="switch" type="checkbox" role="switch" id="toggle-youtube" data-platform="youtube" checked />
+        </label>
+      </li>
+      <li class="platform">
+        <label class="platform-row" for="toggle-instagram">
+          <span class="platform-text">
+            <span class="platform-name">Instagram</span>
+            <span class="platform-detail">Reels hidden, blurred in DMs</span>
+          </span>
+          <span class="platform-count" id="count-instagram" title="Blocked today">0</span>
+          <input class="switch" type="checkbox" role="switch" id="toggle-instagram" data-platform="instagram" checked />
+        </label>
+      </li>
+      <li class="platform">
+        <label class="platform-row" for="toggle-facebook">
+          <span class="platform-text">
+            <span class="platform-name">Facebook</span>
+            <span class="platform-detail">Reels hidden from feed and menus</span>
+          </span>
+          <span class="platform-count" id="count-facebook" title="Blocked today">0</span>
+          <input class="switch" type="checkbox" role="switch" id="toggle-facebook" data-platform="facebook" checked />
+        </label>
+      </li>
+      <li class="platform">
+        <label class="platform-row" for="toggle-tiktok">
+          <span class="platform-text">
+            <span class="platform-name">TikTok</span>
+            <span class="platform-detail">Whole site blocked</span>
+          </span>
+          <span class="platform-count" id="count-tiktok" title="Blocked today">0</span>
+          <input class="switch" type="checkbox" role="switch" id="toggle-tiktok" data-platform="tiktok" checked />
+        </label>
+      </li>
+    </ul>
+
+    <footer class="footer">
+      <p id="status" class="status" role="status"></p>
+      <p id="all-time">0 blocked since you installed ShortStop</p>
+      <p>Nothing is collected or sent anywhere.</p>
+    </footer>
+
+    <script src="../shared/stats.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
