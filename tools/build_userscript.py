@@ -23,7 +23,7 @@ HEADER = """// ==UserScript==
 // @name         ShortStop: Shorts & Reels Blocker
 // @namespace    https://github.com/YOUR_GITHUB_USERNAME/shortstop
 // @version      __VERSION__
-// @description  Blocks YouTube Shorts, Instagram Reels and Facebook Reels while keeping the rest of each site usable. No tracking.
+// @description  Blocks YouTube Shorts, Facebook Reels, and Instagram's feed, Explore, Reels and Stories while keeping the useful parts usable. No tracking.
 // @author       Yameen Munir
 // @license      MIT
 // @match        *://www.youtube.com/*
@@ -49,6 +49,9 @@ HEADER = """// ==UserScript==
 const BLOCK_YOUTUBE_SHORTS = true;
 const BLOCK_INSTAGRAM_REELS = true;
 const BLOCK_FACEBOOK_REELS = true;
+/* Instagram blocks the Home feed, Explore, Reels and Stories.      */
+/* Set this to true to keep Instagram notifications reachable.      */
+const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
 /* ================================================================ */
 
 (function () {
@@ -58,6 +61,7 @@ const BLOCK_FACEBOOK_REELS = true;
     youtube: BLOCK_YOUTUBE_SHORTS,
     instagram: BLOCK_INSTAGRAM_REELS,
     facebook: BLOCK_FACEBOOK_REELS,
+    instagramNotifications: ALLOW_INSTAGRAM_NOTIFICATIONS,
   };
 """
 

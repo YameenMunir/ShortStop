@@ -14,10 +14,11 @@ if (typeof importScripts === 'function') importScripts('shared/stats.js');
 
 const { PLATFORMS, todayKey, normalizeStats } = globalThis.ShortStopStats;
 
-// Fill in any missing settings on install/update. Every platform defaults to on.
+// Fill in any missing settings on install/update. Every platform defaults to on;
+// extra options (e.g. instagramNotifications) default to off and are kept as-is.
 chrome.runtime.onInstalled.addListener(async () => {
   const { settings = {} } = await chrome.storage.sync.get('settings');
-  const complete = {};
+  const complete = { instagramNotifications: false, ...settings };
   for (const platform of PLATFORMS) complete[platform] = settings[platform] !== false;
   await chrome.storage.sync.set({ settings: complete });
 });

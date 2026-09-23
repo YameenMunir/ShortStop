@@ -1,20 +1,29 @@
 /*
  * ShortStop popup
  * ===============
- * Shows today's counter and one switch per platform. Switches save to
- * chrome.storage.sync; content scripts listen for that change and apply it to
- * open tabs immediately, so no reload is needed.
+ * Shows today's counter, one switch per platform, and extra options such as
+ * Instagram's "Allow notifications". Everything saves to chrome.storage.sync;
+ * content scripts listen for that change and apply it to open tabs
+ * immediately, so no reload is needed.
+ *
+ * Platform switches (data-platform) default to on. Options (data-setting)
+ * default to off and are greyed out while their platform (data-parent) is off.
  */
 'use strict';
 
 const { PLATFORMS, todayKey, normalizeStats, totalOf } = globalThis.ShortStopStats;
 
 const numberFormat = new Intl.NumberFormat();
-const switches = Array.from(document.querySelectorAll('.switch[data-platform]'));
+const platformSwitches = Array.from(document.querySelectorAll('.switch[data-platform]'));
+const optionSwitches = Array.from(document.querySelectorAll('.switch[data-setting]'));
 let settings = {};
 
 function renderSettings() {
-  for (const input of switches) input.checked = settings[input.dataset.platform] !== false;
+  for (const input of platformSwitches) input.checked = settings[input.dataset.platform] !== false;
+  for (const input of optionSwitches) {
+    input.checked = settings[input.dataset.setting] === true;
+    input.disabled = settings[input.dataset.parent] === false;
+  }
 }
 
 function renderStats(rawStats) {
@@ -31,14 +40,16 @@ function showStatus(message) {
   document.getElementById('status').textContent = message;
 }
 
-async function saveSetting(platform, enabled) {
-  settings = { ...settings, [platform]: enabled };
+async function saveSetting(key, value) {
+  const previous = settings;
+  settings = { ...settings, [key]: value };
+  renderSettings();
   try {
     await chrome.storage.sync.set({ settings });
     showStatus('');
   } catch (error) {
     // Most likely the sync write quota; undo the switch so it tells the truth.
-    settings = { ...settings, [platform]: !enabled };
+    settings = previous;
     renderSettings();
     showStatus('Could not save that change. Try again in a minute.');
   }
@@ -53,8 +64,11 @@ async function init() {
   renderSettings();
   renderStats(stats);
 
-  for (const input of switches) {
+  for (const input of platformSwitches) {
     input.addEventListener('change', () => saveSetting(input.dataset.platform, input.checked));
+  }
+  for (const input of optionSwitches) {
+    input.addEventListener('change', () => saveSetting(input.dataset.setting, input.checked));
   }
 
   // Keep the numbers live while the popup is open.

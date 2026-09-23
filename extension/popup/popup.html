@@ -33,10 +33,21 @@
         <label class="platform-row" for="toggle-instagram">
           <span class="platform-text">
             <span class="platform-name">Instagram</span>
-            <span class="platform-detail">Reels hidden, blurred in DMs</span>
+            <span class="platform-detail">Feed, Explore, Reels and Stories off</span>
           </span>
           <span class="platform-count" id="count-instagram" title="Blocked today">0</span>
           <input class="switch" type="checkbox" role="switch" id="toggle-instagram" data-platform="instagram" checked />
+        </label>
+        <label class="option-row" for="option-instagram-notifications">
+          <span>Allow notifications</span>
+          <input
+            class="switch switch-small"
+            type="checkbox"
+            role="switch"
+            id="option-instagram-notifications"
+            data-setting="instagramNotifications"
+            data-parent="instagram"
+          />
         </label>
       </li>
       <li class="platform">

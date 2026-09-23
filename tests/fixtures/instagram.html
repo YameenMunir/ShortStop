@@ -8,76 +8,123 @@
       {
         "platform": "instagram",
         "url": "https://www.instagram.com/",
+        "cover": {
+          "title": "Your feed is off",
+          "links": ["Messages", "Search for an account", "Your profile"]
+        },
         "phases": [
-          { "name": "explore", "url": "https://www.instagram.com/explore/" },
-          { "name": "direct", "url": "https://www.instagram.com/direct/t/1234567890/" }
+          { "name": "explore", "url": "https://www.instagram.com/explore/", "cover": { "title": "Explore is off" } },
+          { "name": "hashtag", "url": "https://www.instagram.com/explore/tags/cats/", "cover": { "title": "Explore is off" } },
+          { "name": "places", "url": "https://www.instagram.com/explore/locations/123/london/", "cover": { "title": "Explore is off" } },
+          { "name": "people", "url": "https://www.instagram.com/explore/people/", "cover": { "title": "Explore is off" } },
+          { "name": "keyword", "url": "https://www.instagram.com/explore/search/keyword/?q=cats", "cover": { "title": "Explore is off" } },
+          { "name": "search", "url": "https://www.instagram.com/explore/search/", "cover": false },
+          { "name": "reelstab", "url": "https://www.instagram.com/reels/", "cover": { "title": "Reels are off" } },
+          { "name": "reel", "url": "https://www.instagram.com/reel/C1a2b3c4d5e/", "cover": { "title": "Reels are off" } },
+          { "name": "profilereel", "url": "https://www.instagram.com/natgeo/reel/C1a2b3c4d5e/", "cover": { "title": "Reels are off" } },
+          { "name": "stories", "url": "https://www.instagram.com/stories/natgeo/3456789/", "cover": { "title": "Stories are off" } },
+          { "name": "highlights", "url": "https://www.instagram.com/stories/highlights/1789/", "cover": { "title": "Stories are off" } },
+          { "name": "profile", "url": "https://www.instagram.com/natgeo/", "cover": false },
+          { "name": "post", "url": "https://www.instagram.com/p/C1a2b3c4d5e/", "cover": false },
+          { "name": "notifications", "url": "https://www.instagram.com/accounts/activity/", "cover": { "title": "Notifications are off" } },
+          {
+            "name": "notifallowed",
+            "settings": { "instagram": true, "instagramNotifications": true },
+            "url": "https://www.instagram.com/accounts/activity/",
+            "cover": false
+          },
+          {
+            "name": "homenotif",
+            "url": "https://www.instagram.com/",
+            "cover": { "title": "Your feed is off", "links": ["Messages", "Search for an account", "Notifications", "Your profile"] }
+          },
+          {
+            "name": "direct",
+            "settings": { "instagram": true },
+            "url": "https://www.instagram.com/direct/t/1234567890/",
+            "cover": false
+          },
+          { "name": "homeagain", "url": "https://www.instagram.com/?variant=following", "cover": { "title": "Your feed is off" } }
         ],
         "redirects": [
-          ["https://www.instagram.com/reels/", "https://www.instagram.com/"],
-          ["https://www.instagram.com/reels/C1a2b3c4d5e/", "https://www.instagram.com/"],
-          ["https://www.instagram.com/reel/C1a2b3c4d5e/", "https://www.instagram.com/"],
-          ["https://www.instagram.com/reel/C1a2b3c4d5e/?igsh=abc", "https://www.instagram.com/"],
-          ["https://www.instagram.com/natgeo/reel/C1a2b3c4d5e/", "https://www.instagram.com/"],
           ["https://www.instagram.com/natgeo/reels/", "https://www.instagram.com/natgeo/"],
+          ["https://www.instagram.com/reels/", null],
+          ["https://www.instagram.com/explore/", null],
           ["https://www.instagram.com/natgeo/", null],
           ["https://www.instagram.com/p/C1a2b3c4d5e/", null],
-          ["https://www.instagram.com/explore/", null],
           ["https://www.instagram.com/direct/inbox/", null]
         ],
-        "spaRedirect": ["https://www.instagram.com/reels/", "https://www.instagram.com/"]
+        "spaRedirect": ["https://www.instagram.com/natgeo/reels/", "https://www.instagram.com/natgeo/"]
       }
     </script>
     <script src="../harness.js"></script>
     <script src="../../extension/content/instagram.js"></script>
   </head>
   <body>
-    <nav>
-      <a href="/" data-name="Home link" data-expect="visible">Home</a>
-      <a href="/explore/" data-name="Explore link" data-expect="visible">Explore</a>
-      <a href="/reels/" data-name="Reels link" data-expect="hidden">Reels</a>
-      <a href="/direct/inbox/" data-name="Messages link" data-expect="visible">Messages</a>
-    </nav>
+    <div class="app">
+      <!-- Instagram's navigation lives outside <main>, so it stays usable. -->
+      <nav>
+        <a href="/" data-name="Home link" data-expect="visible">Home</a>
+        <a href="#" role="link" data-name="Search button" data-expect="visible"><svg aria-label="Search" width="10" height="10"></svg>Search</a>
+        <a href="/explore/" data-name="Explore link" data-expect="visible">Explore</a>
+        <a href="/reels/" data-name="Reels link" data-expect="hidden">Reels</a>
+        <a href="/direct/inbox/" data-name="Messages link" data-expect="visible">Messages</a>
+        <a href="#" role="link" data-name="Notifications button" data-expect="hidden" data-expect-notifallowed="visible">
+          <svg aria-label="Notifications" width="10" height="10"></svg>Notifications
+        </a>
+        <a href="/accounts/activity/" data-name="Notifications link (mobile)" data-expect="hidden" data-expect-notifallowed="visible">Activity</a>
+        <a href="#" role="link" data-name="Create button" data-expect="visible"><svg aria-label="New post" width="10" height="10"></svg>Create</a>
+        <a href="/me_user/" data-name="Own profile link" data-expect="visible"><img alt="me_user's profile picture" width="10" height="10" />Profile</a>
+      </nav>
 
-    <div>
-      <a role="tab" href="/natgeo/" data-name="profile Posts tab" data-expect="visible">Posts</a>
-      <a role="tab" href="/natgeo/reels/" data-name="profile Reels tab" data-expect="hidden">Reels</a>
-      <a role="tab" href="/natgeo/tagged/" data-name="profile Tagged tab" data-expect="visible">Tagged</a>
+      <main data-name="content area">
+        <!-- Home: stories tray, feed and suggestions. All of it sits behind the panel. -->
+        <div data-name="stories tray" data-expect="hidden">
+          <a href="/stories/natgeo/1/"><img alt="natgeo's profile picture" width="10" height="10" /></a>
+        </div>
+        <article data-name="feed photo post" data-expect="hidden"><a href="/p/PHOTO111111/"><time>2h</time></a></article>
+        <article data-name="feed reel post" data-expect="hidden"><a href="/reel/REEL1111111/"><time>3h</time></a></article>
+        <video data-name="autoplaying feed video" muted></video>
+
+        <!-- Profile page -->
+        <header data-name="profile header" data-expect-profile="visible">
+          <h2>natgeo</h2>
+          <button>Follow</button><button>Message</button>
+        </header>
+        <div data-name="suggested accounts block" data-expect-profile="hidden" data-expect-post="hidden">
+          <div><span>Suggested for you</span><a href="/explore/people/">See all</a></div>
+          <ul>
+            <li><a href="/someone/">someone</a><button>Follow</button></li>
+          </ul>
+        </div>
+        <div>
+          <a role="tab" href="/natgeo/" data-name="profile Posts tab" data-expect-profile="visible">Posts</a>
+          <a role="tab" href="/natgeo/reels/" data-name="profile Reels tab" data-expect-profile="hidden">Reels</a>
+          <a role="tab" href="/natgeo/tagged/" data-name="profile Tagged tab" data-expect-profile="visible">Tagged</a>
+        </div>
+        <a href="/p/GRIDPOST111/" data-name="profile grid post" data-expect-profile="visible" data-expect-search="hidden">Grid post</a>
+
+        <!-- Search page: account results stay, any post grid goes -->
+        <a href="/natgeo/" data-name="account search result" data-expect-search="visible">natgeo</a>
+        <a href="/explore/people/" data-name="See all suggested link" data-expect-search="hidden" data-expect-profile="hidden">See all</a>
+
+        <!-- DM thread -->
+        <section>
+          <div data-name="DM text message" data-expect-direct="visible">See you at 6</div>
+          <div role="button" data-name="DM reel card (outer row)" data-expect-direct="visible">
+            <div role="button" data-name="DM reel card" data-expect-direct="blurred">
+              <svg aria-label="Clip" width="10" height="10"></svg><span>Shared reel</span>
+            </div>
+          </div>
+          <a href="/reel/DMREEL11111/" data-name="DM reel link" data-expect-direct="blurred">reel link</a>
+          <a href="/p/DMPOST11111/" data-name="DM post link" data-expect-direct="visible">post link</a>
+        </section>
+      </main>
     </div>
 
-    <main>
-      <!-- Home feed: on "/", reel posts disappear; elsewhere they are left alone. -->
-      <article data-name="feed photo post" data-expect="visible" data-expect-explore="visible">
-        <a href="/p/PHOTO111111/"><time>2h</time></a>
-      </article>
-      <article data-name="feed reel post" data-expect="hidden" data-count data-expect-explore="visible">
-        <a href="/reel/REEL1111111/"><time>3h</time></a>
-      </article>
-
-      <!-- Explore grid tiles -->
-      <div>
-        <a href="/p/EXPLOREPHOTO/" data-name="Explore photo tile" data-expect="visible" data-expect-explore="visible">Photo</a>
-        <a href="/reel/EXPLOREREEL1/" data-name="Explore reel tile" data-expect="visible" data-expect-explore="hidden">Reel</a>
-        <a href="/p/EXPLOREVID11/" data-name="Explore tile with Reel badge" data-expect="visible" data-expect-explore="hidden">
-          <svg aria-label="Clip" width="10" height="10"></svg>Clip
-        </a>
-      </div>
-    </main>
-
-    <!-- DM thread -->
-    <section>
-      <div data-name="DM text message" data-expect="visible" data-expect-direct="visible">See you at 6</div>
-      <div role="button" data-name="DM reel card (outer row)" data-expect-direct="visible">
-        <div role="button" data-name="DM reel card" data-expect="visible" data-expect-direct="blurred">
-          <svg aria-label="Clip" width="10" height="10"></svg><span>Shared reel</span>
-        </div>
-      </div>
-      <a href="/reel/DMREEL11111/" data-name="DM reel link" data-expect="visible" data-expect-direct="blurred">reel link</a>
-      <a href="/p/DMPOST11111/" data-name="DM post link" data-expect="visible" data-expect-direct="visible">post link</a>
-    </section>
-
     <template id="dynamic">
-      <article data-name="reel post loaded by scrolling" data-expect-dynamic="hidden" data-count><a href="/reel/SCROLL11111/">1m</a></article>
-      <article data-name="photo post loaded by scrolling" data-expect-dynamic="visible"><a href="/p/SCROLL22222/">1m</a></article>
+      <a href="/reels/" data-name="Reels link rendered later" data-expect-dynamic="hidden">Reels</a>
+      <a href="/direct/inbox/" data-name="Messages link rendered later" data-expect-dynamic="visible">Messages</a>
     </template>
   </body>
 </html>

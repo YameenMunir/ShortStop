@@ -5,8 +5,9 @@
 <h1 align="center">ShortStop</h1>
 
 <p align="center">
-  A free, open-source browser extension that blocks short-form video (YouTube Shorts,
-  Instagram Reels, Facebook Reels and TikTok) while keeping the rest of each site usable.
+  A free, open-source browser extension that blocks short-form video and endless feeds
+  (YouTube Shorts, Instagram's feed, Explore, Reels and Stories, Facebook Reels and TikTok)
+  while keeping the useful parts of each site working.
 </p>
 
 <p align="center">
@@ -20,12 +21,13 @@
 | Platform | What ShortStop changes |
 | --- | --- |
 | **YouTube** | `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`) instead. Shorts shelves are removed from home, search, subscriptions, channel and watch pages. The Shorts entries in the sidebar, mini sidebar, channel tabs, search filter chips and the m.youtube.com bottom bar are removed. |
-| **Instagram** | The Reels link and profile Reels tab are hidden. Reel posts are hidden from the home feed, and Reel tiles from Explore. `/reels/` and `/reel/…` URLs send you to your home feed, and `/username/reels/` goes to that profile's normal grid. Reels shared in DMs are blurred and can't be opened. |
+| **Instagram** | **Focus mode.** The Home feed, Explore (including hashtag, place and suggested-people pages), Reels and Stories are all blocked the same way. Their content is replaced by a ShortStop panel before it paints, so there's nothing to scroll and no way round it through the Home feed. The panel links to what still works: **Messages**, **account search**, **your profile**, and posting through Instagram's own menu. Profiles and single posts you open on purpose still work, minus the Reels tab and "Suggested for you" accounts. Reels shared in DMs are blurred and can't be opened. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 | **Facebook** | The Reels shortcut and Page/profile Reels tabs are hidden. Feed posts and "Reels and short videos" carousels are removed. `/reel/…` and `/reels/` URLs send you to your home feed. |
 | **TikTok** | The whole site is replaced with a simple "TikTok is blocked" page, because it's short-form end to end. |
 
-The popup has an on/off switch per platform, and changes apply to open tabs straight
-away, without a reload. It also shows how many Shorts and Reels were blocked today.
+The popup has an on/off switch per platform, plus *Allow notifications* under Instagram.
+Changes apply to open tabs straight away, without a reload. It also shows how many
+Shorts, Reels and feeds were blocked today.
 
 <p align="center">
   <img src="docs/popup.png" width="300" alt="The ShortStop popup: 17 Shorts and Reels blocked today, with per-platform switches and counts">
@@ -85,7 +87,7 @@ Temporary add-ons are removed when Firefox restarts. To keep it installed, sign 
 
 iOS Safari extensions can't be side-loaded, so ShortStop also ships as a single
 userscript: [`userscript/shortstop.user.js`](userscript/shortstop.user.js). It covers
-YouTube, Instagram and Facebook. For TikTok on iPhone, use Screen Time's website limits.
+YouTube, Instagram (the same focus mode) and Facebook. For TikTok on iPhone, use Screen Time's website limits.
 
 1. Install **Userscripts** (by Justin Wasack, free) from the App Store.
 2. Open the Userscripts app and choose a folder for your scripts, for example
@@ -99,13 +101,13 @@ YouTube, Instagram and Facebook. For TikTok on iPhone, use Screen Time's website
    - download it and move it into the folder with the Files app.
 5. Visit m.youtube.com. The Userscripts menu should show ShortStop as active.
 
-**Turning a platform off on iPhone:** edit the three constants at the very top of
-the file, then save:
+**Changing settings on iPhone:** edit the constants at the very top of the file, then save:
 
 ```js
 const BLOCK_YOUTUBE_SHORTS = true;
-const BLOCK_INSTAGRAM_REELS = true;
-const BLOCK_FACEBOOK_REELS = false; // Facebook Reels allowed
+const BLOCK_INSTAGRAM_REELS = true;          // Instagram focus mode: feed, Explore, Reels, Stories
+const BLOCK_FACEBOOK_REELS = false;          // Facebook Reels allowed
+const ALLOW_INSTAGRAM_NOTIFICATIONS = false; // true keeps Instagram notifications reachable
 ```
 
 The userscript has no popup or daily counter, because Safari userscripts have no shared storage.
@@ -121,7 +123,7 @@ extension/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
 │   ├── youtube.js           YouTube selectors + redirects (one config object)
-│   ├── instagram.js         Instagram selectors + redirects
+│   ├── instagram.js         Instagram focus mode: covered routes, selectors, redirects
 │   ├── facebook.js          Facebook selectors + redirects
 │   └── tiktok.js            TikTok: block the whole site
 ├── popup/                   On/off switches and today's counter
@@ -147,9 +149,16 @@ Each platform file is a single config object, and `core.js` does the work:
    for a `pushState`/`replaceState` hook (`nav-hook.js`), YouTube's `yt-navigate-finish`,
    `popstate`, and a one-second URL check as a safety net. It also catches clicks on
    Short/Reel links before the site's router plays them.
-4. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
-   platform off removes the stylesheet and un-hides everything, and switching it on
-   re-applies it. No reload needed.
+4. **Covered routes.** A config can list whole routes to cover (Instagram's Home,
+   Explore, Reels and Stories). On those, the content area (`main`) is hidden by the same
+   `document_start` stylesheet, and a ShortStop panel takes its place. The panel is built in
+   a shadow root so the site's CSS can't touch it. Any playing media is paused. The route is
+   re-checked on every navigation and every DOM change, so the panel comes back if the site
+   re-renders it away. If the site has no `main` element, for example while loading or after
+   a redesign, the panel covers the whole viewport and locks scrolling instead.
+5. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
+   platform or option off removes the stylesheet, un-hides everything and removes the panel.
+   Switching it on re-applies everything. No reload needed.
 
 ## When a site changes: updating selectors
 
@@ -180,8 +189,13 @@ through, the fix is usually one line in one file.
    },
    ```
    Options: `page: 'explore'` scopes the rule to a named page, `action: 'blur'` blurs
-   instead of hiding, `closest: 'div[role="button"]'` hides an ancestor of the match, and
-   `text: /^Shorts$/` requires the text to match. Put container rules (shelves, sections)
+   instead of hiding, `closest: 'div[role="button"]'` hides an ancestor of the match,
+   `text: /^Shorts$/` requires the matched element's text to match, and
+   `onlyIf: (options) => !options.notifications` ties the rule to a popup option.
+
+   **To block a whole route instead** (Instagram), add its pathname pattern to `pages` and
+   list it under `cover.pages` with a title. If the site stops using `<main>` for its content
+   area, update `cover.target`. Put container rules (shelves, sections)
    **above** item rules so items inside them aren't counted twice.
 5. **Reload the extension** (the ↻ button on `chrome://extensions`), then refresh the site.
 6. **Rebuild the userscript** so iPhone gets the same fix:
@@ -198,7 +212,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 182 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 260 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -213,6 +227,9 @@ platform it checks:
 - the counter total, with no double counting
 - switching off and back on
 - page-scoped rules (Explore, DMs)
+- Instagram's covered routes: the panel's title and links, media paused, the panel
+  re-mounting after the site removes it, the full-viewport fallback, and the
+  notifications option
 - every redirect rule
 - redirects triggered by SPA navigation
 
@@ -225,9 +242,12 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
   any language.
 - On Facebook, a feed post is hidden if it contains any link to a Reel, including
   a Reel shared in a normal post.
-- Hidden Explore tiles on Instagram leave an empty cell in the grid instead of reflowing it.
-- Reel thumbnails on Instagram profile grids stay visible so photo posts are still
-  reachable, but opening one sends you to the home feed.
+- Instagram's desktop Search opens as a side panel from its own sidebar, which stays
+  available. The panel's "Search for an account" link goes to `/explore/search/`, the
+  search page Instagram uses on phones.
+- Instagram profile grids stay visible so you can look at an account on purpose. Opening a
+  Reel from one shows the "Reels are off" panel.
+- The "Suggested for you" block on profiles is found by its English heading.
 - m.facebook.com gets the redirects but its hiding rules are less complete than on www.
 
 ## License

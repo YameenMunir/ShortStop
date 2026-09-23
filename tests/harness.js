@@ -13,6 +13,9 @@
  *   plan.redirects[]                       [from, to|null] pairs for resolveRedirect
  *   plan.spaRedirect                       [from, to]: pushState to `from` must redirect to `to`
  *   plan.blockSite                         whole site should be sent to the blocked page
+ *   plan.cover / phase.cover               { title, links } if the page must be covered, false if not
+ *   phase.settings                         settings to apply before that phase's navigation
+ *   plan.initialWait                       ms to wait before the first checks (default 500)
  *
  * Results are written as JSON into <pre id="results"> for tests/run_tests.py.
  */
@@ -60,9 +63,43 @@
     }
   }
 
-  function setSettings(enabled) {
-    const settings = { [plan.platform]: enabled };
+  function applySettings(settings) {
     for (const listener of state.listeners) listener(settings);
+  }
+
+  function setSettings(enabled) {
+    applySettings({ [plan.platform]: enabled });
+  }
+
+  // Count media pauses, so we can check covered feeds stop playing.
+  let pauses = 0;
+  const originalPause = HTMLMediaElement.prototype.pause;
+  HTMLMediaElement.prototype.pause = function () {
+    pauses += 1;
+    return originalPause.call(this);
+  };
+
+  // `expected` is false (no panel) or { title, links } (panel with that content).
+  function checkCover(expected, label) {
+    const host = document.querySelector('shortstop-cover');
+    const shown = Boolean(host && host.isConnected && host.checkVisibility());
+    check(`${label}: cover panel ${expected ? 'shown' : 'absent'}`, shown === Boolean(expected));
+    const main = document.querySelector('main');
+    if (!expected) {
+      if (main) check(`${label}: content area visible`, main.checkVisibility());
+      return;
+    }
+    if (!shown) return;
+    if (main) check(`${label}: content area hidden behind the panel`, !main.checkVisibility());
+    const title = host.shadowRoot.querySelector('.title').textContent;
+    if (expected.title) check(`${label}: panel title`, title === expected.title, `got "${title}"`);
+    if (expected.links) {
+      const links = Array.from(host.shadowRoot.querySelectorAll('.links a')).map((a) => a.textContent);
+      check(`${label}: panel links`, JSON.stringify(links) === JSON.stringify(expected.links), JSON.stringify(links));
+    }
+    if (expected.mode) {
+      check(`${label}: panel mode`, host.getAttribute('mode') === expected.mode, `got ${host.getAttribute('mode')}`);
+    }
   }
 
   function navigateTo(url) {
@@ -71,7 +108,7 @@
   }
 
   async function run() {
-    await wait(500);
+    await wait(plan.initialWait || 500);
     const engine = ShortStop.engines[0];
     check('engine started for this host', engine);
     if (!engine) return;
@@ -87,6 +124,16 @@
 
     check('generated stylesheet injected', document.getElementById(`shortstop-${plan.platform}`));
     checkExpectations('data-expect', 'initial');
+    if (plan.cover !== undefined) checkCover(plan.cover, 'initial');
+    if (plan.cover && document.querySelector('video')) check('covered feed media paused', pauses > 0, `${pauses} pauses`);
+
+    // The site re-renders and throws the panel away: it must come back.
+    if (plan.cover) {
+      document.querySelector('shortstop-cover').remove();
+      document.body.appendChild(document.createElement('div'));
+      await wait(400);
+      checkCover(plan.cover, 'after the site removed the panel');
+    }
 
     // Content streamed in later (infinite scroll).
     const template = document.getElementById('dynamic');
@@ -104,7 +151,7 @@
     }
 
     await wait(1700); // Let the batched counter flush.
-    const expectedCount = document.querySelectorAll('[data-count]').length;
+    const expectedCount = document.querySelectorAll('[data-count]').length + (plan.cover ? 1 : 0);
     const marked = Array.from(document.querySelectorAll('[data-shortstop-hidden], [data-shortstop-blurred]'))
       .map(describe)
       .join(' | ');
@@ -122,20 +169,24 @@
     );
     check('toggle off restores everything', stillHidden.length === 0, stillHidden.map(describe).join(', '));
     check('toggle off removes the stylesheet', !document.getElementById(`shortstop-${plan.platform}`));
+    if (plan.cover) checkCover(false, 'toggled off');
 
     // Toggle back on: same state as before, no double counting.
     const countBefore = state.counted;
     setSettings(true);
     await wait(400);
     checkExpectations('data-expect', 'toggled on again');
+    if (plan.cover !== undefined) checkCover(plan.cover, 'toggled on again');
     // Re-hiding after a toggle counts again; make sure it is exactly one pass worth.
     await wait(1700);
     check('re-enabling counts one pass only', state.counted - countBefore <= expectedCount, `+${state.counted - countBefore}`);
 
     for (const phase of plan.phases || []) {
+      if (phase.settings) applySettings(phase.settings);
       navigateTo(phase.url);
       await wait(400);
       checkExpectations(`data-expect-${phase.name}`, `on ${phase.name}`);
+      if (phase.cover !== undefined) checkCover(phase.cover, `on ${phase.name} (${phase.url})`);
     }
 
     for (const [from, to] of plan.redirects || []) {

@@ -138,6 +138,25 @@ body {
   color: var(--slate);
 }
 
+/* A platform's extra option sits indented under its row. */
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -2px 0 0;
+  padding: 0 0 10px 12px;
+  border-left: 2px solid var(--rule);
+  color: var(--slate);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.option-row:has(.switch:disabled) {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* Off rows fade back so it is obvious at a glance what is not being blocked. */
 .platform-row:has(.switch:not(:checked)) .platform-text,
 .platform-row:has(.switch:not(:checked)) .platform-count {
@@ -176,6 +195,27 @@ body {
 
 .switch:checked::before {
   transform: translateX(16px);
+}
+
+.switch-small {
+  width: 28px;
+  height: 16px;
+  border-radius: 8px;
+}
+
+.switch-small::before {
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+}
+
+.switch-small:checked::before {
+  transform: translateX(12px);
+}
+
+.switch:disabled {
+  cursor: default;
 }
 
 .switch:focus-visible {

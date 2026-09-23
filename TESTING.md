@@ -33,16 +33,34 @@ Use DevTools device mode (Ctrl+Shift+M, then choose an iPhone) or a real phone w
 
 ## Instagram (signed in, www.instagram.com)
 
-- [ ] **Sidebar:** no "Reels" link. On a narrow window, the bottom bar has no Reels icon either.
-- [ ] **Home feed:** scroll for 30 seconds. No Reel posts appear, and photo and carousel posts still do.
-- [ ] **Explore:** no Reel tiles (blank cells are expected). Photo tiles still open.
-- [ ] **Profile** (any creator): no "Reels" tab, and the Posts grid still works.
-- [ ] **Direct link:** `https://www.instagram.com/reels/` sends you to the home feed.
-- [ ] **Direct link:** any `https://www.instagram.com/reel/<id>/` sends you to the home feed.
-- [ ] **Direct link:** `https://www.instagram.com/<username>/reels/` sends you to that profile's grid.
-- [ ] **DMs:** open a chat where someone shared a Reel. The Reel is blurred with the
-      "Reel hidden by ShortStop" label and can't be clicked, and the rest of the chat reads normally.
-- [ ] **Stories** and normal posts are unaffected.
+Blocked routes should show the ShortStop panel ("Your feed is off", "Explore is off", …)
+in place of the content, with Instagram's own sidebar or bottom bar still usable.
+
+- [ ] **Home:** open instagram.com. The panel appears straight away, with no feed flashing
+      first. Try the mouse wheel, trackpad, Page Down and Space: nothing scrolls.
+- [ ] **Home, Following view:** `https://www.instagram.com/?variant=following` is blocked too.
+- [ ] **Stories:** no stories tray on Home. Opening a story (for example from a profile
+      photo ring) shows "Stories are off".
+- [ ] **Explore:** the sidebar Explore link shows "Explore is off". So do a hashtag
+      (`/explore/tags/cats/`) and "See all" suggested people (`/explore/people/`).
+- [ ] **Reels:** no Reels link in the sidebar or bottom bar. `/reels/` and any
+      `/reel/<id>/` show "Reels are off", and nothing plays or makes sound.
+- [ ] **In-app navigation:** from a profile, click the Instagram logo or Home. The panel
+      appears without a page reload. Go back to the profile and it works normally again.
+- [ ] **Messages:** the panel's Messages button and the sidebar both open DMs normally.
+- [ ] **DM Reels:** in a chat where someone shared a Reel, it is blurred with the
+      "Reel hidden by ShortStop" label and can't be clicked.
+- [ ] **Search:** the sidebar Search panel finds an account, and the panel's "Search for an
+      account" works on a narrow window or phone.
+- [ ] **Profiles:** open a profile you searched for. The header and posts grid show, with
+      no Reels tab. After tapping Follow, no "Suggested for you" block appears.
+      `/<username>/reels/` sends you to that profile's grid.
+- [ ] **Single post:** a `/p/<id>/` link (for example from a DM) opens normally.
+- [ ] **Posting:** Instagram's Create/New post button still works.
+- [ ] **Notifications off (default):** no Notifications item in the sidebar or heart icon on
+      mobile. `/accounts/activity/` shows "Notifications are off".
+- [ ] **Notifications on:** turn on *Allow notifications* in the popup. The Notifications item
+      comes back without a reload, and the panel gains a Notifications button. Turn it off again.
 
 ## Facebook (signed in, www.facebook.com)
 
@@ -85,7 +103,7 @@ Use DevTools device mode (Ctrl+Shift+M, then choose an iPhone) or a real phone w
 
 - [ ] m.youtube.com: no Shorts tab in the bottom bar and no Shorts shelves, and a
       `/shorts/<id>` link opens in the normal player.
-- [ ] instagram.com in Safari: no Reels in the feed, and `/reels/` sends you to the home feed.
-- [ ] Set `BLOCK_INSTAGRAM_REELS = false`, save and reload Instagram. Reels are back.
+- [ ] instagram.com in Safari: the Home feed shows "Your feed is off", and Messages and search still work.
+- [ ] Set `BLOCK_INSTAGRAM_REELS = false`, save and reload Instagram. The feed is back.
 
 If something fails, see "When a site changes: updating selectors" in the README.

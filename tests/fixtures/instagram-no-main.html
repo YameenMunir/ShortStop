@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Instagram fixture: layout without a main element</title>
+    <!--
+      If Instagram ever renders the feed without a <main> element, the panel
+      must fall back to covering the whole viewport, so the feed can never be
+      scrolled around the block.
+    -->
+    <script src="../../extension/content/core.js"></script>
+    <script type="application/json" id="plan">
+      {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/",
+        "initialWait": 600,
+        "cover": { "title": "Your feed is off", "mode": "fixed" },
+        "phases": [
+          { "name": "profile", "url": "https://www.instagram.com/natgeo/", "cover": false }
+        ]
+      }
+    </script>
+    <script src="../harness.js"></script>
+    <script src="../../extension/content/instagram.js"></script>
+  </head>
+  <body>
+    <div role="main" data-name="feed without a main element">
+      <article><a href="/p/PHOTO111111/">post</a></article>
+    </div>
+  </body>
+</html>
