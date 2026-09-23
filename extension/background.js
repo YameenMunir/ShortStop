@@ -14,9 +14,15 @@ if (typeof importScripts === 'function') importScripts('shared/stats.js');
 
 const { PLATFORMS, todayKey, normalizeStats } = globalThis.ShortStopStats;
 
+// Open the welcome page once, when ShortStop is first installed.
+function openWelcomePage(details) {
+  if (details.reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
+}
+
 // Fill in any missing settings on install/update. Every platform defaults to on;
 // extra options keep their stored value, or get the default below.
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
+  openWelcomePage(details);
   const { settings = {} } = await chrome.storage.sync.get('settings');
   const complete = {
     instagramNotifications: false,

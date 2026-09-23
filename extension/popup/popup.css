@@ -309,6 +309,16 @@ body {
   margin: 0 0 2px;
 }
 
+.footer a {
+  color: var(--ink);
+  text-underline-offset: 2px;
+}
+
+.footer a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .status:empty {
   display: none;
 }

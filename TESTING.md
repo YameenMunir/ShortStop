@@ -5,7 +5,27 @@ against mock markup. This checklist covers the real sites, which change without 
 It takes about 10 minutes. Use a normal (non-incognito) window, signed in where noted,
 with DevTools closed unless a step says otherwise.
 
-Before you start: load the extension, open the popup, and check that all four switches
+## First run (fresh install)
+
+Do this on a browser profile that has never had ShortStop, or remove ShortStop and load it again.
+
+- [ ] A **welcome page opens by itself** in a new tab, exactly once.
+- [ ] It says "ShortStop is on.", shows the panel illustration, and looks right in light and dark
+      mode and at a narrow (phone) width, with nothing cut off.
+- [ ] **Pin step:** shows **To do** before you pin. Pin ShortStop from the puzzle-piece menu and, without
+      refreshing, it changes to **Done**. Unpin it and it goes back to **To do**.
+- [ ] **Private-window step:** shows **To do** and names your browser's setting ("Allow in
+      Incognito" / "Allow in InPrivate" / "Run in Private Windows"). Click **Open ShortStop's settings**
+      (Chrome, Edge, Brave), switch the option on, return to the tab, and it changes to **Done**.
+- [ ] When both are done, "You're all set." appears.
+- [ ] The pause note says **10 minutes** and **30 seconds**, matching the popup.
+- [ ] Reloading the extension, or updating it, does **not** open the page again.
+- [ ] In the popup, **How ShortStop works** (bottom) reopens the welcome page in a new tab.
+- [ ] In Firefox, the steps show manual instructions where the browser can't report the state.
+- [ ] Brave: the private-window setting is named "Allow in Private". Check that this matches
+      what Brave shows.
+
+Before you start the rest: load the extension, open the popup, and check that all four switches
 are on. Note today's counter number.
 
 ## YouTube (desktop, www.youtube.com)

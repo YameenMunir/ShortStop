@@ -59,7 +59,28 @@ Clicking a platform's switch while it's blocking offers two choices:
   confirming early does nothing.
 
 Turning blocking **back on** is always instant. To change the 10 minutes or the wait, edit
-the constants at the top of [popup.js](extension/popup/popup.js).
+[shared/pause.js](extension/shared/pause.js), which the popup and the welcome page both read.
+
+### First-run welcome page
+
+The first time ShortStop is installed, it opens a welcome page in a new tab. It shows what a
+blocked page looks like and walks through the two setup steps a browser won't do for you:
+
+- **Pin the toolbar icon**, so the switches are one click away. The page reads whether the
+  icon is pinned and shows a tick once it is.
+- **Allow it in private windows.** Browsers switch extensions off in private/incognito windows
+  unless you opt in, so blocking wouldn't apply there. The page shows whether it's allowed,
+  names your browser's own setting ("Allow in Incognito", "Allow in InPrivate"), and has a
+  button that opens ShortStop's settings page.
+
+Both steps update by themselves while the page is open, with no refresh. Where a browser can't
+report the state, the step says so and shows the manual instructions instead. The page only opens
+on a fresh install (not on updates), and you can reopen it any time from **How ShortStop works**
+at the bottom of the popup. It needs no extra permission and makes no network requests.
+
+<p align="center">
+  <img src="docs/welcome.png" width="520" alt="The ShortStop welcome page: an illustration of the blocking panel, and a checklist for pinning the icon and allowing private windows">
+</p>
 
 <p align="center">
   <img src="docs/popup.png" width="300" alt="The ShortStop popup: 17 blocked today, with per-platform switches, options and counts">
@@ -88,7 +109,8 @@ the constants at the top of [popup.js](extension/popup/popup.js).
    - Brave: `brave://extensions`
 3. Turn on **Developer mode** (top right in Chrome and Brave, left sidebar in Edge).
 4. Click **Load unpacked** and choose the unzipped `ShortStop` folder (the one containing `manifest.json`).
-5. Pin ShortStop from the puzzle-piece menu so the switches are one click away.
+5. A welcome page opens by itself. It shows how to pin ShortStop to the toolbar (so the
+   switches are one click away) and how to allow it in private windows.
 
 If you cloned the repo, you can also load the `extension/` folder directly.
 
@@ -160,6 +182,7 @@ extension/
 ├── manifest.json            MV3 manifest: storage + the four sites, nothing else
 ├── background.js            Service worker: keeps the daily counter (one write queue for all tabs)
 ├── shared/stats.js          Counter helpers shared by the background worker and popup
+├── shared/pause.js          The pause timings (10 minutes, 30-second wait), shared by popup and welcome page
 ├── content/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
@@ -168,6 +191,7 @@ extension/
 │   ├── facebook.js          Facebook focus mode: covered feeds, Marketplace rules, selectors
 │   └── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
 ├── popup/                   Platform switches, pause flow, options and today's counter
+├── welcome/                 First-run page: the panel explained, pin and private-window checklist
 └── icons/                   16, 32, 48 and 128 px PNGs
 userscript/shortstop.user.js Generated from content/*.js for iOS Safari
 tools/                       Icon generator, userscript builder, zip packager (Python, no dependencies)

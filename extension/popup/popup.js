@@ -21,10 +21,8 @@
 
 const { PLATFORMS, todayKey, normalizeStats, totalOf } = globalThis.ShortStopStats;
 
-// Change these to taste.
-const UNLOCK_MINUTES = 10; // "Allow 10 minutes"
-const OFF_WAIT_SECONDS = 30; // How long "turn off for good" makes you wait.
-const OFF_WINDOW_SECONDS = 120; // How long you then have to confirm before it lapses.
+// The timings live in shared/pause.js (the welcome page explains them too).
+const { UNLOCK_MINUTES, OFF_WAIT_SECONDS, OFF_WINDOW_SECONDS } = globalThis.ShortStopPause;
 
 const NAMES = { youtube: 'YouTube', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok' };
 const numberFormat = new Intl.NumberFormat();
