@@ -7,7 +7,8 @@
  * immediately, so no reload is needed.
  *
  * Platform switches (data-platform) default to on. Options (data-setting)
- * default to off and are greyed out while their platform (data-parent) is off.
+ * default to off unless marked data-default="true", and are greyed out while
+ * their platform (data-parent) is off.
  */
 'use strict';
 
@@ -21,7 +22,8 @@ let settings = {};
 function renderSettings() {
   for (const input of platformSwitches) input.checked = settings[input.dataset.platform] !== false;
   for (const input of optionSwitches) {
-    input.checked = settings[input.dataset.setting] === true;
+    const stored = settings[input.dataset.setting];
+    input.checked = typeof stored === 'boolean' ? stored : input.dataset.default === 'true';
     input.disabled = settings[input.dataset.parent] === false;
   }
 }

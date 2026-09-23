@@ -6,8 +6,8 @@
 
 <p align="center">
   A free, open-source browser extension that blocks short-form video and endless feeds
-  (YouTube Shorts, Facebook Reels, and every scrolling feed on Instagram and TikTok)
-  while keeping the useful parts of each site working.
+  (YouTube Shorts, and every scrolling feed on Instagram, Facebook and TikTok) while
+  keeping the useful parts of each site working.
 </p>
 
 <p align="center">
@@ -22,10 +22,11 @@
 | --- | --- |
 | **YouTube** | `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`) instead. Shorts shelves are removed from home, search, subscriptions, channel and watch pages. The Shorts entries in the sidebar, mini sidebar, channel tabs, search filter chips and the m.youtube.com bottom bar are removed. |
 | **Instagram** | **Focus mode.** The Home feed, Explore (including hashtag, place and suggested-people pages), Reels and Stories are all blocked the same way. Their content is replaced by a ShortStop panel before it paints, so there's nothing to scroll and no way round it through the Home feed. The panel links to what still works: **Messages**, **account search**, **your profile**, and posting through Instagram's own menu. Profiles and single posts you open on purpose still work, minus the Reels tab and "Suggested for you" accounts. Reels shared in DMs are blurred and can't be opened. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
-| **Facebook** | The Reels shortcut and Page/profile Reels tabs are hidden. Feed posts and "Reels and short videos" carousels are removed. `/reel/…` and `/reels/` URLs send you to your home feed. |
+| **Facebook** | **Focus mode.** Facebook stays a communication and utility tool, not an endless feed. The News Feed (including the Feeds filters), Reels, Watch, Stories, the groups feed and Discover, Gaming, friend suggestions and **Marketplace's recommended listings** are all blocked the same way. Each shows *"Scrolling is blocked by your focus settings."* where the feed was, with a Facebook search box and links to **Messenger**, **your profile** (to post), **your groups** and **Pages you manage**. A Watch link someone sent you gets an *Open this video only* button. Menu and top-bar shortcuts into feeds are hidden. On a blocked feed, feed keys (including Facebook's own J/K) are swallowed and videos are paused. Inside pages that stay open (profiles, a specific group, search), Reels, the Stories tray and "Suggested for you" / "People you may know" units are removed. **Marketplace:** searching and categories, listings, selling and the inbox work, and *Allow Marketplace search* in the popup can turn search off too. **Notifications** are blocked unless you turn on *Allow notifications*. |
 | **TikTok** | **Focus mode.** Every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 
-The popup has an on/off switch per platform, plus *Allow notifications* under Instagram and TikTok.
+The popup has an on/off switch per platform, plus *Allow notifications* under Instagram,
+Facebook and TikTok, and *Allow Marketplace search* under Facebook.
 Changes apply to open tabs straight away, without a reload. It also shows how many
 Shorts, Reels and feeds were blocked today.
 
@@ -87,7 +88,7 @@ Temporary add-ons are removed when Firefox restarts. To keep it installed, sign 
 
 iOS Safari extensions can't be side-loaded, so ShortStop also ships as a single
 userscript: [`userscript/shortstop.user.js`](userscript/shortstop.user.js). It covers
-YouTube, Facebook, and the same Instagram and TikTok focus modes.
+YouTube, and the same Instagram, Facebook and TikTok focus modes.
 
 1. Install **Userscripts** (by Justin Wasack, free) from the App Store.
 2. Open the Userscripts app and choose a folder for your scripts, for example
@@ -105,11 +106,16 @@ YouTube, Facebook, and the same Instagram and TikTok focus modes.
 
 ```js
 const BLOCK_YOUTUBE_SHORTS = true;
-const BLOCK_INSTAGRAM_REELS = true;          // Instagram focus mode: feed, Explore, Reels, Stories
-const BLOCK_FACEBOOK_REELS = false;          // Facebook Reels allowed
-const ALLOW_INSTAGRAM_NOTIFICATIONS = false; // true keeps Instagram notifications reachable
-const BLOCK_TIKTOK_FEEDS = true;             // TikTok focus mode: For You, Following, LIVE, Explore
-const ALLOW_TIKTOK_NOTIFICATIONS = false;    // true keeps TikTok notifications reachable
+
+const BLOCK_INSTAGRAM_REELS = true;             // Instagram focus mode: feed, Explore, Reels, Stories
+const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
+
+const BLOCK_FACEBOOK_FEEDS = true;              // Facebook focus mode: News Feed, Reels, Watch, Stories…
+const ALLOW_FACEBOOK_NOTIFICATIONS = false;
+const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
+
+const BLOCK_TIKTOK_FEEDS = true;                // TikTok focus mode: For You, Following, LIVE, Explore
+const ALLOW_TIKTOK_NOTIFICATIONS = false;
 ```
 
 The userscript has no popup or daily counter, because Safari userscripts have no shared storage.
@@ -126,7 +132,7 @@ extension/
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
 │   ├── youtube.js           YouTube selectors + redirects (one config object)
 │   ├── instagram.js         Instagram focus mode: covered routes, selectors, redirects
-│   ├── facebook.js          Facebook selectors + redirects
+│   ├── facebook.js          Facebook focus mode: covered feeds, Marketplace rules, selectors
 │   └── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
 ├── popup/                   On/off switches, notification options and today's counter
 └── icons/                   16, 32, 48 and 128 px PNGs
@@ -150,9 +156,10 @@ Each platform file is a single config object, and `core.js` does the work:
    for a `pushState`/`replaceState` hook (`nav-hook.js`), YouTube's `yt-navigate-finish`,
    `popstate`, and a one-second URL check as a safety net. It also catches clicks on
    Short/Reel links before the site's router plays them.
-4. **Covered routes.** A config can list whole routes to cover (Instagram's Home, Explore,
-   Reels and Stories, and every TikTok feed). On those, the content area (Instagram's `main`,
-   TikTok's `div#main-content-…` or `main`) is hidden by the same
+4. **Covered routes.** A config can list whole routes to cover (every feed on Instagram,
+   Facebook and TikTok). A route is a pathname pattern, or a test on the whole URL when the
+   site keeps the feed choice in the query string. On those, the content area (`main`,
+   Facebook's `div[role="main"]`, TikTok's `div#main-content-…`) is hidden by the same
    `document_start` stylesheet, and a ShortStop panel takes its place. The panel is built in
    a shadow root so the site's CSS can't touch it. Any playing media is paused. The route is
    re-checked on every navigation and every DOM change, so the panel comes back if the site
@@ -214,7 +221,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 354 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 470 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -229,11 +236,14 @@ platform it checks:
 - the counter total, with no double counting
 - switching off and back on
 - page-scoped rules (Explore, DMs)
-- Instagram's and TikTok's covered routes: the panel's title, message and links, media
+- Instagram's, Facebook's and TikTok's covered routes: the panel's title, message, links
+  and search box, media
   paused, the panel re-mounting after the site removes it, the full-viewport fallback, and
   the notifications options
-- TikTok's feed keys being swallowed (but not while typing), autoplay being stopped, and the
-  panel's search box
+- Feed keys being swallowed (but not while typing), autoplay being stopped, and the panel's
+  search box going to the right results page
+- Facebook Marketplace: home and city browsing blocked; search, categories, listings and
+  selling allowed; everything but listings and selling blocked when search is switched off
 - every redirect rule
 - redirects triggered by SPA navigation
 
@@ -244,8 +254,12 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 - Instagram and Facebook selectors that use ARIA labels (the DM Reel badge, the
   "Reels and short videos" carousel) match English labels. URL-based rules work in
   any language.
-- On Facebook, a feed post is hidden if it contains any link to a Reel, including
-  a Reel shared in a normal post.
+- On Facebook, a post inside a group or profile is hidden if it links to a Reel,
+  including a Reel shared in a normal post.
+- Facebook's "Suggested for you" and "People you may know" units are found by their
+  English headings. The feeds themselves are blocked by URL, which works in any language.
+- *Open this video only* uses Facebook's `video.php?v=` link. If Facebook sends that
+  back to Watch, you get the Watch panel again (no redirect loop).
 - Instagram's desktop Search opens as a side panel from its own sidebar, which stays
   available. The panel's "Search for an account" link goes to `/explore/search/`, the
   search page Instagram uses on phones.
@@ -257,7 +271,8 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
   `data-e2e` attribute and work in any language.
 - TikTok shows a "Short drama" feed to some users. Its sidebar link is hidden, but its URL
   wasn't visible during testing, so the route itself isn't covered yet.
-- m.facebook.com gets the redirects but its hiding rules are less complete than on www.
+- m.facebook.com uses a different layout. Its feeds are still blocked by URL, with the
+  panel covering the whole screen.
 
 ## License
 

@@ -25,7 +25,7 @@
  *     id: 'youtube',                        // key in the settings object
  *     hosts: ['youtube.com'],               // hostnames (subdomains included)
  *     navigationEvents: ['yt-navigate-finish'], // extra SPA events fired on document
- *     pages: { explore: /^\/explore\// },   // named pathname patterns, first match wins
+ *     pages: { explore: /^\/explore\//, feed: (url) => bool }, // pathname RegExp or URL test; first match wins
  *     options: {                            // extra switches stored in settings
  *       notifications: { setting: 'instagramNotifications', default: false },
  *     },
@@ -34,9 +34,10 @@
  *       target: 'main' | ['#feed', 'main'], // the content area; first selector that exists wins
  *       title: 'Shown on every covered page',
  *       message: 'Shown on every covered page',
- *       pages: { home: { title?, message?, onlyIf?(options) } },
- *       links: (options) => [{ label, href }],
- *       search: { label, placeholder, url: (query) => '/search?q=...' }, // optional search box
+ *       pages: { home: { title?, message?, onlyIf?(options), search?, links? } }, // per-page overrides
+ *       links: (options, url) => [{ label, href }],
+ *       search: { label, placeholder, url: (query) => '/search?q=...' }, // optional search box;
+ *                                           // a page's `search` may be null or (options) => config
  *     },
  *     rules: [{
  *       name: 'Human readable description',
@@ -342,7 +343,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.rules = asList(config.rules).map((rule, index) => ({ action: 'hide', ...rule, index }));
       this.options = this.resolveOptions({});
       this.enabled = true; // Optimistic until settings load, so nothing flashes.
-      this.cover = { host: null, page: null, countedHref: null, linksKey: null };
+      this.cover = { host: null, page: null, renderedHref: null, countedHref: null, linksKey: null };
       this.redirecting = false;
       this.observer = null;
       this.styleEl = null;
@@ -499,15 +500,19 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
 
     // Publishes the current named page (e.g. "explore") on <html> so the
     // generated CSS can scope rules to it.
+    // A page pattern is a RegExp tested on the pathname, or a function given
+    // the whole URL (for sites that put the feed choice in the query string).
     updatePage() {
-      let pathname = '/';
+      let url = null;
       try {
-        pathname = new URL(this.env.href()).pathname;
+        url = new URL(this.env.href());
       } catch (error) {
-        /* Keep the default. */
+        /* Treat as "other". */
       }
       const pages = this.config.pages || {};
-      this.page = Object.keys(pages).find((name) => pages[name].test(pathname)) || 'other';
+      const matches = (pattern) =>
+        url !== null && (typeof pattern === 'function' ? pattern(url) : pattern.test(url.pathname));
+      this.page = Object.keys(pages).find((name) => matches(pages[name])) || 'other';
       const root = document.documentElement;
       if (root.getAttribute(ATTR_PAGE) !== this.page) root.setAttribute(ATTR_PAGE, this.page);
     }
@@ -536,13 +541,15 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       const root = document.documentElement;
       if (!state.host) state.host = createCoverHost();
 
-      if (state.page !== this.page) {
+      const href = this.env.href();
+      if (state.page !== this.page || state.renderedHref !== href) {
         state.page = this.page;
+        state.renderedHref = href;
         this.renderCover(spec);
       }
       // Links can depend on the page (e.g. "Your profile" is read from the
       // site's navigation, which renders after us), so refresh them each time.
-      this.renderCoverLinks();
+      this.renderCoverLinks(spec);
 
       // A covered feed must not keep playing video or audio behind the panel.
       pauseMedia();
@@ -565,7 +572,6 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       }
 
       // One visit to a covered page counts once toward "blocked today".
-      const href = this.env.href();
       if (state.countedHref !== href) {
         state.countedHref = href;
         this.addCount(1);
@@ -587,23 +593,47 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       shadow.querySelector('.title').textContent = spec.title || cover.title || '';
       shadow.querySelector('.message').textContent = spec.message || cover.message || '';
 
+      // A page can bring its own search box (e.g. Marketplace search), turn
+      // the shared one off with `search: null`, or fall back to the shared one.
+      const search = this.coverSearch(spec);
       const form = shadow.querySelector('form');
-      if (cover.search && form.hidden) {
-        form.hidden = false;
-        const input = form.querySelector('input');
-        input.placeholder = cover.search.placeholder || '';
-        input.setAttribute('aria-label', cover.search.label || 'Search');
+      const input = form.querySelector('input');
+      form.hidden = !search;
+      if (search) {
+        input.placeholder = search.placeholder || '';
+        input.setAttribute('aria-label', search.label || 'Search');
+      }
+      if (!form.dataset.wired) {
+        form.dataset.wired = 'true';
         form.addEventListener('submit', (event) => {
           event.preventDefault();
+          const current = this.coverSearch(this.coverSpec(this.page));
           const query = input.value.trim();
-          if (query) this.env.navigate(new URL(cover.search.url(query), this.env.href()).href, false);
+          if (current && query) this.env.navigate(new URL(current.url(query), this.env.href()).href, false);
         });
       }
     }
 
-    renderCoverLinks() {
+    coverSearch(spec) {
+      if (!spec) return null;
+      if (spec.search !== undefined) {
+        return typeof spec.search === 'function' ? spec.search(this.options) : spec.search;
+      }
+      return this.config.cover.search || null;
+    }
+
+    // Links come from the page's own `links` or the shared ones, and are given
+    // the options and the current URL (e.g. to offer "open this video only").
+    renderCoverLinks(spec) {
       const cover = this.config.cover;
-      const wanted = asList(cover.links && cover.links(this.options)).filter((link) => link && link.href);
+      const source = (spec && spec.links) || cover.links;
+      let url = null;
+      try {
+        url = new URL(this.env.href());
+      } catch (error) {
+        /* Links that need the URL just get null. */
+      }
+      const wanted = asList(source && source(this.options, url)).filter((link) => link && link.href);
       const key = JSON.stringify(wanted);
       if (key === this.cover.linksKey) return; // Unchanged: leave the DOM alone.
       this.cover.linksKey = key;
@@ -621,6 +651,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       const state = this.cover;
       if (state.host) state.host.remove();
       state.page = null;
+      state.renderedHref = null;
       state.countedHref = null;
       document.documentElement.removeAttribute(ATTR_COVER);
     }
@@ -811,6 +842,9 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
 
       // 2. Mark new matches.
       let blocked = 0;
+      // Things inside a covered feed are hidden with it and already counted
+      // as one blocked visit, so they do not count again.
+      const coveredArea = this.isCovered() ? this.coverTarget() : null;
       for (const rule of this.rules) {
         if (!this.applies(rule)) continue;
         const attribute = rule.action === 'blur' ? ATTR_BLURRED : ATTR_HIDDEN;
@@ -821,7 +855,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
           // Skip anything inside a block we already handled (no double counting).
           if (target.parentElement && target.parentElement.closest(MARKED)) continue;
           target.setAttribute(attribute, String(rule.index));
-          if (rule.count) blocked += 1;
+          if (rule.count && !(coveredArea && coveredArea.contains(target))) blocked += 1;
         }
       }
       if (blocked) this.addCount(blocked);

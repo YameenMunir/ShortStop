@@ -23,7 +23,7 @@ HEADER = """// ==UserScript==
 // @name         ShortStop: Shorts & Reels Blocker
 // @namespace    https://github.com/YOUR_GITHUB_USERNAME/shortstop
 // @version      __VERSION__
-// @description  Blocks YouTube Shorts, Facebook Reels, and the scrolling feeds on Instagram and TikTok, while keeping search, messages and profiles usable. No tracking.
+// @description  Blocks YouTube Shorts and the scrolling feeds on Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.
 // @author       Yameen Munir
 // @license      MIT
 // @match        *://www.youtube.com/*
@@ -46,16 +46,25 @@ HEADER = """// ==UserScript==
  */
 
 /* ===================== SETTINGS: edit these ===================== */
-/* Set any of these to false to stop blocking on that site.        */
+/* true = block, false = allow. Save the file, then reload the site. */
+
+// YouTube: Shorts open in the normal player; Shorts shelves are hidden.
 const BLOCK_YOUTUBE_SHORTS = true;
+
+// Instagram: the Home feed, Explore, Reels and Stories are blocked.
 const BLOCK_INSTAGRAM_REELS = true;
-const BLOCK_FACEBOOK_REELS = true;
-/* Instagram blocks the Home feed, Explore, Reels and Stories.      */
-/* Set this to true to keep Instagram notifications reachable.      */
 const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
-/* TikTok blocks For You, Following, Friends, LIVE and Explore.     */
+
+// Facebook: the News Feed, Reels, Watch, Stories and other recommendation
+// feeds are blocked. Messenger, search, profiles and groups keep working.
+const BLOCK_FACEBOOK_FEEDS = true;
+const ALLOW_FACEBOOK_NOTIFICATIONS = false;
+const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
+
+// TikTok: For You, Following, Friends, LIVE and Explore are blocked.
 const BLOCK_TIKTOK_FEEDS = true;
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
+
 /* ================================================================ */
 
 (function () {
@@ -64,7 +73,9 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
   const SETTINGS = {
     youtube: BLOCK_YOUTUBE_SHORTS,
     instagram: BLOCK_INSTAGRAM_REELS,
-    facebook: BLOCK_FACEBOOK_REELS,
+    facebook: BLOCK_FACEBOOK_FEEDS,
+    facebookNotifications: ALLOW_FACEBOOK_NOTIFICATIONS,
+    facebookMarketplaceSearch: ALLOW_FACEBOOK_MARKETPLACE_SEARCH,
     instagramNotifications: ALLOW_INSTAGRAM_NOTIFICATIONS,
     tiktok: BLOCK_TIKTOK_FEEDS,
     tiktokNotifications: ALLOW_TIKTOK_NOTIFICATIONS,

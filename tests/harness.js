@@ -99,6 +99,15 @@
       const links = Array.from(host.shadowRoot.querySelectorAll('.links a')).map((a) => a.textContent);
       check(`${label}: panel links`, JSON.stringify(links) === JSON.stringify(expected.links), JSON.stringify(links));
     }
+    if (expected.search !== undefined) {
+      const form = host.shadowRoot.querySelector('form');
+      const shownSearch = !form.hidden;
+      check(`${label}: panel search box ${expected.search ? 'shown' : 'absent'}`, shownSearch === Boolean(expected.search));
+      if (expected.search && typeof expected.search === 'string') {
+        const placeholder = form.querySelector('input').placeholder;
+        check(`${label}: panel search placeholder`, placeholder === expected.search, `got "${placeholder}"`);
+      }
+    }
     if (expected.mode) {
       check(`${label}: panel mode`, host.getAttribute('mode') === expected.mode, `got ${host.getAttribute('mode')}`);
     }

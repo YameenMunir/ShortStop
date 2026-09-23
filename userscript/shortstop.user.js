@@ -2,7 +2,7 @@
 // @name         ShortStop: Shorts & Reels Blocker
 // @namespace    https://github.com/YOUR_GITHUB_USERNAME/shortstop
 // @version      1.0.0
-// @description  Blocks YouTube Shorts, Facebook Reels, and the scrolling feeds on Instagram and TikTok, while keeping search, messages and profiles usable. No tracking.
+// @description  Blocks YouTube Shorts and the scrolling feeds on Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.
 // @author       Yameen Munir
 // @license      MIT
 // @match        *://www.youtube.com/*
@@ -25,16 +25,25 @@
  */
 
 /* ===================== SETTINGS: edit these ===================== */
-/* Set any of these to false to stop blocking on that site.        */
+/* true = block, false = allow. Save the file, then reload the site. */
+
+// YouTube: Shorts open in the normal player; Shorts shelves are hidden.
 const BLOCK_YOUTUBE_SHORTS = true;
+
+// Instagram: the Home feed, Explore, Reels and Stories are blocked.
 const BLOCK_INSTAGRAM_REELS = true;
-const BLOCK_FACEBOOK_REELS = true;
-/* Instagram blocks the Home feed, Explore, Reels and Stories.      */
-/* Set this to true to keep Instagram notifications reachable.      */
 const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
-/* TikTok blocks For You, Following, Friends, LIVE and Explore.     */
+
+// Facebook: the News Feed, Reels, Watch, Stories and other recommendation
+// feeds are blocked. Messenger, search, profiles and groups keep working.
+const BLOCK_FACEBOOK_FEEDS = true;
+const ALLOW_FACEBOOK_NOTIFICATIONS = false;
+const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
+
+// TikTok: For You, Following, Friends, LIVE and Explore are blocked.
 const BLOCK_TIKTOK_FEEDS = true;
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
+
 /* ================================================================ */
 
 (function () {
@@ -43,7 +52,9 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
   const SETTINGS = {
     youtube: BLOCK_YOUTUBE_SHORTS,
     instagram: BLOCK_INSTAGRAM_REELS,
-    facebook: BLOCK_FACEBOOK_REELS,
+    facebook: BLOCK_FACEBOOK_FEEDS,
+    facebookNotifications: ALLOW_FACEBOOK_NOTIFICATIONS,
+    facebookMarketplaceSearch: ALLOW_FACEBOOK_MARKETPLACE_SEARCH,
     instagramNotifications: ALLOW_INSTAGRAM_NOTIFICATIONS,
     tiktok: BLOCK_TIKTOK_FEEDS,
     tiktokNotifications: ALLOW_TIKTOK_NOTIFICATIONS,
@@ -77,7 +88,7 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
    *     id: 'youtube',                        // key in the settings object
    *     hosts: ['youtube.com'],               // hostnames (subdomains included)
    *     navigationEvents: ['yt-navigate-finish'], // extra SPA events fired on document
-   *     pages: { explore: /^\/explore\// },   // named pathname patterns, first match wins
+   *     pages: { explore: /^\/explore\//, feed: (url) => bool }, // pathname RegExp or URL test; first match wins
    *     options: {                            // extra switches stored in settings
    *       notifications: { setting: 'instagramNotifications', default: false },
    *     },
@@ -86,9 +97,10 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
    *       target: 'main' | ['#feed', 'main'], // the content area; first selector that exists wins
    *       title: 'Shown on every covered page',
    *       message: 'Shown on every covered page',
-   *       pages: { home: { title?, message?, onlyIf?(options) } },
-   *       links: (options) => [{ label, href }],
-   *       search: { label, placeholder, url: (query) => '/search?q=...' }, // optional search box
+   *       pages: { home: { title?, message?, onlyIf?(options), search?, links? } }, // per-page overrides
+   *       links: (options, url) => [{ label, href }],
+   *       search: { label, placeholder, url: (query) => '/search?q=...' }, // optional search box;
+   *                                           // a page's `search` may be null or (options) => config
    *     },
    *     rules: [{
    *       name: 'Human readable description',
@@ -394,7 +406,7 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         this.rules = asList(config.rules).map((rule, index) => ({ action: 'hide', ...rule, index }));
         this.options = this.resolveOptions({});
         this.enabled = true; // Optimistic until settings load, so nothing flashes.
-        this.cover = { host: null, page: null, countedHref: null, linksKey: null };
+        this.cover = { host: null, page: null, renderedHref: null, countedHref: null, linksKey: null };
         this.redirecting = false;
         this.observer = null;
         this.styleEl = null;
@@ -551,15 +563,19 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
 
       // Publishes the current named page (e.g. "explore") on <html> so the
       // generated CSS can scope rules to it.
+      // A page pattern is a RegExp tested on the pathname, or a function given
+      // the whole URL (for sites that put the feed choice in the query string).
       updatePage() {
-        let pathname = '/';
+        let url = null;
         try {
-          pathname = new URL(this.env.href()).pathname;
+          url = new URL(this.env.href());
         } catch (error) {
-          /* Keep the default. */
+          /* Treat as "other". */
         }
         const pages = this.config.pages || {};
-        this.page = Object.keys(pages).find((name) => pages[name].test(pathname)) || 'other';
+        const matches = (pattern) =>
+          url !== null && (typeof pattern === 'function' ? pattern(url) : pattern.test(url.pathname));
+        this.page = Object.keys(pages).find((name) => matches(pages[name])) || 'other';
         const root = document.documentElement;
         if (root.getAttribute(ATTR_PAGE) !== this.page) root.setAttribute(ATTR_PAGE, this.page);
       }
@@ -588,13 +604,15 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         const root = document.documentElement;
         if (!state.host) state.host = createCoverHost();
 
-        if (state.page !== this.page) {
+        const href = this.env.href();
+        if (state.page !== this.page || state.renderedHref !== href) {
           state.page = this.page;
+          state.renderedHref = href;
           this.renderCover(spec);
         }
         // Links can depend on the page (e.g. "Your profile" is read from the
         // site's navigation, which renders after us), so refresh them each time.
-        this.renderCoverLinks();
+        this.renderCoverLinks(spec);
 
         // A covered feed must not keep playing video or audio behind the panel.
         pauseMedia();
@@ -617,7 +635,6 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         }
 
         // One visit to a covered page counts once toward "blocked today".
-        const href = this.env.href();
         if (state.countedHref !== href) {
           state.countedHref = href;
           this.addCount(1);
@@ -639,23 +656,47 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         shadow.querySelector('.title').textContent = spec.title || cover.title || '';
         shadow.querySelector('.message').textContent = spec.message || cover.message || '';
 
+        // A page can bring its own search box (e.g. Marketplace search), turn
+        // the shared one off with `search: null`, or fall back to the shared one.
+        const search = this.coverSearch(spec);
         const form = shadow.querySelector('form');
-        if (cover.search && form.hidden) {
-          form.hidden = false;
-          const input = form.querySelector('input');
-          input.placeholder = cover.search.placeholder || '';
-          input.setAttribute('aria-label', cover.search.label || 'Search');
+        const input = form.querySelector('input');
+        form.hidden = !search;
+        if (search) {
+          input.placeholder = search.placeholder || '';
+          input.setAttribute('aria-label', search.label || 'Search');
+        }
+        if (!form.dataset.wired) {
+          form.dataset.wired = 'true';
           form.addEventListener('submit', (event) => {
             event.preventDefault();
+            const current = this.coverSearch(this.coverSpec(this.page));
             const query = input.value.trim();
-            if (query) this.env.navigate(new URL(cover.search.url(query), this.env.href()).href, false);
+            if (current && query) this.env.navigate(new URL(current.url(query), this.env.href()).href, false);
           });
         }
       }
 
-      renderCoverLinks() {
+      coverSearch(spec) {
+        if (!spec) return null;
+        if (spec.search !== undefined) {
+          return typeof spec.search === 'function' ? spec.search(this.options) : spec.search;
+        }
+        return this.config.cover.search || null;
+      }
+
+      // Links come from the page's own `links` or the shared ones, and are given
+      // the options and the current URL (e.g. to offer "open this video only").
+      renderCoverLinks(spec) {
         const cover = this.config.cover;
-        const wanted = asList(cover.links && cover.links(this.options)).filter((link) => link && link.href);
+        const source = (spec && spec.links) || cover.links;
+        let url = null;
+        try {
+          url = new URL(this.env.href());
+        } catch (error) {
+          /* Links that need the URL just get null. */
+        }
+        const wanted = asList(source && source(this.options, url)).filter((link) => link && link.href);
         const key = JSON.stringify(wanted);
         if (key === this.cover.linksKey) return; // Unchanged: leave the DOM alone.
         this.cover.linksKey = key;
@@ -673,6 +714,7 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         const state = this.cover;
         if (state.host) state.host.remove();
         state.page = null;
+        state.renderedHref = null;
         state.countedHref = null;
         document.documentElement.removeAttribute(ATTR_COVER);
       }
@@ -863,6 +905,9 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
 
         // 2. Mark new matches.
         let blocked = 0;
+        // Things inside a covered feed are hidden with it and already counted
+        // as one blocked visit, so they do not count again.
+        const coveredArea = this.isCovered() ? this.coverTarget() : null;
         for (const rule of this.rules) {
           if (!this.applies(rule)) continue;
           const attribute = rule.action === 'blur' ? ATTR_BLURRED : ATTR_HIDDEN;
@@ -873,7 +918,7 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
             // Skip anything inside a block we already handled (no double counting).
             if (target.parentElement && target.parentElement.closest(MARKED)) continue;
             target.setAttribute(attribute, String(rule.index));
-            if (rule.count) blocked += 1;
+            if (rule.count && !(coveredArea && coveredArea.contains(target))) blocked += 1;
           }
         }
         if (blocked) this.addCount(blocked);
@@ -1219,22 +1264,86 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
 
   /* ======== facebook.js ======== */
   /*
-   * ShortStop: Facebook
-   * ===================
-   * - /reel/ID and /reels/ go to the home feed; a Page's /name/reels/ tab and
-   *   profile.php?sk=reels_tab go back to the Page/profile.
-   * - The Reels shortcut in the navigation and the Reels tab on Pages are hidden.
-   * - Feed posts and "Reels and short videos" carousels that link to Reels are hidden.
+   * ShortStop: Facebook (focus mode)
+   * ================================
+   * Facebook stays usable as a communication and utility tool, but not as an
+   * endless-scroll feed. The News Feed, Feeds, Reels, Watch, Stories, the groups
+   * feed, Gaming, friend suggestions and Marketplace's recommended listings are
+   * all treated the same: the content area is hidden from the first paint and
+   * replaced by a ShortStop panel, so moving from one feed to another gets you
+   * nowhere. While a feed is covered, feed keys (including Facebook's j/k
+   * shortcuts) are swallowed and any video that starts playing is paused.
    *
-   * Facebook's class names are generated per build, so selectors use URLs and
-   * ARIA roles only. See README.md for how to update them.
+   * Still available on purpose:
+   *   - Messenger
+   *   - Search for a person, Page, group or post
+   *   - Profiles and Pages you open, including your own for posting (/me/)
+   *   - Managing your Pages
+   *   - A specific group you open (/groups/<id>)
+   *   - Marketplace search, categories, listings, selling and inbox
+   *     (search can be switched off with "Allow Marketplace search")
+   *   - Notifications, only if "Allow notifications" is on in the popup
+   *
+   * Routes are re-checked on every pushState, popstate and DOM change, so the
+   * block comes straight back whenever Facebook navigates to a feed.
+   *
+   * Facebook's class names are generated per build, so selectors use URLs,
+   * ARIA roles and element structure. See README.md for how to update them.
    */
+
+  // Places Facebook is still useful for, offered on every blocked page.
+  const facebookUtilityLinks = (options) => [
+    { label: 'Messenger', href: '/messages/' },
+    { label: 'Post from your profile', href: '/me/' },
+    { label: 'Your groups', href: '/groups/joins/' },
+    { label: 'Pages you manage', href: '/pages/?category=your_pages' },
+    options.notifications && { label: 'Notifications', href: '/notifications/' },
+  ];
+
+  const marketplaceSearch = {
+    label: 'Search Marketplace',
+    placeholder: 'Search for a specific item',
+    url: (query) => `/marketplace/search/?query=${encodeURIComponent(query)}`,
+  };
+
+  const marketplaceLinks = () => [
+    { label: 'Your listings', href: '/marketplace/you/selling/' },
+    { label: 'Marketplace inbox', href: '/marketplace/inbox/' },
+    { label: 'Messenger', href: '/messages/' },
+  ];
+
   ShortStop.start({
     id: 'facebook',
     hosts: ['facebook.com'],
 
+    // Named pages, first match wins. Covered pages are listed under `cover.pages`.
+    pages: {
+      // "/" also carries the Feeds filters (?filter=friends, ?sk=h_chr, ...).
+      home: /^\/(?:home\.php)?$/,
+      feeds: /^\/feeds?(?:\/|$)/,
+      reels: /^\/reels?(?:\/|$)/,
+      watch: /^\/watch(?:\/|$)/,
+      stories: /^\/stories(?:\/|$)/,
+      groupsfeed: /^\/groups\/?(?:(?:feed|discover)(?:\/.*)?)?$/, // Not a specific group.
+      gaming: /^\/gaming(?:\/|$)/,
+      friendsuggestions: /^\/friends\/suggestions(?:\/|$)/,
+      // Marketplace, most specific first: tools, then searches/categories, then browsing.
+      marketplacetools: /^\/marketplace\/(?:item|you|create|inbox|notifications|saved|profile|selling|buying)(?:\/|$)/,
+      marketplacesearch: /^\/marketplace\/(?:[^/]+\/)?(?:search|category)(?:\/|$)|^\/marketplace\/[^/]+\/[^/]+/,
+      marketplace: /^\/marketplace(?:\/[^/]+)?\/?$/, // Home, or a city's recommended listings.
+      notifications: /^\/notifications(?:\/|$)/,
+      messages: /^\/messages(?:\/|$)/,
+      search: /^\/search(?:\/|$)/,
+      group: /^\/groups\/[^/]+/,
+    },
+
+    // Extra switches shown in the popup under Facebook.
+    options: {
+      notifications: { setting: 'facebookNotifications', default: false },
+      marketplaceSearch: { setting: 'facebookMarketplaceSearch', default: true },
+    },
+
     redirects: [
-      { name: 'Reel viewer', match: /^\/reels?(\/|$)/, to: () => '/' },
       {
         name: "A Page's Reels tab to the Page",
         match: /^\/([^/]+)\/reels\/?$/,
@@ -1246,36 +1355,107 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         when: (url) => url.searchParams.get('sk') === 'reels_tab',
         to: (match, url) => `/profile.php?id=${encodeURIComponent(url.searchParams.get('id') || '')}`,
       },
+      // Feeds themselves are covered rather than redirected: a redirect could
+      // loop if Facebook bounced the destination back.
     ],
 
+    cover: {
+      // Facebook's centre column. The top bar, left menu and chat sidebar stay.
+      target: ['div[role="main"]', 'main'],
+      title: 'Scrolling is blocked by your focus settings.',
+      search: {
+        label: 'Search Facebook',
+        placeholder: 'Search for a person, Page, group or post',
+        url: (query) => `/search/top/?q=${encodeURIComponent(query)}`,
+      },
+      links: facebookUtilityLinks,
+      pages: {
+        home: { message: 'Your News Feed is switched off.' },
+        feeds: { message: 'Feeds are switched off.' },
+        reels: { message: 'Reels are switched off.' },
+        watch: {
+          message: 'Watch and video feeds are switched off.',
+          // A video someone sent you can still be opened on its own.
+          links: (options, url) => {
+            const video = url && url.searchParams.get('v');
+            return [
+              video && { label: 'Open this video only', href: `/video.php?v=${encodeURIComponent(video)}` },
+              ...facebookUtilityLinks(options),
+            ];
+          },
+        },
+        stories: { message: 'Stories are switched off.' },
+        groupsfeed: {
+          message: 'The groups feed is switched off. Open a specific group from Your groups.',
+        },
+        gaming: { message: 'Gaming videos are switched off.' },
+        friendsuggestions: {
+          message: 'Friend suggestions are switched off.',
+          links: (options) => [{ label: 'Friend requests', href: '/friends/requests/' }, ...facebookUtilityLinks(options)],
+        },
+        marketplace: {
+          message: "Marketplace's recommended listings are switched off.",
+          search: (options) => (options.marketplaceSearch ? marketplaceSearch : null),
+          links: marketplaceLinks,
+        },
+        marketplacesearch: {
+          message: 'Marketplace search is switched off. Turn on "Allow Marketplace search" in the ShortStop menu to use it.',
+          onlyIf: (options) => !options.marketplaceSearch,
+          search: null,
+          links: marketplaceLinks,
+        },
+        notifications: {
+          message: 'Notifications are switched off. Turn on "Allow notifications" in the ShortStop menu if you need them.',
+          onlyIf: (options) => !options.notifications,
+        },
+      },
+    },
+
     rules: [
-      /* ---- Navigation ---- */
+      /* ---- Menu and top-bar shortcuts into feeds ---- */
       {
-        name: 'Reels shortcut in the navigation (whole list item)',
-        selector: 'div[role="navigation"] li:has(a[href*="/reel/"])',
+        name: 'Feed shortcut in the left menu (whole list item)',
+        selector:
+          'div[role="navigation"] li:has(a[href*="/reel/"], a[href*="/watch"], a[href*="/gaming"], a[href*="sk=h_chr"], a[href*="/feeds"])',
       },
       {
-        name: 'Reels shortcut in the navigation (bare link)',
-        selector: 'div[role="navigation"] a[href*="/reel/"]',
+        name: 'Feed shortcut in the menus or top bar (bare link)',
+        selector:
+          ':is(div[role="navigation"], div[role="banner"]) :is(a[href*="/reel/"], a[href*="/watch"], a[href*="/gaming"], a[href*="sk=h_chr"], a[href*="/feeds"])',
       },
       {
         name: 'Reels tab on Pages and profiles',
         selector: 'a[role="tab"][href*="/reels"], a[role="tab"][href*="sk=reels_tab"]',
       },
+      {
+        name: 'Notifications bell and link',
+        selector: 'div[role="banner"] :is(a[href*="/notifications"], [aria-label^="Notifications"])',
+        onlyIf: (options) => !options.notifications,
+      },
 
-      /* ---- Feed ---- */
+      /* ---- Recommendations inside pages that stay open (profiles, groups, search) ---- */
+      {
+        name: 'Stories tray',
+        selector: '[data-pagelet^="Stories"], div[aria-label="Stories"]',
+        count: true,
+      },
       {
         name: 'Feed post or carousel containing Reels',
         selector: 'div[role="feed"] > div:has(a[href*="/reel/"])',
         count: true,
       },
       {
-        name: 'Reels carousel outside the main feed (English label)',
+        name: 'Reels carousel outside a feed (English label)',
         selector: 'div[aria-label="Reels"], div[aria-label="Reels and short videos"]',
         count: true,
       },
-
-      /* ---- Anything else that links to a Reel (search, Watch, profiles) ---- */
+      {
+        name: 'Suggested posts, people, groups and Pages (English headings)',
+        selector: 'div[role="feed"] span, [role="heading"], h2, h3',
+        text: /^(Suggested for you|People you may know|Suggested groups|Suggested Pages|Pages you may like|Groups you may like|Reels and short videos)$/i,
+        closest: 'div[role="feed"] > div, [role="article"], [data-pagelet*="FeedUnit"]',
+        count: true,
+      },
       {
         name: 'Leftover Reel link',
         selector: 'a[href*="/reel/"]',

@@ -64,13 +64,34 @@ in place of the content, with Instagram's own sidebar or bottom bar still usable
 
 ## Facebook (signed in, www.facebook.com)
 
-- [ ] **Left sidebar / shortcuts:** no "Reels" entry (you may need to click "See more").
-- [ ] **Home feed:** scroll for 30 seconds. No "Reels and short videos" carousel and no Reel posts.
-      Text, photo and normal video posts still appear.
-- [ ] **A Page** (e.g. facebook.com/natgeo): no "Reels" tab.
-- [ ] **Direct link:** `https://www.facebook.com/reel/` sends you to the home feed.
-- [ ] **Direct link:** `https://www.facebook.com/<page>/reels/` sends you to the Page.
-- [ ] Messenger, Groups, Marketplace and normal videos all still work.
+Feeds should show the ShortStop panel ("Scrolling is blocked by your focus settings.")
+in the centre column, with the top bar, left menu and chat sidebar still usable.
+
+- [ ] **News Feed:** open facebook.com. The panel appears straight away and nothing plays.
+      Scrolling, Page Down, Space and J/K do nothing.
+- [ ] **No switching around it:** the menu and top bar have no Video/Watch, Reels, Feeds or
+      Gaming shortcuts. Typing `/watch`, `/reel/`, `/reels/`, `/stories/…`, `/feeds/`,
+      `/gaming/` or `/?filter=friends&sk=h_chr` in the address bar shows the panel each time.
+- [ ] **Groups:** the Groups tab shows the panel (groups feed). Its "Your groups" link lists
+      your groups, and opening one works normally, without Reels or "Suggested for you" posts.
+- [ ] **Friends:** friend requests work. `/friends/suggestions/` shows the panel.
+- [ ] **In-app navigation:** from a profile, click the Facebook logo or Home. The panel appears
+      without a reload. Press Back and the profile works again.
+- [ ] **Search:** the panel's search box and Facebook's own search both find a person or Page.
+- [ ] **Profiles and Pages:** open one. It works, with no Reels tab. Pages you manage open
+      from the panel's "Pages you manage".
+- [ ] **Posting:** "Post from your profile" opens your profile, and creating a post works.
+- [ ] **Messenger:** chats open from the panel, the top bar and the chat sidebar.
+- [ ] **Watch link from a friend:** a `/watch/?v=…` link shows the panel with
+      "Open this video only", which plays that video.
+- [ ] **Marketplace home:** the panel appears with a Marketplace search box. Searching for an
+      item shows results, and opening a listing works. Your listings and the Marketplace inbox work.
+- [ ] **Marketplace search off:** turn off *Allow Marketplace search* in the popup. Searches
+      now show the panel, but a listing link (for example from Messenger) still opens.
+      Turn it back on.
+- [ ] **Notifications off (default):** no bell in the top bar. `/notifications/` shows the panel.
+- [ ] **Notifications on:** turn on *Allow notifications* under Facebook. The bell comes back
+      without a reload. Turn it off again.
 
 ## TikTok
 
@@ -122,6 +143,7 @@ in place of the videos, with TikTok's sidebar and top bar still usable.
       `/shorts/<id>` link opens in the normal player.
 - [ ] instagram.com in Safari: the Home feed shows "Your feed is off", and Messages and search still work.
 - [ ] Set `BLOCK_INSTAGRAM_REELS = false`, save and reload Instagram. The feed is back.
+- [ ] facebook.com in Safari: the News Feed shows the panel, and Messenger and search still work.
 - [ ] tiktok.com in Safari: the For You feed shows "Scrolling is blocked by your focus
       settings.", and search still works. (Safari may offer to open the TikTok app. Stay in Safari.)
 

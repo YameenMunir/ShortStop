@@ -8,61 +8,179 @@
       {
         "platform": "facebook",
         "url": "https://www.facebook.com/",
+        "cover": {
+          "title": "Scrolling is blocked by your focus settings.",
+          "message": "Your News Feed is switched off.",
+          "links": ["Messenger", "Post from your profile", "Your groups", "Pages you manage"],
+          "search": "Search for a person, Page, group or post"
+        },
+        "keyTest": true,
+        "searchTest": { "query": "jane doe", "expect": "https://www.facebook.com/search/top/?q=jane%20doe" },
+        "phases": [
+          { "name": "feedsfilter", "url": "https://www.facebook.com/?filter=friends&sk=h_chr", "cover": { "message": "Your News Feed is switched off." } },
+          { "name": "homephp", "url": "https://www.facebook.com/home.php", "cover": { "message": "Your News Feed is switched off." } },
+          { "name": "feeds", "url": "https://www.facebook.com/feeds/", "cover": { "message": "Feeds are switched off." } },
+          { "name": "reel", "url": "https://www.facebook.com/reel/1234567890123456", "cover": { "message": "Reels are switched off." } },
+          { "name": "reels", "url": "https://www.facebook.com/reels/", "cover": { "message": "Reels are switched off." } },
+          {
+            "name": "watch",
+            "url": "https://www.facebook.com/watch/",
+            "cover": { "message": "Watch and video feeds are switched off.", "links": ["Messenger", "Post from your profile", "Your groups", "Pages you manage"] }
+          },
+          {
+            "name": "watchvideo",
+            "url": "https://www.facebook.com/watch/?v=987654321",
+            "cover": {
+              "message": "Watch and video feeds are switched off.",
+              "links": ["Open this video only", "Messenger", "Post from your profile", "Your groups", "Pages you manage"]
+            }
+          },
+          { "name": "stories", "url": "https://www.facebook.com/stories/1234/UzpfSVNDOjE/", "cover": { "message": "Stories are switched off." } },
+          { "name": "groupsroot", "url": "https://www.facebook.com/groups/", "cover": { "message": "The groups feed is switched off. Open a specific group from Your groups." } },
+          { "name": "groupsfeed", "url": "https://www.facebook.com/groups/feed/", "cover": { "message": "The groups feed is switched off. Open a specific group from Your groups." } },
+          { "name": "groupsdiscover", "url": "https://www.facebook.com/groups/discover/", "cover": { "message": "The groups feed is switched off. Open a specific group from Your groups." } },
+          { "name": "group", "url": "https://www.facebook.com/groups/1234567890/", "cover": false },
+          { "name": "gaming", "url": "https://www.facebook.com/gaming/feed/", "cover": { "message": "Gaming videos are switched off." } },
+          {
+            "name": "friendsuggestions",
+            "url": "https://www.facebook.com/friends/suggestions/",
+            "cover": { "message": "Friend suggestions are switched off.", "links": ["Friend requests", "Messenger", "Post from your profile", "Your groups", "Pages you manage"] }
+          },
+          { "name": "friends", "url": "https://www.facebook.com/friends/requests/", "cover": false },
+          {
+            "name": "marketplace",
+            "url": "https://www.facebook.com/marketplace/",
+            "cover": {
+              "message": "Marketplace's recommended listings are switched off.",
+              "search": "Search for a specific item",
+              "links": ["Your listings", "Marketplace inbox", "Messenger"]
+            }
+          },
+          { "name": "marketplacecity", "url": "https://www.facebook.com/marketplace/london/", "cover": { "message": "Marketplace's recommended listings are switched off." } },
+          { "name": "marketplacesearch", "url": "https://www.facebook.com/marketplace/search/?query=bike", "cover": false },
+          { "name": "marketplacecitysearch", "url": "https://www.facebook.com/marketplace/london/search/?query=bike", "cover": false },
+          { "name": "marketplacecategory", "url": "https://www.facebook.com/marketplace/category/vehicles", "cover": false },
+          { "name": "marketplacecitycategory", "url": "https://www.facebook.com/marketplace/london/vehicles", "cover": false },
+          { "name": "marketplaceitem", "url": "https://www.facebook.com/marketplace/item/1234567890/", "cover": false },
+          { "name": "marketplaceselling", "url": "https://www.facebook.com/marketplace/you/selling/", "cover": false },
+          {
+            "name": "marketplacesearchoff",
+            "settings": { "facebook": true, "facebookMarketplaceSearch": false },
+            "url": "https://www.facebook.com/marketplace/search/?query=bike",
+            "cover": {
+              "message": "Marketplace search is switched off. Turn on \"Allow Marketplace search\" in the ShortStop menu to use it.",
+              "search": false,
+              "links": ["Your listings", "Marketplace inbox", "Messenger"]
+            }
+          },
+          { "name": "marketplacehomesearchoff", "url": "https://www.facebook.com/marketplace/", "cover": { "search": false } },
+          { "name": "marketplaceitemsearchoff", "url": "https://www.facebook.com/marketplace/item/1234567890/", "cover": false },
+          {
+            "name": "notifications",
+            "settings": { "facebook": true },
+            "url": "https://www.facebook.com/notifications/",
+            "cover": { "message": "Notifications are switched off. Turn on \"Allow notifications\" in the ShortStop menu if you need them." }
+          },
+          {
+            "name": "notifallowed",
+            "settings": { "facebook": true, "facebookNotifications": true },
+            "url": "https://www.facebook.com/notifications/",
+            "cover": false
+          },
+          {
+            "name": "homenotif",
+            "url": "https://www.facebook.com/",
+            "cover": { "links": ["Messenger", "Post from your profile", "Your groups", "Pages you manage", "Notifications"] }
+          },
+          { "name": "messages", "settings": { "facebook": true }, "url": "https://www.facebook.com/messages/t/1234567890", "cover": false },
+          { "name": "search", "url": "https://www.facebook.com/search/top/?q=jane%20doe", "cover": false },
+          { "name": "profile", "url": "https://www.facebook.com/natgeo", "cover": false },
+          { "name": "me", "url": "https://www.facebook.com/me/", "cover": false },
+          { "name": "pages", "url": "https://www.facebook.com/pages/?category=your_pages", "cover": false },
+          { "name": "backhome", "url": "https://www.facebook.com/", "cover": { "message": "Your News Feed is switched off." } }
+        ],
         "redirects": [
-          ["https://www.facebook.com/reel/1234567890123456", "https://www.facebook.com/"],
-          ["https://www.facebook.com/reel/?s=tab", "https://www.facebook.com/"],
-          ["https://www.facebook.com/reels/", "https://www.facebook.com/"],
-          ["https://web.facebook.com/reel/1234567890123456", "https://web.facebook.com/"],
           ["https://www.facebook.com/natgeo/reels/", "https://www.facebook.com/natgeo/"],
           ["https://www.facebook.com/profile.php?id=100000000001&sk=reels_tab", "https://www.facebook.com/profile.php?id=100000000001"],
           ["https://www.facebook.com/profile.php?id=100000000001", null],
+          ["https://www.facebook.com/reel/1234567890123456", null],
           ["https://www.facebook.com/watch/?v=1234567890", null],
-          ["https://www.facebook.com/natgeo/videos/", null],
           ["https://www.facebook.com/", null]
         ],
-        "spaRedirect": ["https://www.facebook.com/reel/9999999999", "https://www.facebook.com/"]
+        "spaRedirect": ["https://www.facebook.com/natgeo/reels/", "https://www.facebook.com/natgeo/"]
       }
     </script>
     <script src="../harness.js"></script>
     <script src="../../extension/content/facebook.js"></script>
   </head>
   <body>
+    <!-- Top bar -->
+    <div role="banner">
+      <input type="search" placeholder="Search Facebook" data-name="top search box" data-expect="visible" />
+      <a href="https://www.facebook.com/" data-name="Home tab" data-expect="visible">Home</a>
+      <a href="https://www.facebook.com/watch/" data-name="Video tab" data-expect="hidden">Video</a>
+      <a href="https://www.facebook.com/marketplace/" data-name="Marketplace tab" data-expect="visible">Marketplace</a>
+      <a href="https://www.facebook.com/groups/feed/" data-name="Groups tab" data-expect="visible">Groups</a>
+      <a href="https://www.facebook.com/gaming/" data-name="Gaming tab" data-expect="hidden">Gaming</a>
+      <div role="button" aria-label="Messenger" data-name="Messenger button" data-expect="visible">Messenger</div>
+      <div role="button" aria-label="Notifications" data-name="Notifications bell" data-expect="hidden" data-expect-notifallowed="visible">Bell</div>
+    </div>
+
+    <!-- Left menu -->
     <div role="navigation">
       <ul>
-        <li data-name="nav Friends" data-expect="visible"><a href="https://www.facebook.com/friends/">Friends</a></li>
-        <li data-name="nav Reels" data-expect="hidden"><a href="https://www.facebook.com/reel/?s=tab">Reels</a></li>
-        <li data-name="nav Groups" data-expect="visible"><a href="https://www.facebook.com/groups/">Groups</a></li>
+        <li data-name="menu Friends" data-expect="visible"><a href="https://www.facebook.com/friends/">Friends</a></li>
+        <li data-name="menu Reels" data-expect="hidden"><a href="https://www.facebook.com/reel/?s=tab">Reels</a></li>
+        <li data-name="menu Video" data-expect="hidden"><a href="https://www.facebook.com/watch/?ref=bookmarks">Video</a></li>
+        <li data-name="menu Feeds" data-expect="hidden"><a href="https://www.facebook.com/?filter=all&amp;sk=h_chr">Feeds</a></li>
+        <li data-name="menu Gaming" data-expect="hidden"><a href="https://www.facebook.com/gaming/play/">Play games</a></li>
+        <li data-name="menu Groups" data-expect="visible"><a href="https://www.facebook.com/groups/feed/">Groups</a></li>
+        <li data-name="menu Marketplace" data-expect="visible"><a href="https://www.facebook.com/marketplace/">Marketplace</a></li>
+        <li data-name="menu Saved" data-expect="visible"><a href="https://www.facebook.com/saved/">Saved</a></li>
       </ul>
     </div>
 
-    <div>
-      <a role="tab" href="https://www.facebook.com/natgeo/videos/" data-name="Page Videos tab" data-expect="visible">Videos</a>
-      <a role="tab" href="https://www.facebook.com/natgeo/reels/" data-name="Page Reels tab" data-expect="hidden">Reels</a>
-      <a role="tab" href="https://www.facebook.com/profile.php?id=1&amp;sk=reels_tab" data-name="profile Reels tab" data-expect="hidden">Reels</a>
-    </div>
-
-    <div role="feed">
-      <div data-name="feed text post" data-expect="visible"><a href="https://www.facebook.com/natgeo/posts/1">Status update</a></div>
-      <div data-name="feed Reel post" data-expect="hidden" data-count>
-        <div><a href="https://www.facebook.com/reel/1111111111/">A reel</a></div>
+    <!-- Centre column -->
+    <div role="main" data-name="centre column">
+      <div aria-label="Stories" data-name="stories tray" data-expect="hidden" data-expect-group="hidden">
+        <a href="https://www.facebook.com/stories/1/">story</a>
       </div>
-      <div data-name="Reels and short videos carousel" data-expect="hidden" data-count>
-        <div aria-label="Reels and short videos">
-          <a href="/reel/2222222222/">Reel 1</a><a href="/reel/3333333333/">Reel 2</a>
+      <div>
+        <a role="tab" href="https://www.facebook.com/natgeo/videos/" data-name="Page Videos tab" data-expect-profile="visible">Videos</a>
+        <a role="tab" href="https://www.facebook.com/natgeo/reels/" data-name="Page Reels tab" data-expect-profile="hidden">Reels</a>
+      </div>
+      <div role="feed">
+        <div data-name="text post" data-expect="hidden" data-expect-group="visible">
+          <a href="https://www.facebook.com/groups/1234567890/posts/1/">Group post</a>
+        </div>
+        <div data-name="Reel post" data-expect="hidden" data-expect-group="hidden">
+          <a href="https://www.facebook.com/reel/1111111111/">A reel</a>
+        </div>
+        <div data-name="suggested post" data-expect="hidden" data-expect-group="hidden">
+          <span>Suggested for you</span>
+          <a href="https://www.facebook.com/somepage/posts/2">Post</a>
+        </div>
+        <div data-name="People you may know unit" data-expect="hidden" data-expect-group="hidden">
+          <h3>People you may know</h3>
+          <a href="https://www.facebook.com/someone">Someone</a>
+        </div>
+        <div data-name="video post (not a reel)" data-expect="hidden" data-expect-group="visible">
+          <a href="https://www.facebook.com/natgeo/videos/444444/">Video</a>
+          <video muted></video>
         </div>
       </div>
-      <div data-name="feed video post (not a reel)" data-expect="visible"><a href="https://www.facebook.com/watch/?v=44444">Video</a></div>
+      <a href="https://www.facebook.com/marketplace/item/42/" data-name="Marketplace listing" data-expect-marketplacesearch="visible" data-expect-marketplaceitem="visible">Bike</a>
     </div>
 
-    <aside>
-      <div aria-label="Reels" data-name="Reels carousel outside the feed" data-expect="hidden" data-count><span>Reels</span></div>
-      <p data-name="search result paragraph" data-expect="visible">Result text <a href="/reel/5555555555/" data-name="loose Reel link" data-expect="hidden">reel</a></p>
-    </aside>
+    <!-- Right column: contacts stay -->
+    <div role="complementary">
+      <a href="https://www.facebook.com/messages/t/1" data-name="contact" data-expect="visible">A friend</a>
+    </div>
 
     <template id="dynamic">
-      <div role="feed">
-        <div data-name="Reel post loaded by scrolling" data-expect-dynamic="hidden" data-count><a href="/reel/6666666666/">reel</a></div>
-        <div data-name="text post loaded by scrolling" data-expect-dynamic="visible"><a href="/groups/1/posts/2">post</a></div>
+      <div role="navigation">
+        <a href="https://www.facebook.com/watch/live/" data-name="Watch link rendered later" data-expect-dynamic="hidden">Live videos</a>
+        <a href="https://www.facebook.com/groups/1234567890/" data-name="group link rendered later" data-expect-dynamic="visible">My group</a>
       </div>
     </template>
   </body>

@@ -58,10 +58,33 @@
         <label class="platform-row" for="toggle-facebook">
           <span class="platform-text">
             <span class="platform-name">Facebook</span>
-            <span class="platform-detail">Reels hidden from feed and menus</span>
+            <span class="platform-detail">News Feed, Reels and Watch off</span>
           </span>
           <span class="platform-count" id="count-facebook" title="Blocked today">0</span>
           <input class="switch" type="checkbox" role="switch" id="toggle-facebook" data-platform="facebook" checked />
+        </label>
+        <label class="option-row" for="option-facebook-marketplace">
+          <span>Allow Marketplace search</span>
+          <input
+            class="switch switch-small"
+            type="checkbox"
+            role="switch"
+            id="option-facebook-marketplace"
+            data-setting="facebookMarketplaceSearch"
+            data-parent="facebook"
+            data-default="true"
+          />
+        </label>
+        <label class="option-row" for="option-facebook-notifications">
+          <span>Allow notifications</span>
+          <input
+            class="switch switch-small"
+            type="checkbox"
+            role="switch"
+            id="option-facebook-notifications"
+            data-setting="facebookNotifications"
+            data-parent="facebook"
+          />
         </label>
       </li>
       <li class="platform">

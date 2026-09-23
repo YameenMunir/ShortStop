@@ -3,7 +3,7 @@
   "name": "ShortStop: Shorts & Reels Blocker",
   "short_name": "ShortStop",
   "version": "1.0.0",
-  "description": "Blocks YouTube Shorts, Facebook Reels, and the scrolling feeds on Instagram and TikTok, while keeping search, messages and profiles usable. No tracking.",
+  "description": "Blocks YouTube Shorts and the scrolling feeds on Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.",
   "minimum_chrome_version": "111",
   "icons": {
     "16": "icons/icon16.png",
