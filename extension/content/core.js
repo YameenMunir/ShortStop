@@ -18,7 +18,9 @@
  *      replaced by a ShortStop panel, re-applied whenever the route or the DOM
  *      changes. On covered routes, scroll/next-video keys are swallowed and any
  *      media that starts playing is paused at once.
- *   5. Settings changes apply live, without reloading the tab.
+ *   5. Settings changes apply live, without reloading the tab. A temporary
+ *      unlock ("allow 10 minutes", stored as an expiry time in `unlocks`) pauses
+ *      blocking, then switches it back on by itself when the time runs out.
  *
  * Config shape (see the platform files for real examples):
  *   {
@@ -76,6 +78,7 @@
   const COUNT_FLUSH_MS = 1500; // Batch counter updates to spare storage writes.
   const URL_POLL_MS = 1000; // Last-resort check for navigations nothing else caught.
   const MAX_REDIRECT_WAIT_MS = 300; // How long a redirect waits for the counter write.
+  const MAX_TIMEOUT_MS = 2 ** 31 - 1; // Longest delay setTimeout accepts.
 
   // Keys that scroll a page or jump to the next/previous video in a feed.
   const FEED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'j', 'k', 'J', 'K']);
@@ -193,28 +196,40 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
   // counter kept by the background service worker.
   function createExtensionEnv() {
     const api = global.chrome;
+
+    // Settings live in sync storage. Temporary unlocks ("allow 10 minutes")
+    // live in this device's local storage and are merged in as `unlocks`.
+    function readSettings() {
+      const read = (area, key) =>
+        new Promise((resolve) => {
+          try {
+            api.storage[area].get(key, (result) => {
+              void api.runtime.lastError; // Swallow errors; fall back to defaults.
+              resolve((result && result[key]) || {});
+            });
+          } catch (error) {
+            resolve({}); // Extension was reloaded: this script is orphaned.
+          }
+        });
+      return Promise.all([read('sync', 'settings'), read('local', 'unlocks')]).then(([settings, unlocks]) => ({
+        ...settings,
+        unlocks,
+      }));
+    }
+
     return {
       href: () => location.href,
       navigate(url, replace) {
         if (replace) location.replace(url);
         else location.assign(url);
       },
-      getSettings() {
-        return new Promise((resolve) => {
-          try {
-            api.storage.sync.get('settings', (result) => {
-              void api.runtime.lastError; // Swallow errors; fall back to defaults.
-              resolve((result && result.settings) || {});
-            });
-          } catch (error) {
-            resolve({}); // Extension was reloaded: this script is orphaned.
-          }
-        });
-      },
+      getSettings: readSettings,
       onSettingsChanged(callback) {
         try {
           api.storage.onChanged.addListener((changes, area) => {
-            if (area === 'sync' && changes.settings) callback(changes.settings.newValue || {});
+            if ((area === 'sync' && changes.settings) || (area === 'local' && changes.unlocks)) {
+              readSettings().then(callback);
+            }
           });
         } catch (error) {
           /* Orphaned script; nothing to listen to. */
@@ -348,6 +363,8 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.env = environment;
       this.rules = asList(config.rules).map((rule, index) => ({ action: 'hide', ...rule, index }));
       this.options = this.resolveOptions({});
+      this.lastSettings = {};
+      this.unlock = { until: 0, timer: 0 }; // A running temporary unlock, if any.
       this.enabled = true; // Optimistic until settings load, so nothing flashes.
       this.cover = { host: null, page: null, renderedHref: null, countedHref: null, linksKey: null };
       this.redirecting = false;
@@ -395,7 +412,28 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.options = options;
       // Options can switch CSS rules and covered pages on or off.
       if (changed && this.styleEl) this.styleEl.textContent = this.buildCss();
-      this.setEnabled(settings[this.config.id] !== false);
+      this.lastSettings = settings;
+      this.setEnabled(this.isBlocking(settings));
+    }
+
+    // Blocking is on unless this platform is switched off, or a temporary
+    // unlock is still running. When an unlock runs out, blocking comes back by
+    // itself in every open tab (a timer, backed up by the URL poll below).
+    isBlocking(settings) {
+      const unlock = this.unlock;
+      clearTimeout(unlock.timer);
+      unlock.timer = 0;
+      unlock.until = 0;
+      if (settings[this.config.id] === false) return false;
+      const until = Number(settings.unlocks && settings.unlocks[this.config.id]) || 0;
+      if (until <= Date.now()) return true;
+      unlock.until = until;
+      unlock.timer = setTimeout(() => this.checkUnlock(), Math.min(until - Date.now() + 50, MAX_TIMEOUT_MS));
+      return false;
+    }
+
+    checkUnlock() {
+      if (this.unlock.until && Date.now() >= this.unlock.until) this.applySettings(this.lastSettings);
     }
 
     setEnabled(on) {
@@ -714,6 +752,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       }
       setInterval(() => {
         if (this.env.href() !== this.lastHref) onNavigate();
+        this.checkUnlock(); // A timer can be late after the computer sleeps.
       }, URL_POLL_MS);
       // Capture phase on window runs before the site's own click handlers.
       window.addEventListener('click', (event) => this.onClick(event), true);

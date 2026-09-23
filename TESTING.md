@@ -128,10 +128,22 @@ in place of the videos, with TikTok's sidebar and top bar still usable.
 
 ## Popup and switches
 
-- [ ] Switch **YouTube off** with a YouTube tab open. Shorts shelves reappear **without reloading**.
-      Switch it back on and they disappear again.
-- [ ] Repeat for Instagram, Facebook and TikTok (the panel disappears and the feed returns).
-- [ ] With YouTube off, a `/shorts/…` link plays as a Short (no redirect).
+- [ ] With a YouTube tab open, click YouTube's switch in the popup. It does **not** switch off.
+      It offers **Allow 10 minutes**, **Turn off…** and **Cancel**. Cancel closes it.
+- [ ] **Allow 10 minutes:** the switch turns off and the popup counts down ("Unlocked, 9:59
+      left"). The YouTube tab unblocks **without reloading**.
+- [ ] **Block again** blocks the tab again at once.
+- [ ] **Blocking returns by itself:** start another pause, then wait it out (or, to save time,
+      run `chrome.storage.local.set({unlocks:{youtube:Date.now()+15000}})` in the popup's DevTools
+      console). Blocking comes back in the open tab with no reload, and the popup goes back to normal.
+- [ ] **Turn off…** starts a 30-second wait ("Turning off in 29s.") with only Cancel available.
+      Close the popup, reopen it a few seconds later, and the wait is still counting.
+- [ ] After 30 seconds the popup offers **Turn off now**. Click it: YouTube stays off (Shorts
+      play as Shorts, with no redirect) until you click the switch again, which turns
+      blocking back on **instantly**.
+- [ ] Leave a finished wait unconfirmed for over 2 minutes. It lapses by itself.
+- [ ] Repeat a pause for Instagram, Facebook and TikTok (the panel disappears, the feed
+      returns, and it's blocked again when the time is up).
 - [ ] The **counter** has gone up compared with the number you noted at the start, and the
       per-platform numbers add up to the big number.
 - [ ] Close and reopen the browser. Switches keep their state and today's counter is kept.

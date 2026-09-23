@@ -226,6 +226,39 @@
     await wait(1700);
     check('re-enabling counts one pass only', state.counted - countBefore <= expectedCount, `+${state.counted - countBefore}`);
 
+    // Temporary unlock ("allow 10 minutes"): blocking pauses, then comes back by itself.
+    const blockingOn = () => Boolean(document.getElementById(`shortstop-${plan.platform}`));
+    const notVisible = () =>
+      Array.from(document.querySelectorAll('[data-expect]')).filter((element) => stateOf(element) !== 'visible');
+    applySettings({ [plan.platform]: true, unlocks: { [plan.platform]: Date.now() + 1500 } });
+    await wait(300);
+    check('unlocked: blocking is paused', !blockingOn() && !document.querySelector('shortstop-cover'));
+    check('unlocked: everything is visible', notVisible().length === 0, notVisible().map(describe).join(', '));
+    await wait(1600);
+    check('unlock ran out: blocking comes back by itself', blockingOn());
+    checkExpectations('data-expect', 'after the unlock ran out');
+    if (plan.cover !== undefined) checkCover(plan.cover, 'after the unlock ran out');
+
+    applySettings({ [plan.platform]: true, unlocks: { [plan.platform]: Date.now() - 1000 } });
+    await wait(300);
+    check('an unlock that already ran out does nothing', blockingOn());
+    applySettings({ [plan.platform]: true, unlocks: { somewhere_else: Date.now() + 60000 } });
+    await wait(300);
+    check("another platform's unlock does nothing", blockingOn());
+
+    applySettings({ [plan.platform]: true, unlocks: { [plan.platform]: Date.now() + 60000 } });
+    await wait(300);
+    check('long unlock: blocking is paused', !blockingOn());
+    applySettings({ [plan.platform]: true, unlocks: {} });
+    await wait(300);
+    check('"block again" works at once', blockingOn());
+    applySettings({ [plan.platform]: false, unlocks: { [plan.platform]: Date.now() + 60000 } });
+    await wait(300);
+    check('switched off stays off, even with an unlock', !blockingOn());
+    applySettings({ [plan.platform]: true, unlocks: {} });
+    await wait(300);
+    check('switching back on works at once', blockingOn());
+
     for (const phase of plan.phases || []) {
       if (phase.settings) applySettings(phase.settings);
       const pausesBefore = pauses;

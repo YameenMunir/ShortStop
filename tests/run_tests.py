@@ -48,14 +48,14 @@ def run_fixture(browser, fixture):
                 "--no-first-run",
                 f"--user-data-dir={profile}",
                 "--allow-file-access-from-files",
-                "--virtual-time-budget=20000",
+                "--virtual-time-budget=90000",
                 "--dump-dom",
                 fixture.as_uri(),
             ],
             capture_output=True,
             text=True,
             encoding="utf-8",
-            timeout=120,
+            timeout=240,
         ).stdout
     match = re.search(r'<pre id="results">(.*?)</pre>', output, re.S)
     if not match:

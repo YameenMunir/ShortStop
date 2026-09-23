@@ -27,10 +27,25 @@
 | **Facebook** | **Focus mode.** Facebook stays a communication and utility tool, not an endless feed. The News Feed (including the Feeds filters), Reels, Watch, Stories, the groups feed and Discover, Gaming, friend suggestions and **Marketplace's recommended listings** are all blocked the same way. Each shows *"Scrolling is blocked by your focus settings."* where the feed was, with a Facebook search box and links to **Messenger**, **your profile** (to post), **your groups** and **Pages you manage**. A Watch link someone sent you gets an *Open this video only* button. Menu and top-bar shortcuts into feeds are hidden. On a blocked feed, feed keys (including Facebook's own J/K) are swallowed and videos are paused. Inside pages that stay open (profiles, a specific group, search), Reels, the Stories tray and "Suggested for you" / "People you may know" units are removed. **Marketplace:** searching and categories, listings, selling and the inbox work, and *Allow Marketplace search* in the popup can turn search off too. **Notifications** are blocked unless you turn on *Allow notifications*. |
 | **TikTok** | **Focus mode.** Every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 
-The popup has an on/off switch per platform, plus *Allow notifications* under Instagram,
+The popup has a switch per platform, plus *Allow notifications* under Instagram,
 Facebook and TikTok, and *Allow Marketplace search* under Facebook.
 Changes apply to open tabs straight away, without a reload. It also shows how many
 Shorts, Reels and feeds were blocked today.
+
+### Pausing blocking on purpose
+
+Switching a platform off is deliberately not a single click, so it's hard to do on impulse.
+Clicking a platform's switch while it's blocking offers two choices:
+
+- **Allow 10 minutes** pauses blocking straight away, then **switches it back on by itself**
+  when the time runs out, in every open tab, with no reload. The pause is stored on this
+  device only. **Block again** ends it early.
+- **Turn off…** switches it off until you turn it back on, but only after a **30-second wait**,
+  then a confirmation within 2 minutes. The wait keeps counting if you close the popup, and
+  confirming early does nothing.
+
+Turning blocking **back on** is always instant. To change the 10 minutes or the wait, edit
+the constants at the top of [popup.js](extension/popup/popup.js).
 
 <p align="center">
   <img src="docs/popup.png" width="300" alt="The ShortStop popup: 17 blocked today, with per-platform switches, options and counts">
@@ -171,9 +186,11 @@ Each platform file is a single config object, and `core.js` does the work:
 5. **Effects.** Some things can't be hidden, only changed: YouTube's autoplay is switched off
    through its own toggle, and a running autoplay countdown is cancelled. Effects run after
    every scan and are safe to repeat.
-6. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
-   platform or option off removes the stylesheet, un-hides everything and removes the panel.
-   Switching it on re-applies everything. No reload needed.
+6. **Live settings and pauses.** Content scripts listen to `chrome.storage.onChanged`.
+   Switching a platform or option off removes the stylesheet, un-hides everything and
+   removes the panel, and switching it on re-applies everything. No reload needed. A
+   temporary pause is stored as an expiry time, and each tab sets a timer for it (backed up
+   by the one-second check, in case the computer slept), so blocking returns by itself.
 
 ## When a site changes: updating selectors
 
@@ -227,7 +244,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 530 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 684 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -248,6 +265,8 @@ platform it checks:
   the notifications options
 - Feed keys being swallowed (but not while typing), autoplay being stopped, and the panel's
   search box going to the right results page
+- Temporary pauses on every platform: blocking pauses, comes back by itself when the time
+  runs out, ignores an expired pause or another platform's, and "block again" is instant
 - Facebook Marketplace: home and city browsing blocked; search, categories, listings and
   selling allowed; everything but listings and selling blocked when search is switched off
 - YouTube: Up next hidden while the playlist panel and live chat stay, end screens removed,
