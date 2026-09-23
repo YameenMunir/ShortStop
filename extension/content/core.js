@@ -38,7 +38,13 @@
  *       links: (options, url) => [{ label, href }],
  *       search: { label, placeholder, url: (query) => '/search?q=...' }, // optional search box;
  *                                           // a page's `search` may be null or (options) => config
+ *       pauseMedia: true,                   // pause media on covered pages (default true)
+ *       blockKeys: true,                    // swallow feed keys on covered pages (default true)
  *     },
+ *     effects: [{                           // small actions run after every scan, e.g.
+ *       name, page?, onlyIf?(options),      // switching a site's autoplay off
+ *       run: () => void,
+ *     }],
  *     rules: [{
  *       name: 'Human readable description',
  *       selector: 'css selector',           // prefer tags, href patterns, ARIA labels
@@ -126,11 +132,11 @@
   z-index: 2147483647;
   overflow-y: auto;
 }
-.panel { width: 100%; max-width: 26rem; }
+.panel { width: 100%; max-width: 416px; } /* px, not rem: sites set their own root font size */
 .mark { display: block; width: 48px; height: 48px; margin-bottom: 20px; }
 h1 {
   margin: 0 0 8px;
-  font: 700 2.25rem/1 "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  font: 700 36px/1 "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
   font-stretch: 75%;
 }
 p { margin: 0 0 20px; color: #56657a; }
@@ -551,8 +557,9 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       // site's navigation, which renders after us), so refresh them each time.
       this.renderCoverLinks(spec);
 
-      // A covered feed must not keep playing video or audio behind the panel.
-      pauseMedia();
+      // A covered feed must not keep playing video or audio behind the panel
+      // (unless the platform opts out, e.g. YouTube's miniplayer keeps going).
+      if (this.config.cover.pauseMedia !== false) pauseMedia();
 
       const target = this.coverTarget();
       if (target && target.parentElement) {
@@ -711,7 +718,8 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       // Capture phase on window runs before the site's own click handlers.
       window.addEventListener('click', (event) => this.onClick(event), true);
 
-      if (this.config.cover) {
+      const cover = this.config.cover;
+      if (cover && cover.blockKeys !== false) {
         // A hidden feed can still react to the keyboard (TikTok skips to the
         // next video on arrow keys). Swallow those keys on covered pages,
         // except while typing in a field (including the panel's search box).
@@ -729,6 +737,8 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
           },
           true
         );
+      }
+      if (cover && cover.pauseMedia !== false) {
         // Media events do not bubble, but they do go through the capture phase:
         // anything that starts playing behind the panel is stopped at once.
         document.addEventListener(
@@ -859,6 +869,23 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
         }
       }
       if (blocked) this.addCount(blocked);
+      this.runEffects();
+    }
+
+    // Small actions that hiding cannot do (e.g. switching autoplay off). They
+    // run after every scan, so they must be cheap and safe to repeat.
+    runEffects() {
+      for (const effect of asList(this.config.effects)) {
+        if (!this.applies(effect)) continue;
+        try {
+          effect.run();
+        } catch (error) {
+          if (!this.warnedRules.has(effect.name)) {
+            this.warnedRules.add(effect.name);
+            console.warn(`[ShortStop] Effect "${effect.name}" failed:`, error);
+          }
+        }
+      }
     }
 
     /* ---------------- Counter ---------------- */

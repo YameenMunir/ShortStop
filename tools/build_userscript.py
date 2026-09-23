@@ -20,10 +20,10 @@ OUTPUT = ROOT / "userscript" / "shortstop.user.js"
 PLATFORM_FILES = ("youtube.js", "instagram.js", "facebook.js", "tiktok.js")
 
 HEADER = """// ==UserScript==
-// @name         ShortStop: Shorts & Reels Blocker
+// @name         ShortStop: Block Shorts, Reels & Endless Feeds
 // @namespace    https://github.com/YOUR_GITHUB_USERNAME/shortstop
 // @version      __VERSION__
-// @description  Blocks YouTube Shorts and the scrolling feeds on Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.
+// @description  Blocks Shorts, Reels and the endless recommendation feeds on YouTube, Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.
 // @author       Yameen Munir
 // @license      MIT
 // @match        *://www.youtube.com/*
@@ -48,7 +48,8 @@ HEADER = """// ==UserScript==
 /* ===================== SETTINGS: edit these ===================== */
 /* true = block, false = allow. Save the file, then reload the site. */
 
-// YouTube: Shorts open in the normal player; Shorts shelves are hidden.
+// YouTube: Shorts open in the normal player; the home feed, Up next,
+// end screens and autoplay are switched off.
 const BLOCK_YOUTUBE_SHORTS = true;
 
 // Instagram: the Home feed, Explore, Reels and Stories are blocked.

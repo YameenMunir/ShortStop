@@ -7,7 +7,28 @@
     <script type="application/json" id="plan">
       {
         "platform": "youtube",
-        "url": "https://www.youtube.com/",
+        "url": "https://www.youtube.com/results?search_query=cats",
+        "phases": [
+          {
+            "name": "home",
+            "url": "https://www.youtube.com/",
+            "cover": {
+              "title": "Scrolling is blocked by your focus settings.",
+              "message": "YouTube's recommended videos are switched off.",
+              "links": ["Subscriptions", "Watch later", "Your playlists", "History"],
+              "search": "Search for a video or channel"
+            },
+            "pauses": 0
+          },
+          { "name": "trending", "url": "https://www.youtube.com/feed/trending", "cover": { "message": "Trending, Explore and Gaming are switched off." } },
+          { "name": "explore", "url": "https://www.youtube.com/feed/explore", "cover": { "message": "Trending, Explore and Gaming are switched off." } },
+          { "name": "gaming", "url": "https://www.youtube.com/gaming", "cover": { "message": "Trending, Explore and Gaming are switched off." } },
+          { "name": "subscriptions", "url": "https://www.youtube.com/feed/subscriptions", "cover": false },
+          { "name": "playlist", "url": "https://www.youtube.com/playlist?list=WL", "cover": false },
+          { "name": "channel", "url": "https://www.youtube.com/@natgeo", "cover": false },
+          { "name": "history", "url": "https://www.youtube.com/feed/history", "cover": false },
+          { "name": "watch", "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123", "cover": false }
+        ],
         "redirects": [
           ["https://www.youtube.com/shorts/abc123DEF45", "https://www.youtube.com/watch?v=abc123DEF45"],
           ["https://www.youtube.com/shorts/abc123DEF45?feature=share", "https://www.youtube.com/watch?v=abc123DEF45"],
@@ -73,6 +94,62 @@
     <ytm-rich-section-renderer data-name="mobile Shorts section" data-expect="hidden" data-count><ytm-reel-shelf-renderer><a href="/shorts/jjjjjjjjjjj">Short J</a></ytm-reel-shelf-renderer></ytm-rich-section-renderer>
     <ytm-video-with-context-renderer data-name="mobile Short in list" data-expect="hidden" data-count><a href="/shorts/kkkkkkkkkkk">Short K</a></ytm-video-with-context-renderer>
     <ytm-video-with-context-renderer data-name="mobile video in list" data-expect="visible"><a href="/watch?v=lllllllllll">Video L</a></ytm-video-with-context-renderer>
+
+    <!-- Focus mode: the home page's recommended grid (YouTube keeps browse pages in memory) -->
+    <ytd-page-manager>
+      <ytd-browse page-subtype="home" data-name="home recommendations grid" data-expect-home="hidden" data-expect-subscriptions="visible">
+        <ytd-rich-item-renderer><a href="/watch?v=recommended1">Recommended video</a></ytd-rich-item-renderer>
+      </ytd-browse>
+    </ytd-page-manager>
+    <ytd-miniplayer><video muted data-name="miniplayer video"></video></ytd-miniplayer>
+
+    <!-- Sidebar entries into algorithmic feeds -->
+    <ytd-guide-entry-renderer data-name="sidebar Trending" data-expect="hidden"><a href="/feed/trending">Trending</a></ytd-guide-entry-renderer>
+    <ytd-guide-entry-renderer data-name="sidebar Gaming" data-expect="hidden"><a href="/gaming">Gaming</a></ytd-guide-entry-renderer>
+    <ytd-guide-entry-renderer data-name="sidebar History" data-expect="visible"><a href="/feed/history">History</a></ytd-guide-entry-renderer>
+
+    <!-- Watch page: the right-hand column holds Up next, the playlist and live chat -->
+    <div id="secondary">
+      <ytd-playlist-panel-renderer data-name="playlist panel" data-expect="visible" data-expect-watch="visible">Playlist</ytd-playlist-panel-renderer>
+      <ytd-live-chat-frame data-name="live chat" data-expect="visible" data-expect-watch="visible">Chat</ytd-live-chat-frame>
+      <ytd-watch-next-secondary-results-renderer data-name="Up next list" data-expect="hidden" data-expect-watch="hidden" data-count>
+        <ytd-compact-video-renderer><a href="/watch?v=upnext12345">Next video</a></ytd-compact-video-renderer>
+      </ytd-watch-next-secondary-results-renderer>
+    </div>
+    <ytm-item-section-renderer section-identifier="related-items" data-name="mobile related videos" data-expect="hidden" data-count>
+      <a href="/watch?v=related1234">Related</a>
+    </ytm-item-section-renderer>
+    <ytm-item-section-renderer section-identifier="comments-entry-point" data-name="mobile comments" data-expect="visible">Comments</ytm-item-section-renderer>
+
+    <!-- Player: the click handlers record what ShortStop did -->
+    <div class="html5-video-player" data-name="player" data-expect="visible">
+      <video muted data-name="main video"></video>
+      <button
+        class="ytp-button"
+        data-name="autoplay toggle button"
+        data-expect-attr-watch="data-clicks=1"
+        onclick="const t = this.firstElementChild; t.setAttribute('aria-checked', t.getAttribute('aria-checked') === 'true' ? 'false' : 'true'); this.dataset.clicks = String(Number(this.dataset.clicks || 0) + 1);"
+      >
+        <div class="ytp-autonav-toggle-button" aria-checked="true" data-name="autoplay toggle" data-expect-attr-watch="aria-checked=false"></div>
+      </button>
+      <div class="html5-endscreen" data-name="end screen video wall" data-expect="hidden">Video wall</div>
+      <div class="ytp-ce-element" data-name="end card" data-expect="hidden">End card</div>
+      <div class="ytp-autonav-endscreen-countdown-overlay" data-name="autoplay countdown" data-expect="hidden">
+        <button
+          class="ytp-autonav-endscreen-upnext-cancel-button"
+          data-name="countdown cancel button"
+          data-expect-attr="data-clicked=yes"
+          onclick="this.dataset.clicked = 'yes'"
+        >Cancel</button>
+      </div>
+      <div class="ytp-pause-overlay" data-name="pause overlay" data-expect="hidden">More videos</div>
+    </div>
+
+    <!-- Search results: recommendation shelves go, channel shelves stay -->
+    <ytd-shelf-renderer data-name="For you shelf" data-expect="hidden" data-count><h2 id="title">For you</h2><a href="/watch?v=foryou12345">x</a></ytd-shelf-renderer>
+    <ytd-shelf-renderer data-name="People also watched shelf" data-expect="hidden" data-count><h2 id="title">People also watched</h2><a href="/watch?v=also1234567">x</a></ytd-shelf-renderer>
+    <ytd-horizontal-card-list-renderer data-name="Channels new to you" data-expect="hidden" data-count><span id="title">Channels new to you</span></ytd-horizontal-card-list-renderer>
+    <ytd-shelf-renderer data-name="Latest from a channel shelf" data-expect="visible"><h2 id="title">Latest from National Geographic</h2><a href="/watch?v=latest12345">x</a></ytd-shelf-renderer>
 
     <template id="dynamic">
       <ytd-rich-item-renderer data-name="Short loaded by infinite scroll" data-expect-dynamic="hidden" data-count><a href="/shorts/scroll12345">Scrolled Short</a></ytd-rich-item-renderer>

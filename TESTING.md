@@ -10,19 +10,27 @@ are on. Note today's counter number.
 
 ## YouTube (desktop, www.youtube.com)
 
-- [ ] **Home:** no Shorts shelf anywhere while you scroll at least three screens.
-- [ ] **Sidebar:** no "Shorts" entry, both expanded (☰) and collapsed (mini sidebar).
-- [ ] **Search** for something popular (e.g. "cat videos"): no Shorts shelf, no single Shorts
-      among the results, and no "Shorts" filter chip at the top.
-- [ ] **Subscriptions** (signed in): no Shorts in the grid.
-- [ ] **Channel page** (e.g. youtube.com/@MrBeast): no "Shorts" tab, and no Shorts shelf on the Home tab.
-- [ ] **Watch page:** no Shorts shelf under the video or in the right-hand suggestions.
+- [ ] **Home:** the panel ("Scrolling is blocked by your focus settings.") replaces the
+      recommended grid straight away. The sidebar has no Shorts, Trending or Gaming entries.
+- [ ] **Panel:** its search box shows results. Subscriptions, Watch later, Your playlists and
+      History all open.
+- [ ] **Trending / Explore / Gaming:** `/feed/trending` and `/gaming` show the panel (YouTube
+      may send Trending to Home, which is also covered).
+- [ ] **Search** for something popular (e.g. "cat videos"): results show, with no Shorts shelf,
+      no single Shorts, no "Shorts" filter chip, and no "For you" / "People also watched" shelves.
+- [ ] **Subscriptions** (signed in): the grid shows, without Shorts.
+- [ ] **Channel page** (e.g. youtube.com/@MrBeast): no "Shorts" tab. The Videos tab works.
+- [ ] **Watch page:** no "Up next" list beside or below the video. The description and
+      comments are still there.
+- [ ] **Autoplay:** the autoplay switch in the player shows **off**. Let a short video finish.
+      Nothing plays next and there's no end-screen video wall or countdown.
+- [ ] **Playlists:** play a playlist. The playlist panel shows on the right, and the next
+      playlist video plays after each one ends.
+- [ ] **Live stream:** the live chat still shows beside the video.
+- [ ] **Miniplayer:** start a video, press the miniplayer button, then go to Home. The panel
+      shows and the miniplayer keeps playing. Its play/pause and keyboard controls work.
 - [ ] **Direct link:** paste `https://www.youtube.com/shorts/aqz-KE-bpKQ` into the address bar.
-      It opens as `/watch?v=aqz-KE-bpKQ` in the normal player.
-- [ ] **In-app navigation:** from a channel's Videos tab, open any Short link that still
-      appears (e.g. from a video description). It opens in the normal player.
-- [ ] **Back button:** after that redirect, Back returns to the page you came from, not the Short.
-- [ ] **Normal videos** still play, and search, comments and playlists all work.
+      It opens as `/watch?v=aqz-KE-bpKQ` in the normal player, and Back skips the Short.
 
 ## YouTube (mobile, m.youtube.com)
 

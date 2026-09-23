@@ -4,10 +4,12 @@
 
 <h1 align="center">ShortStop</h1>
 
+<p align="center"><strong>Block Shorts, Reels &amp; Endless Feeds</strong></p>
+
 <p align="center">
-  A free, open-source browser extension that blocks short-form video and endless feeds
-  (YouTube Shorts, and every scrolling feed on Instagram, Facebook and TikTok) while
-  keeping the useful parts of each site working.
+  A free, open-source browser extension that blocks short-form video and endless
+  recommendation feeds on YouTube, Instagram, Facebook and TikTok, while keeping the
+  useful parts of each site working.
 </p>
 
 <p align="center">
@@ -20,7 +22,7 @@
 
 | Platform | What ShortStop changes |
 | --- | --- |
-| **YouTube** | `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`) instead. Shorts shelves are removed from home, search, subscriptions, channel and watch pages. The Shorts entries in the sidebar, mini sidebar, channel tabs, search filter chips and the m.youtube.com bottom bar are removed. |
+| **YouTube** | **Focus mode.** `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`), and Shorts shelves, tabs, chips and sidebar entries are removed everywhere. The **home page's recommended grid**, Trending/Explore and Gaming are replaced by the panel (*"Scrolling is blocked by your focus settings."*), with a YouTube search box and links to Subscriptions, Watch later, Your playlists and History. On the watch page, the **"Up next"** list is hidden (the playlist panel and live chat stay), **end-screen** video walls, end cards and the "More videos" overlay are removed, and **autoplay** is switched off, with any autoplay countdown cancelled. Search results lose their "For you" / "People also watched" shelves. Search, subscriptions, playlists, channels, history and any video you open keep working, and the miniplayer keeps playing when you go back to Home. |
 | **Instagram** | **Focus mode.** The Home feed, Explore (including hashtag, place and suggested-people pages), Reels and Stories are all blocked the same way. Their content is replaced by a ShortStop panel before it paints, so there's nothing to scroll and no way round it through the Home feed. The panel links to what still works: **Messages**, **account search**, **your profile**, and posting through Instagram's own menu. Profiles and single posts you open on purpose still work, minus the Reels tab and "Suggested for you" accounts. Reels shared in DMs are blurred and can't be opened. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 | **Facebook** | **Focus mode.** Facebook stays a communication and utility tool, not an endless feed. The News Feed (including the Feeds filters), Reels, Watch, Stories, the groups feed and Discover, Gaming, friend suggestions and **Marketplace's recommended listings** are all blocked the same way. Each shows *"Scrolling is blocked by your focus settings."* where the feed was, with a Facebook search box and links to **Messenger**, **your profile** (to post), **your groups** and **Pages you manage**. A Watch link someone sent you gets an *Open this video only* button. Menu and top-bar shortcuts into feeds are hidden. On a blocked feed, feed keys (including Facebook's own J/K) are swallowed and videos are paused. Inside pages that stay open (profiles, a specific group, search), Reels, the Stories tray and "Suggested for you" / "People you may know" units are removed. **Marketplace:** searching and categories, listings, selling and the inbox work, and *Allow Marketplace search* in the popup can turn search off too. **Notifications** are blocked unless you turn on *Allow notifications*. |
 | **TikTok** | **Focus mode.** Every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
@@ -31,7 +33,7 @@ Changes apply to open tabs straight away, without a reload. It also shows how ma
 Shorts, Reels and feeds were blocked today.
 
 <p align="center">
-  <img src="docs/popup.png" width="300" alt="The ShortStop popup: 17 Shorts and Reels blocked today, with per-platform switches and counts">
+  <img src="docs/popup.png" width="300" alt="The ShortStop popup: 17 blocked today, with per-platform switches, options and counts">
 </p>
 
 ## Privacy
@@ -87,8 +89,8 @@ Temporary add-ons are removed when Firefox restarts. To keep it installed, sign 
 ### iPhone and iPad (Safari + the free Userscripts app)
 
 iOS Safari extensions can't be side-loaded, so ShortStop also ships as a single
-userscript: [`userscript/shortstop.user.js`](userscript/shortstop.user.js). It covers
-YouTube, and the same Instagram, Facebook and TikTok focus modes.
+userscript: [`userscript/shortstop.user.js`](userscript/shortstop.user.js), with the same
+focus modes for YouTube, Instagram, Facebook and TikTok.
 
 1. Install **Userscripts** (by Justin Wasack, free) from the App Store.
 2. Open the Userscripts app and choose a folder for your scripts, for example
@@ -105,7 +107,7 @@ YouTube, and the same Instagram, Facebook and TikTok focus modes.
 **Changing settings on iPhone:** edit the constants at the very top of the file, then save:
 
 ```js
-const BLOCK_YOUTUBE_SHORTS = true;
+const BLOCK_YOUTUBE_SHORTS = true;                // YouTube focus mode: Shorts, home feed, Up next, autoplay
 
 const BLOCK_INSTAGRAM_REELS = true;             // Instagram focus mode: feed, Explore, Reels, Stories
 const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
@@ -130,7 +132,7 @@ extension/
 ├── content/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
-│   ├── youtube.js           YouTube selectors + redirects (one config object)
+│   ├── youtube.js           YouTube focus mode: Shorts redirects, covered home feed, autoplay effects
 │   ├── instagram.js         Instagram focus mode: covered routes, selectors, redirects
 │   ├── facebook.js          Facebook focus mode: covered feeds, Marketplace rules, selectors
 │   └── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
@@ -156,16 +158,20 @@ Each platform file is a single config object, and `core.js` does the work:
    for a `pushState`/`replaceState` hook (`nav-hook.js`), YouTube's `yt-navigate-finish`,
    `popstate`, and a one-second URL check as a safety net. It also catches clicks on
    Short/Reel links before the site's router plays them.
-4. **Covered routes.** A config can list whole routes to cover (every feed on Instagram,
-   Facebook and TikTok). A route is a pathname pattern, or a test on the whole URL when the
+4. **Covered routes.** A config can list whole routes to cover (every feed on YouTube,
+   Instagram, Facebook and TikTok). A route is a pathname pattern, or a test on the whole URL when the
    site keeps the feed choice in the query string. On those, the content area (`main`,
-   Facebook's `div[role="main"]`, TikTok's `div#main-content-…`) is hidden by the same
+   Facebook's `div[role="main"]`, TikTok's `div#main-content-…`, YouTube's `ytd-browse`) is
+   hidden by the same
    `document_start` stylesheet, and a ShortStop panel takes its place. The panel is built in
    a shadow root so the site's CSS can't touch it. Any playing media is paused. The route is
    re-checked on every navigation and every DOM change, so the panel comes back if the site
    re-renders it away. If the site has no `main` element, for example while loading or after
    a redesign, the panel covers the whole viewport and locks scrolling instead.
-5. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
+5. **Effects.** Some things can't be hidden, only changed: YouTube's autoplay is switched off
+   through its own toggle, and a running autoplay countdown is cancelled. Effects run after
+   every scan and are safe to repeat.
+6. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
    platform or option off removes the stylesheet, un-hides everything and removes the panel.
    Switching it on re-applies everything. No reload needed.
 
@@ -221,7 +227,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 470 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 530 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -244,6 +250,9 @@ platform it checks:
   search box going to the right results page
 - Facebook Marketplace: home and city browsing blocked; search, categories, listings and
   selling allowed; everything but listings and selling blocked when search is switched off
+- YouTube: Up next hidden while the playlist panel and live chat stay, end screens removed,
+  the autoplay toggle switched off exactly once, the countdown cancelled, and the
+  miniplayer left playing on the covered home page
 - every redirect rule
 - redirects triggered by SPA navigation
 

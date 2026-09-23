@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         ShortStop: Shorts & Reels Blocker
+// @name         ShortStop: Block Shorts, Reels & Endless Feeds
 // @namespace    https://github.com/YOUR_GITHUB_USERNAME/shortstop
 // @version      1.0.0
-// @description  Blocks YouTube Shorts and the scrolling feeds on Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.
+// @description  Blocks Shorts, Reels and the endless recommendation feeds on YouTube, Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.
 // @author       Yameen Munir
 // @license      MIT
 // @match        *://www.youtube.com/*
@@ -27,7 +27,8 @@
 /* ===================== SETTINGS: edit these ===================== */
 /* true = block, false = allow. Save the file, then reload the site. */
 
-// YouTube: Shorts open in the normal player; Shorts shelves are hidden.
+// YouTube: Shorts open in the normal player; the home feed, Up next,
+// end screens and autoplay are switched off.
 const BLOCK_YOUTUBE_SHORTS = true;
 
 // Instagram: the Home feed, Explore, Reels and Stories are blocked.
@@ -101,7 +102,13 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
    *       links: (options, url) => [{ label, href }],
    *       search: { label, placeholder, url: (query) => '/search?q=...' }, // optional search box;
    *                                           // a page's `search` may be null or (options) => config
+   *       pauseMedia: true,                   // pause media on covered pages (default true)
+   *       blockKeys: true,                    // swallow feed keys on covered pages (default true)
    *     },
+   *     effects: [{                           // small actions run after every scan, e.g.
+   *       name, page?, onlyIf?(options),      // switching a site's autoplay off
+   *       run: () => void,
+   *     }],
    *     rules: [{
    *       name: 'Human readable description',
    *       selector: 'css selector',           // prefer tags, href patterns, ARIA labels
@@ -189,11 +196,11 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
     z-index: 2147483647;
     overflow-y: auto;
   }
-  .panel { width: 100%; max-width: 26rem; }
+  .panel { width: 100%; max-width: 416px; } /* px, not rem: sites set their own root font size */
   .mark { display: block; width: 48px; height: 48px; margin-bottom: 20px; }
   h1 {
     margin: 0 0 8px;
-    font: 700 2.25rem/1 "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+    font: 700 36px/1 "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
     font-stretch: 75%;
   }
   p { margin: 0 0 20px; color: #56657a; }
@@ -614,8 +621,9 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         // site's navigation, which renders after us), so refresh them each time.
         this.renderCoverLinks(spec);
 
-        // A covered feed must not keep playing video or audio behind the panel.
-        pauseMedia();
+        // A covered feed must not keep playing video or audio behind the panel
+        // (unless the platform opts out, e.g. YouTube's miniplayer keeps going).
+        if (this.config.cover.pauseMedia !== false) pauseMedia();
 
         const target = this.coverTarget();
         if (target && target.parentElement) {
@@ -774,7 +782,8 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         // Capture phase on window runs before the site's own click handlers.
         window.addEventListener('click', (event) => this.onClick(event), true);
 
-        if (this.config.cover) {
+        const cover = this.config.cover;
+        if (cover && cover.blockKeys !== false) {
           // A hidden feed can still react to the keyboard (TikTok skips to the
           // next video on arrow keys). Swallow those keys on covered pages,
           // except while typing in a field (including the panel's search box).
@@ -792,6 +801,8 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
             },
             true
           );
+        }
+        if (cover && cover.pauseMedia !== false) {
           // Media events do not bubble, but they do go through the capture phase:
           // anything that starts playing behind the panel is stopped at once.
           document.addEventListener(
@@ -922,6 +933,23 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
           }
         }
         if (blocked) this.addCount(blocked);
+        this.runEffects();
+      }
+
+      // Small actions that hiding cannot do (e.g. switching autoplay off). They
+      // run after every scan, so they must be cheap and safe to repeat.
+      runEffects() {
+        for (const effect of asList(this.config.effects)) {
+          if (!this.applies(effect)) continue;
+          try {
+            effect.run();
+          } catch (error) {
+            if (!this.warnedRules.has(effect.name)) {
+              this.warnedRules.add(effect.name);
+              console.warn(`[ShortStop] Effect "${effect.name}" failed:`, error);
+            }
+          }
+        }
       }
 
       /* ---------------- Counter ---------------- */
@@ -986,12 +1014,24 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
 
   /* ======== youtube.js ======== */
   /*
-   * ShortStop: YouTube
-   * ==================
+   * ShortStop: YouTube (focus mode)
+   * ===============================
+   * Shorts:
    * - /shorts/VIDEO_ID opens in the normal player (/watch?v=VIDEO_ID).
-   * - Shorts shelves are hidden on home, search, subscriptions, channel and watch pages.
+   * - Shorts shelves are hidden on search, subscriptions, channel and watch pages.
    * - The Shorts entries in the sidebar, mini sidebar, channel tabs, search filter
    *   chips and the mobile (m.youtube.com) bottom bar are removed.
+   *
+   * Recommendations, the same way as the other platforms' feeds:
+   * - The home page's recommended grid, Trending/Explore and Gaming are covered
+   *   by the ShortStop panel (with a YouTube search box).
+   * - On the watch page the "Up next" list, end-screen video walls, end cards
+   *   and the autoplay countdown are hidden, and autoplay is switched off.
+   * - Search results lose their "For you" / "People also watched" shelves.
+   *
+   * Still available on purpose: search, subscriptions, playlists (including
+   * playing through them), channels, history, Watch later and any video you
+   * open. The miniplayer keeps playing when you go back to the home page.
    *
    * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
    * that slipped through, and add or adjust a rule below. See README.md.
@@ -1013,6 +1053,64 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         name: 'Bare Shorts feed to the home page',
         match: /^\/shorts\/?$/,
         to: () => '/',
+      },
+    ],
+
+    // Named pages (matched against location.pathname, first match wins).
+    pages: {
+      home: /^\/$/,
+      explore: /^\/(?:feed\/(?:trending|explore)|gaming)(?:\/|$)/,
+      watch: /^\/watch(?:\/|$)/,
+      search: /^\/results(?:\/|$)/,
+    },
+
+    cover: {
+      // Every browse page YouTube keeps in memory is hidden on covered pages;
+      // the panel sits in front of them. m.youtube.com uses ytm-browse.
+      target: ['ytd-browse', 'ytm-browse'],
+      title: 'Scrolling is blocked by your focus settings.',
+      // The miniplayer may be playing a video you chose, and its keyboard
+      // controls must keep working, so do not pause media or swallow keys here.
+      pauseMedia: false,
+      blockKeys: false,
+      pages: {
+        home: { message: "YouTube's recommended videos are switched off." },
+        explore: { message: 'Trending, Explore and Gaming are switched off.' },
+      },
+      search: {
+        label: 'Search YouTube',
+        placeholder: 'Search for a video or channel',
+        url: (query) => `/results?search_query=${encodeURIComponent(query)}`,
+      },
+      links: () => [
+        { label: 'Subscriptions', href: '/feed/subscriptions' },
+        { label: 'Watch later', href: '/playlist?list=WL' },
+        { label: 'Your playlists', href: '/feed/playlists' },
+        { label: 'History', href: '/feed/history' },
+      ],
+    },
+
+    // Autoplay: switch YouTube's own toggle off, and if an autoplay countdown
+    // appears anyway (e.g. the toggle has not rendered yet), cancel it.
+    effects: [
+      {
+        name: 'Switch autoplay off',
+        page: 'watch',
+        run: () => {
+          const toggle = document.querySelector('.ytp-autonav-toggle-button[aria-checked="true"]');
+          if (toggle) (toggle.closest('button') || toggle).click();
+        },
+      },
+      {
+        name: 'Cancel the autoplay countdown',
+        run: () => {
+          // YouTube keeps the overlay in the page and shows it with an inline
+          // style only while counting down (our CSS hides it either way).
+          const overlay = document.querySelector('.ytp-autonav-endscreen-countdown-overlay');
+          if (!overlay || overlay.style.display === 'none') return;
+          const cancel = overlay.querySelector('.ytp-autonav-endscreen-upnext-cancel-button');
+          if (cancel) cancel.click();
+        },
       },
     ],
 
@@ -1107,6 +1205,42 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
       {
         name: 'Mobile: bottom bar "Shorts" tab',
         selector: 'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
+      },
+
+      /* ---- Recommendations (focus mode) ---- */
+      {
+        name: '"Up next" recommendations beside or below the video',
+        // Only the recommendations list: the playlist panel and live chat share
+        // the same column and stay.
+        selector: 'ytd-watch-next-secondary-results-renderer',
+        count: true,
+      },
+      {
+        name: 'Mobile: related videos under the video',
+        selector:
+          'ytm-item-section-renderer[section-identifier="related-items"], ytm-watch-next-secondary-results-renderer',
+        count: true,
+      },
+      {
+        name: 'End screen: video wall, end cards and autoplay countdown',
+        selector: '.html5-endscreen, .ytp-ce-element, .ytp-autonav-endscreen-countdown-overlay',
+      },
+      {
+        name: 'Paused-video "More videos" overlay',
+        selector: '.ytp-pause-overlay, .ytp-pause-overlay-container',
+      },
+      {
+        name: 'Recommendation shelves in search results (English titles)',
+        selector: 'ytd-shelf-renderer #title, ytd-horizontal-card-list-renderer #title',
+        text: /^(For you|People also watched|Channels new to you|From related searches|Explore more)$/i,
+        closest: 'ytd-shelf-renderer, ytd-horizontal-card-list-renderer',
+        page: 'search',
+        count: true,
+      },
+      {
+        name: 'Sidebar links to Trending, Explore and Gaming',
+        selector:
+          'ytd-guide-entry-renderer:has(a[href^="/feed/trending"], a[href^="/feed/explore"], a[href^="/gaming"])',
       },
     ],
   });

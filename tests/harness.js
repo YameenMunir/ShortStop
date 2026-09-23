@@ -53,6 +53,15 @@
     return element.getAttribute('data-name') || element.outerHTML.slice(0, 90);
   }
 
+  // data-expect-attr-<phase>="name=value": the element's attribute must equal value.
+  function checkAttributes(attribute, label) {
+    for (const element of document.querySelectorAll(`[${attribute}]`)) {
+      const [name, value] = element.getAttribute(attribute).split('=');
+      const actual = element.getAttribute(name);
+      check(`${label}: ${describe(element)} has ${name}="${value}"`, actual === value, `got "${actual}"`);
+    }
+  }
+
   function checkExpectations(attribute, label) {
     for (const element of document.querySelectorAll(`[${attribute}]`)) {
       const expected = element.getAttribute(attribute);
@@ -126,6 +135,7 @@
 
     check('generated stylesheet injected', document.getElementById(`shortstop-${plan.platform}`));
     checkExpectations('data-expect', 'initial');
+    checkAttributes('data-expect-attr', 'initial');
     if (plan.cover !== undefined) checkCover(plan.cover, 'initial');
     if (plan.cover && document.querySelector('video')) check('covered feed media paused', pauses > 0, `${pauses} pauses`);
 
@@ -218,10 +228,15 @@
 
     for (const phase of plan.phases || []) {
       if (phase.settings) applySettings(phase.settings);
+      const pausesBefore = pauses;
       navigateTo(phase.url);
       await wait(400);
       checkExpectations(`data-expect-${phase.name}`, `on ${phase.name}`);
+      checkAttributes(`data-expect-attr-${phase.name}`, `on ${phase.name}`);
       if (phase.cover !== undefined) checkCover(phase.cover, `on ${phase.name} (${phase.url})`);
+      if (phase.pauses !== undefined) {
+        check(`on ${phase.name}: media pauses`, pauses - pausesBefore === phase.pauses, `${pauses - pausesBefore} pauses`);
+      }
     }
 
     for (const [from, to] of plan.redirects || []) {
