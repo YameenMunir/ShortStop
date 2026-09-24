@@ -21,7 +21,7 @@ PLATFORM_FILES = ("youtube.js", "instagram.js", "facebook.js", "tiktok.js")
 
 HEADER = """// ==UserScript==
 // @name         ShortStop: Block Shorts, Reels & Endless Feeds
-// @namespace    https://github.com/YOUR_GITHUB_USERNAME/shortstop
+// @namespace    https://github.com/YameenMunir/ShortStop
 // @version      __VERSION__
 // @description  Blocks Shorts, Reels and the endless recommendation feeds on YouTube, Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.
 // @author       Yameen Munir
