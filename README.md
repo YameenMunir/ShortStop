@@ -150,23 +150,48 @@ at the bottom of the popup. It needs no extra permission and makes no network re
 
 ## Install
 
-### Chrome, Edge or Brave (load unpacked)
+### Google Chrome
 
-1. Download `ShortStop-1.0.0-chromium.zip` from the
-   [Releases page](../../releases) (or `dist/` if you built it yourself) and unzip it.
-   You get a folder called `ShortStop`.
-2. Open the extensions page:
-   - Chrome: `chrome://extensions`
-   - Edge: `edge://extensions`
-   - Brave: `brave://extensions`
-3. Turn on **Developer mode** (top right in Chrome and Brave, left sidebar in Edge).
-4. Click **Load unpacked** and choose the unzipped `ShortStop` folder (the one containing `manifest.json`).
-5. A welcome page opens by itself. It shows how to pin ShortStop to the toolbar (so the
-   switches are one click away) and how to allow it in private windows.
+ShortStop isn't on the Chrome Web Store, so you add it to Chrome yourself with **Load unpacked**.
+It takes about a minute.
 
-If you cloned the repo, you can also load the `extension/` folder directly.
+1. **Get the files.** Either:
+   - download `ShortStop-1.0.0-chromium.zip` from the [Releases page](../../releases) and
+     unzip it. You get a folder called `ShortStop`. Or:
+   - on this page, click **Code → Download ZIP**, unzip it, and use the `extension` folder
+     inside. (If you cloned the repo, use its `extension` folder.)
 
-Requires Chrome/Edge/Brave 111 or newer.
+   Put the folder somewhere it can stay, such as `Documents`. Chrome loads ShortStop from it
+   every time it starts, so don't delete or move it afterwards.
+2. In Chrome, open `chrome://extensions` (or **⋮ menu → Extensions → Manage Extensions**).
+3. Turn on **Developer mode** (the switch in the top right corner).
+4. Click **Load unpacked** and select the folder from step 1: the one with `manifest.json`
+   directly inside it.
+5. ShortStop appears in your list of extensions, and its welcome page opens in a new tab.
+   Follow it to **pin** ShortStop to the toolbar (the puzzle-piece icon, then the pin next to
+   ShortStop), so its switches are one click away.
+6. Optional: to block in Incognito windows too, click **Details** on ShortStop's card and turn
+   on **Allow in Incognito**.
+
+That's it: open YouTube, Instagram or any of the other sites to see it working.
+
+**Updating:** replace the folder's contents with the new version (or `git pull` in your clone),
+then click the ↻ reload icon on ShortStop's card in `chrome://extensions`. Your settings are
+kept. Tabs showing the ShortStop panel refresh themselves; refresh any other open tabs on the
+blocked sites.
+
+**If it doesn't load:** "Manifest file is missing or unreadable" means the folder you picked is
+one level too high or too low. Choose the folder that has `manifest.json` directly inside it.
+
+**Removing:** click **Remove** on ShortStop's card in `chrome://extensions`.
+
+Requires Chrome 111 or newer.
+
+### Edge or Brave
+
+The same steps work, on each browser's own extensions page: `edge://extensions` or
+`brave://extensions`. In Edge, **Developer mode** is in the left sidebar. Requires Edge or
+Brave 111 or newer.
 
 ### Firefox
 
