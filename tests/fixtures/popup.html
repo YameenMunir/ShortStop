@@ -94,6 +94,24 @@
             ['youtube', 'instagram', 'facebook', 'tiktok'].every((platform) => toggle(platform).checked)
           );
 
+          /* ---- Hide YouTube Shorts ---- */
+          const shortsOption = $('#option-youtube-shorts');
+          check('Hide YouTube Shorts is on by default', shortsOption && shortsOption.checked);
+          check(
+            'Hide YouTube Shorts has its description',
+            $('#option-youtube-shorts-detail').textContent === 'Remove Shorts and short-form video feeds from YouTube.'
+          );
+          shortsOption.click();
+          await step();
+          check(
+            'switching Hide YouTube Shorts off saves only that setting',
+            stores.sync.settings.youtubeHideShorts === false && stores.sync.settings.youtube === true && toggle('youtube').checked,
+            JSON.stringify(stores.sync.settings)
+          );
+          shortsOption.click();
+          await step();
+          check('switching Hide YouTube Shorts back on saves it', stores.sync.settings.youtubeHideShorts === true);
+
           /* ---- Daily pause limit ---- */
           for (let pause = 1; pause <= 3; pause += 1) {
             const left = 4 - pause;

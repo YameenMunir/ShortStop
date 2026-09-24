@@ -30,6 +30,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     facebookNotifications: false,
     facebookMarketplaceSearch: true,
     xNotifications: false,
+    youtubeHideShorts: true,
     ...settings,
   };
   for (const platform of PLATFORMS) complete[platform] = settings[platform] !== false;

@@ -60,6 +60,9 @@ HEADER = """// ==UserScript==
 // YouTube: Shorts open in the normal player; the home feed, Up next,
 // end screens and autoplay are switched off.
 const BLOCK_YOUTUBE_SHORTS = true;
+// Hide YouTube Shorts: Shorts shelves, cards, the Shorts tab and /shorts/
+// links. false = Shorts are left alone; the rest of YouTube's blocking stays.
+const HIDE_YOUTUBE_SHORTS = true;
 
 // Instagram: the Home feed, Explore, Reels and Stories are blocked.
 const BLOCK_INSTAGRAM_REELS = true;
@@ -93,6 +96,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
   const SETTINGS = {
     youtube: BLOCK_YOUTUBE_SHORTS,
+    youtubeHideShorts: HIDE_YOUTUBE_SHORTS,
     instagram: BLOCK_INSTAGRAM_REELS,
     facebook: BLOCK_FACEBOOK_FEEDS,
     facebookNotifications: ALLOW_FACEBOOK_NOTIFICATIONS,

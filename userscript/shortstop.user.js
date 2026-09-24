@@ -37,6 +37,9 @@
 // YouTube: Shorts open in the normal player; the home feed, Up next,
 // end screens and autoplay are switched off.
 const BLOCK_YOUTUBE_SHORTS = true;
+// Hide YouTube Shorts: Shorts shelves, cards, the Shorts tab and /shorts/
+// links. false = Shorts are left alone; the rest of YouTube's blocking stays.
+const HIDE_YOUTUBE_SHORTS = true;
 
 // Instagram: the Home feed, Explore, Reels and Stories are blocked.
 const BLOCK_INSTAGRAM_REELS = true;
@@ -70,6 +73,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
   const SETTINGS = {
     youtube: BLOCK_YOUTUBE_SHORTS,
+    youtubeHideShorts: HIDE_YOUTUBE_SHORTS,
     instagram: BLOCK_INSTAGRAM_REELS,
     facebook: BLOCK_FACEBOOK_FEEDS,
     facebookNotifications: ALLOW_FACEBOOK_NOTIFICATIONS,
@@ -235,7 +239,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    *     options: {                            // extra switches stored in settings
    *       notifications: { setting: 'instagramNotifications', default: false },
    *     },
-   *     redirects: [{ name, match: /regex on pathname/, when?(url), to(match, url) }],
+   *     redirects: [{ name, match: /regex on pathname/, when?(url), onlyIf?(options), to(match, url) }],
    *     cover: {                              // replace whole pages with a ShortStop panel
    *       target: 'main' | ['#feed', 'main'], // the content area; first selector that exists wins
    *       title: 'Shown on every covered page',
@@ -941,7 +945,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         }
         for (const rule of asList(this.config.redirects)) {
           const match = url.pathname.match(rule.match);
-          if (!match || (rule.when && !rule.when(url))) continue;
+          if (!match || (rule.when && !rule.when(url)) || (rule.onlyIf && !rule.onlyIf(this.options))) continue;
           const destination = new URL(rule.to(match, url), url.origin).href;
           if (destination !== url.href) return destination;
         }
@@ -1219,7 +1223,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
   /*
    * ShortStop: YouTube (focus mode)
    * ===============================
-   * Shorts:
+   * Shorts (while "Hide YouTube Shorts" is on in the popup, the default):
    * - /shorts/VIDEO_ID opens in the normal player (/watch?v=VIDEO_ID).
    * - Shorts shelves are hidden on search, subscriptions, channel and watch pages.
    * - The Shorts entries in the sidebar, mini sidebar, channel tabs, search filter
@@ -1236,9 +1240,15 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    * playing through them), channels, history, Watch later and any video you
    * open. The miniplayer keeps playing when you go back to the home page.
    *
+   * Switching "Hide YouTube Shorts" off leaves Shorts alone but keeps
+   * everything else in this file (the covered home page, Up next, autoplay).
+   *
    * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
    * that slipped through, and add or adjust a rule below. See README.md.
    */
+  // Every Shorts rule and redirect depends on the "Hide YouTube Shorts" option.
+  const youtubeShortsHidden = (options) => options.hideShorts;
+
   ShortStop.start({
     id: 'youtube',
     hosts: ['youtube.com'],
@@ -1246,15 +1256,22 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     // YouTube's own SPA events (desktop, then m.youtube.com).
     navigationEvents: ['yt-navigate-finish', 'yt-page-data-updated', 'state-navigateend'],
 
+    // Extra switches shown in the popup under YouTube.
+    options: {
+      hideShorts: { setting: 'youtubeHideShorts', default: true },
+    },
+
     redirects: [
       {
         name: 'Shorts player to the regular player',
         match: /^\/shorts\/([\w-]{5,})/,
+        onlyIf: youtubeShortsHidden,
         to: (match) => `/watch?v=${match[1]}`,
       },
       {
         name: 'Bare Shorts feed to the home page',
         match: /^\/shorts\/?$/,
+        onlyIf: youtubeShortsHidden,
         to: () => '/',
       },
     ],
@@ -1321,33 +1338,39 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       /* ---- Shelves and sections (containers first) ---- */
       {
         name: 'Shorts shelf on search, watch and channel pages',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytd-reel-shelf-renderer',
         count: true,
       },
       {
         name: 'Shorts section on the home page',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])',
         count: true,
       },
       {
         name: 'Shorts rich shelf (outside a section)',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytd-rich-shelf-renderer[is-shorts]',
         count: true,
       },
       {
         name: 'Shorts grid shelf in search (2025 layout)',
+        onlyIf: youtubeShortsHidden,
         selector:
           'grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Mobile: Shorts section on the home page',
+        onlyIf: youtubeShortsHidden,
         selector:
           'ytm-rich-section-renderer:has(ytm-reel-shelf-renderer, ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2)',
         count: true,
       },
       {
         name: 'Mobile: Shorts shelf (outside a section)',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytm-reel-shelf-renderer',
         count: true,
       },
@@ -1355,32 +1378,52 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       /* ---- Individual Shorts mixed into normal video lists ---- */
       {
         name: 'Short in the home / subscriptions grid',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytd-rich-item-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in search results',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytd-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in a channel or legacy grid',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytd-grid-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in watch-page suggestions',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytd-compact-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Mobile: Short in a video list',
+        onlyIf: youtubeShortsHidden,
         selector:
           'ytm-video-with-context-renderer:has(a[href^="/shorts/"]), ytm-rich-item-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
+        name: 'Short as a new-style lockup card',
+        onlyIf: youtubeShortsHidden,
+        selector: 'yt-lockup-view-model:has(a[href^="/shorts/"])',
+        count: true,
+      },
+      {
+        name: 'Short marked by the SHORTS badge on its thumbnail',
+        onlyIf: youtubeShortsHidden,
+        // Some lists link a Short as /watch?v=; the thumbnail badge still says SHORTS.
+        selector:
+          ':is(ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer):has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"])',
+        count: true,
+      },
+      {
         name: 'Any leftover Shorts tile',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-reel-item-renderer',
         count: true,
       },
@@ -1388,25 +1431,30 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       /* ---- Navigation entry points ---- */
       {
         name: 'Sidebar "Shorts" entry',
+        onlyIf: youtubeShortsHidden,
         selector:
           'ytd-guide-entry-renderer:has(a[title="Shorts"]), ytd-guide-entry-renderer:has(a[href^="/shorts"])',
       },
       {
         name: 'Mini sidebar "Shorts" entry',
+        onlyIf: youtubeShortsHidden,
         selector:
           'ytd-mini-guide-entry-renderer[aria-label="Shorts"], ytd-mini-guide-entry-renderer:has(a[title="Shorts"])',
       },
       {
         name: 'Channel page "Shorts" tab',
+        onlyIf: youtubeShortsHidden,
         selector: 'yt-tab-shape[tab-title="Shorts"], tp-yt-paper-tab:has(a[href$="/shorts"])',
       },
       {
         name: 'Search filter chip "Shorts"',
+        onlyIf: youtubeShortsHidden,
         selector: 'yt-chip-cloud-chip-renderer, chip-shape',
         text: /^Shorts$/i, // Text match needs JS, so this rule is not in the CSS.
       },
       {
         name: 'Mobile: bottom bar "Shorts" tab',
+        onlyIf: youtubeShortsHidden,
         selector: 'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
       },
 

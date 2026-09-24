@@ -51,6 +51,13 @@ are on. Note today's counter number.
       shows and the miniplayer keeps playing. Its play/pause and keyboard controls work.
 - [ ] **Direct link:** paste `https://www.youtube.com/shorts/aqz-KE-bpKQ` into the address bar.
       It opens as `/watch?v=aqz-KE-bpKQ` in the normal player, and Back skips the Short.
+- [ ] **Hide YouTube Shorts off:** in the popup, switch off *Hide YouTube Shorts* under YouTube.
+      Without a reload, search results show their Shorts shelf and the sidebar shows Shorts, and a
+      `/shorts/…` link plays in the Shorts player. Home still shows the panel, a watch page still
+      has no Up next, and autoplay is still off.
+- [ ] **Hide YouTube Shorts on again:** switch it back on while a Short is playing. It moves to
+      `/watch?v=…` at once, and Shorts disappear from search and the sidebar without a reload.
+- [ ] Close and reopen the browser: *Hide YouTube Shorts* keeps its setting.
 
 ## YouTube (mobile, m.youtube.com)
 

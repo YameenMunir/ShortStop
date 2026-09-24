@@ -33,7 +33,7 @@
  *     options: {                            // extra switches stored in settings
  *       notifications: { setting: 'instagramNotifications', default: false },
  *     },
- *     redirects: [{ name, match: /regex on pathname/, when?(url), to(match, url) }],
+ *     redirects: [{ name, match: /regex on pathname/, when?(url), onlyIf?(options), to(match, url) }],
  *     cover: {                              // replace whole pages with a ShortStop panel
  *       target: 'main' | ['#feed', 'main'], // the content area; first selector that exists wins
  *       title: 'Shown on every covered page',
@@ -739,7 +739,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       }
       for (const rule of asList(this.config.redirects)) {
         const match = url.pathname.match(rule.match);
-        if (!match || (rule.when && !rule.when(url))) continue;
+        if (!match || (rule.when && !rule.when(url)) || (rule.onlyIf && !rule.onlyIf(this.options))) continue;
         const destination = new URL(rule.to(match, url), url.origin).href;
         if (destination !== url.href) return destination;
       }

@@ -321,6 +321,7 @@
     check('no allowed times: blocking is back', blockingOn());
 
     for (const phase of plan.phases || []) {
+      const navigationsBefore = state.navigations.length;
       if (phase.settings) applySettings(phase.settings);
       const pausesBefore = pauses;
       navigateTo(phase.url);
@@ -330,6 +331,39 @@
       if (phase.cover !== undefined) checkCover(phase.cover, `on ${phase.name} (${phase.url})`);
       if (phase.pauses !== undefined) {
         check(`on ${phase.name}: media pauses`, pauses - pausesBefore === phase.pauses, `${pauses - pausesBefore} pauses`);
+      }
+      for (const [from, to] of phase.redirects || []) {
+        const got = engine.resolveRedirect(from);
+        check(`on ${phase.name}: redirect ${from} -> ${to}`, got === to, `got ${got}`);
+      }
+      // Links whose clicks must reach the site, not be taken over by ShortStop.
+      for (const href of phase.passClicks || []) {
+        const link = document.createElement('a');
+        link.href = href;
+        document.body.appendChild(link);
+        let reachedSite = false;
+        link.addEventListener('click', (event) => {
+          reachedSite = !event.defaultPrevented;
+          event.preventDefault(); // Keep the fixture page where it is.
+        });
+        link.click();
+        link.remove();
+        check(`on ${phase.name}: a click on ${href} reaches the site`, reachedSite);
+      }
+      // null: nothing navigated during this phase. A URL: ShortStop redirected
+      // there, after which the harness plays the part of the new page loading.
+      if (phase.navigation !== undefined) {
+        const made = state.navigations.slice(navigationsBefore);
+        if (phase.navigation === null) {
+          check(`on ${phase.name}: no redirect`, made.length === 0, JSON.stringify(made));
+        } else {
+          const last = made[made.length - 1];
+          check(`on ${phase.name}: redirects to ${phase.navigation}`, last && last.url === phase.navigation && last.replace, JSON.stringify(made));
+          engine.redirecting = false;
+          engine.setCloak(false);
+          navigateTo(phase.navigation);
+          await wait(400);
+        }
       }
     }
 
