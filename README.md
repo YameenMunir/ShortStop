@@ -438,6 +438,11 @@ injection or unsafe DOM use, and for risky workflow settings. Findings appear on
 and in the repository's **Security** tab. It skips `tests/` and the generated userscript
 ([config](.github/codeql/codeql-config.yml)).
 
+**Keeping the workflows up to date.** [Dependabot](.github/dependabot.yml) checks the actions the
+workflows use (`actions/checkout`, `actions/setup-python`, `github/codeql-action`) every Monday,
+and opens one pull request with any new versions. The usual checks run on it, so it's safe to
+merge once they pass. ShortStop itself has no dependencies, so there's nothing else to update.
+
 **Releasing.** Pushing a tag like `v1.1.0` runs the [release workflow](.github/workflows/release.yml).
 It checks the tag matches the version, runs the privacy guard and the full test suite, builds
 the Chrome and Firefox zips with `tools/package.py`, and publishes a
