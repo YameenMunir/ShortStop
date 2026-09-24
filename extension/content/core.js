@@ -22,7 +22,8 @@
  *      unlock ("allow 10 minutes", stored as an expiry time in `unlocks`) pauses
  *      blocking, then switches it back on by itself when the time runs out.
  *      Allowed times (`schedules`, see shared/schedule.js) pause blocking the
- *      same way, re-checked once a second.
+ *      same way, re-checked once a second. A focus session (`focusUntil`)
+ *      overrides all of that: every platform blocks until it ends.
  *
  * Config shape (see the platform files for real examples):
  *   {
@@ -32,6 +33,8 @@
  *     pages: { explore: /^\/explore\//, feed: (url) => bool }, // pathname RegExp or URL test; first match wins
  *     options: {                            // extra switches stored in settings
  *       notifications: { setting: 'instagramNotifications', default: false },
+ *       // duringFocus: the value it takes while a focus session runs
+ *       hideShorts: { setting: 'youtubeHideShorts', default: true, duringFocus: true },
  *     },
  *     redirects: [{ name, match: /regex on pathname/, when?(url), onlyIf?(options), independent?, to(match, url) }],
  *     cover: {                              // replace whole pages with a ShortStop panel
@@ -384,6 +387,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.lastSettings = {};
       this.unlock = { until: 0, timer: 0 }; // A running temporary unlock, if any.
       this.scheduleOpen = false; // Inside an allowed time when settings were last applied.
+      this.focusOn = false; // A focus session was running when settings were last applied.
       this.enabled = true; // Optimistic until settings load, so nothing flashes.
       this.running = true; // Blocking on, or only the independent rules working.
       this.cover = { host: null, page: null, renderedHref: null, countedHref: null, linksKey: null };
@@ -419,12 +423,21 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
 
     // Reads this platform's extra switches (config.options) from the settings.
     resolveOptions(settings) {
+      const focus = this.focusActive(settings);
       const options = {};
       for (const [name, spec] of Object.entries(this.config.options || {})) {
         const value = settings[spec.setting];
-        options[name] = typeof value === 'boolean' ? value : spec.default;
+        if (focus && spec.duringFocus !== undefined) options[name] = spec.duringFocus;
+        else options[name] = typeof value === 'boolean' ? value : spec.default;
       }
       return options;
+    }
+
+    // A focus session (started from the popup, stored as `focusUntil`) blocks
+    // every platform until it ends, whatever its switch, allowed times or
+    // options such as "Hide YouTube Shorts" say. It cannot be ended early.
+    focusActive(settings) {
+      return (Number(settings.focusUntil) || 0) > Date.now();
     }
 
     applySettings(settings) {
@@ -434,6 +447,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       // Options can switch CSS rules and covered pages on or off.
       if (changed && this.styleEl) this.styleEl.textContent = this.buildCss();
       this.lastSettings = settings;
+      this.focusOn = this.focusActive(settings);
       this.setEnabled(this.isBlocking(settings));
     }
 
@@ -447,6 +461,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       unlock.timer = 0;
       unlock.until = 0;
       this.scheduleOpen = this.scheduleAllows(settings);
+      if (this.focusOn) return true;
       if (settings[this.config.id] === false) return false;
       const until = Number(settings.unlocks && settings.unlocks[this.config.id]) || 0;
       if (until > Date.now()) {
@@ -472,7 +487,8 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
     // second (a timer can also be late after the computer sleeps).
     recheck() {
       const unlockEnded = this.unlock.until && Date.now() >= this.unlock.until;
-      if (unlockEnded || this.scheduleAllows(this.lastSettings) !== this.scheduleOpen) {
+      const focusChanged = this.focusActive(this.lastSettings) !== this.focusOn;
+      if (unlockEnded || focusChanged || this.scheduleAllows(this.lastSettings) !== this.scheduleOpen) {
         this.applySettings(this.lastSettings);
       }
     }

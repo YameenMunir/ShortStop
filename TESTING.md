@@ -228,6 +228,21 @@ Put it back afterwards.
       starts a 30-second wait ("Pausing in 29s."), and **Pause now** then pauses as usual. A
       platform you haven't paused today still has all 3.
 
+## Focus session (popup)
+
+- [ ] At the top of the popup, **Focus session** offers **30 min**, **1 hour** and **2 hours**. Pick
+      one: it asks first ("Block every site for 1 hour?"), and **Cancel** goes back.
+- [ ] Switch YouTube and *Hide YouTube Shorts* off first, then start a 30-minute session. The popup
+      counts down ("29:59 left…") and says when it ends. Every switch shows on and can't be
+      clicked, *Hide YouTube Shorts* shows on and is greyed out, and **Edit** under allowed times
+      is greyed out. *Allow notifications* still works.
+- [ ] Without reloading, the YouTube tab shows the panel on Home again and Shorts are gone.
+- [ ] Close and reopen the popup: the session is still running.
+- [ ] When it ends (to save time, run
+      `chrome.storage.sync.get('settings', ({settings}) => chrome.storage.sync.set({settings: {...settings, focusUntil: Date.now() + 15000}}))`
+      in the popup's DevTools console), the switches unlock by themselves, YouTube is off again
+      with Shorts showing, and the tab follows without a reload.
+
 ## Allowed times (popup)
 
 - [ ] Under YouTube, **Allowed times** says "None". **Edit**, **Add a time**: a new time is every

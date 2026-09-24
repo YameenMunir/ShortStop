@@ -310,6 +310,49 @@
           );
           check('"Block now" turns the switch back on', toggle('youtube').checked && !shown(panel('youtube')));
           check('"Block now" does not use up a pause', JSON.stringify(stores.local.pauseLog) === pauseLogBefore);
+
+          /* ---- Focus session ---- */
+          await chrome.storage.sync.set({
+            settings: { ...stores.sync.settings, schedules: {}, youtube: false, youtubeHideShorts: false },
+          });
+          await wait(1100);
+          const focusText = () => $('#focus-text').textContent;
+          const focusBox = $('#focus');
+          check('focus: offers 30 min, 1 hour and 2 hours', shown($('#focus-choices')) && !shown($('#focus-confirm')));
+          $('[data-focus-minutes="60"]').click();
+          await step();
+          check('focus: picking a length asks first', shown($('#focus-confirm')) && !shown($('#focus-choices')) && focusText().includes('for 1 hour'), focusText());
+          check('focus: nothing starts before Start', !stores.sync.settings.focusUntil);
+          $('#focus-cancel').click();
+          await step();
+          check('focus: Cancel goes back to the choices', shown($('#focus-choices')) && !stores.sync.settings.focusUntil);
+          $('[data-focus-minutes="60"]').click();
+          await step();
+          const startedAt = Date.now();
+          $('#focus-start').click();
+          await step();
+          const until = Number(stores.sync.settings.focusUntil);
+          check('focus: Start saves when it ends', Math.abs(until - (startedAt + 60 * 60 * 1000)) < 5000, String(until - startedAt));
+          check('focus: counting down', focusBox.classList.contains('is-active') && /^(1:00:00|59:\d\d) left\./.test(focusText()), focusText());
+          check('focus: no choices while it runs', !shown($('#focus-choices')) && !shown($('#focus-confirm')));
+          check('focus: every switch shows on and is locked', ALL.every((platform) => toggle(platform).checked && toggle(platform).disabled));
+          toggle('instagram').click();
+          await step();
+          check('focus: clicking a locked switch changes nothing', stores.sync.settings.instagram === true && toggle('instagram').checked);
+          check(
+            'focus: Hide YouTube Shorts shows on and is locked',
+            $('#option-youtube-shorts').checked && $('#option-youtube-shorts').disabled && stores.sync.settings.youtubeHideShorts === false
+          );
+          check('focus: allowed times cannot be edited', ALL.every((platform) => inScheduler(platform, '.schedule-edit').disabled));
+          check('focus: other options still work', !$('#option-instagram-notifications').disabled);
+          check('focus: YouTube keeps its own setting underneath', stores.sync.settings.youtube === false);
+
+          await chrome.storage.sync.set({ settings: { ...stores.sync.settings, focusUntil: Date.now() + 1500 } });
+          await wait(2600);
+          check('focus: when it ends, the switches unlock by themselves', ALL.every((platform) => !toggle(platform).disabled));
+          check('focus: YouTube is back to its own setting (off)', !toggle('youtube').checked);
+          check('focus: Hide YouTube Shorts is back to its own setting (off)', !$('#option-youtube-shorts').checked && !$('#option-youtube-shorts').disabled);
+          check('focus: the choices come back', shown($('#focus-choices')) && !focusBox.classList.contains('is-active'));
         } catch (error) {
           check('popup test crashed', false, String(error && error.stack));
         }

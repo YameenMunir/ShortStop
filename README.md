@@ -29,9 +29,11 @@
   tabs follow at once, with no reload.
 - **Allowed times.** Let a site through at set times, like YouTube from 8 to 9pm on weekdays
   or Instagram at weekends. Blocking switches off and on by itself.
+- **Focus sessions.** Block every site for 30 minutes, 1 hour or 2 hours, with the switches
+  locked until it ends.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,466
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,715
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -93,6 +95,22 @@ times. Pick the days, then a start and end time:
   midnight, if the site is allowed all week).
 
 Allowed times are saved with your other settings, so they follow your browser profile.
+
+### Focus sessions
+
+The switches turn off in one click, so nothing stops you switching a site off on impulse.
+When you want that, start a **focus session** from the top of the popup: pick **30 min**,
+**1 hour** or **2 hours**, then **Start**.
+
+- Until it ends, **every site is blocked**: its switch, its allowed times and *Hide YouTube
+  Shorts* are overridden, and they're locked in the popup (the switches show on and can't be
+  clicked, and allowed times can't be edited). The smaller options such as *Allow
+  notifications* still work.
+- The popup shows how long is left and when it ends. It **can't be stopped early**, which is
+  the point, so the length is confirmed before it starts.
+- When it ends, every site goes back to its own settings by itself, in open tabs too.
+- It's saved with your other settings (as the time it ends), so a session covers every
+  computer on your browser profile.
 
 ### First-run welcome page
 
@@ -350,7 +368,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,466 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,715 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -375,6 +393,8 @@ platform it checks:
 - Allowed times on every platform: blocking pauses inside one, ignores another day's,
   another platform's or a malformed one, respects *Block now*, and (with a fake clock)
   switches off and back on by itself when an allowed time starts and ends
+- Focus sessions on every platform: blocking while switched off or inside an allowed time,
+  ending by itself on time, and (YouTube) hiding Shorts even with *Hide YouTube Shorts* off
 
 Two more pages have no site markup. `schedule.html` unit-tests
 [shared/schedule.js](extension/shared/schedule.js): weekday, all-day and past-midnight times,

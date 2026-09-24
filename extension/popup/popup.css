@@ -99,6 +99,56 @@ body {
   color: var(--slate);
 }
 
+/* ---- Focus session: sits between the tally and the platforms ---- */
+
+.focus {
+  margin: 0 0 14px;
+}
+
+/* While a session runs it gets the same red edge as the platforms' cards. */
+.focus.is-active {
+  padding: 9px 12px 10px;
+  border-left: 3px solid var(--stop);
+  background: color-mix(in srgb, var(--stop) 7%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+
+.focus-title {
+  margin: 0;
+  font: 600 15px/1.3 var(--font-sign);
+}
+
+.focus-text {
+  margin: 2px 0 8px;
+  color: var(--slate);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus.is-active .focus-text {
+  margin-bottom: 0;
+  color: var(--ink);
+}
+
+.focus-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.focus-actions[hidden] {
+  display: none;
+}
+
+/* A site's switch is only ever disabled while a focus session locks it. */
+.platform-row .switch:disabled {
+  opacity: 0.6;
+}
+
+.platform-row:has(.switch:disabled) {
+  cursor: default;
+}
+
 /* ---- Platform rows ---- */
 
 .platforms {
@@ -351,6 +401,15 @@ body {
 
 .schedule-edit {
   padding: 2px 8px;
+}
+
+.schedule-edit:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.schedule-edit:disabled:hover {
+  border-color: transparent;
 }
 
 .schedule-summary {
