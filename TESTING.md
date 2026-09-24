@@ -132,6 +132,9 @@ in place of the videos, with TikTok's sidebar and top bar still usable.
       LIVE links. Typing `/following`, `/friends`, `/live` or `/explore` in the address bar
       shows the panel each time.
 - [ ] **Discovery pages:** a hashtag (`/tag/cats`) and a sound page (any `/music/…` link) show the panel.
+- [ ] **Short dramas** (only if your account gets them): there's no Short drama link in the sidebar, and
+      `/shortdrama` and any episode link show "Short dramas are switched off.". If the feed lives at a
+      different URL for you, note it so the route can be updated.
 - [ ] **In-app navigation:** from a profile, click the TikTok logo. The panel appears without a
       page reload. Go back and the profile works normally again.
 - [ ] **Search:** the panel's search box and TikTok's own search bar both show results, and

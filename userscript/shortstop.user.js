@@ -1641,7 +1641,8 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
    * ShortStop: TikTok (focus mode)
    * ==============================
    * Every algorithmic feed is treated the same: For You, Following, Friends,
-   * LIVE, Explore and the discovery pages behind hashtags, sounds and topics.
+   * LIVE, Explore, Short dramas and the discovery pages behind hashtags, sounds
+   * and topics.
    * On those routes the feed area is hidden from the first paint and replaced
    * with a ShortStop panel, so there is no feed to switch to as a way around the
    * block. While a feed is covered, the scroll and next-video keys are swallowed
@@ -1685,6 +1686,8 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
       friends: /^\/friends\/?$/,
       live: /^\/(?:live(?:\/|$)|@[^/]+\/live(?:\/|$))/, // LIVE feed and individual streams.
       explore: /^\/(?:explore|discover|channel|tag|music|trending|topics?)(?:\/|$)/,
+      // Catalog and episodes (/shortdrama/episode/<series>/<n>): episodes play on through a series.
+      shortdrama: /^\/shortdrama(?:\/|$)/,
       notifications: /^\/(?:notifications|activity|inbox)(?:\/|$)/,
       video: /^\/@[^/]+\/(?:video|photo)\//, // A single video or photo post.
       search: /^\/search(?:\/|$)/,
@@ -1707,6 +1710,7 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         friends: { message: 'The Friends feed is switched off.' },
         live: { message: 'LIVE is switched off.' },
         explore: { message: 'Explore and discovery feeds are switched off.' },
+        shortdrama: { message: 'Short dramas are switched off.' },
         notifications: {
           message: 'Notifications are switched off. Turn on "Allow notifications" in the ShortStop menu if you need them.',
           onlyIf: (options) => !options.notifications,
@@ -1748,7 +1752,7 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
       },
       {
         name: 'Short drama link (a short-form series feed shown to some users)',
-        selector: '[data-e2e="nav-short-drama"]',
+        selector: '[data-e2e="nav-short-drama"], a[href="/shortdrama"], a[href^="/shortdrama/"], a[href^="/shortdrama?"]',
       },
       {
         name: 'Notifications / inbox button',
