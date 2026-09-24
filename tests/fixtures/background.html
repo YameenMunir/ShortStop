@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Background worker (extension/background.js)</title>
+    <script>
+      // A fake chrome API for the background worker: records badge changes and
+      // keeps settings in memory, and lets the test "press" the keyboard shortcut.
+      (function () {
+        'use strict';
+        const copy = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
+        const stores = { sync: { settings: { youtube: false, instagram: true } }, local: {} };
+        const area = (name) => ({
+          get(keys) {
+            const out = {};
+            for (const key of [].concat(keys)) if (key in stores[name]) out[key] = copy(stores[name][key]);
+            return Promise.resolve(out);
+          },
+          set(items) {
+            Object.assign(stores[name], copy(items));
+            return Promise.resolve();
+          },
+        });
+        const commandListeners = [];
+        const badge = { text: '', color: '' };
+        window.fake = { stores, badge, press: (name) => Promise.all(commandListeners.map((listener) => listener(name))) };
+        window.chrome = {
+          runtime: { id: 'shortstop', onInstalled: { addListener() {} }, onMessage: { addListener() {} } },
+          storage: { sync: area('sync'), local: area('local') },
+          tabs: { create() {} },
+          commands: { onCommand: { addListener: (listener) => commandListeners.push(listener) } },
+          action: {
+            setBadgeText: ({ text }) => (badge.text = text),
+            setBadgeBackgroundColor: ({ color }) => (badge.color = color),
+          },
+        };
+      })();
+    </script>
+    <script src="../../extension/shared/stats.js"></script>
+    <script src="../../extension/background.js"></script>
+  </head>
+  <body>
+    <script>
+      (async function () {
+        'use strict';
+        const results = [];
+        const check = (name, pass, detail) => results.push({ name, pass: Boolean(pass), detail: detail || '' });
+        const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        const { stores, badge, press } = window.fake;
+        const focusUntil = () => Number(stores.sync.settings.focusUntil) || 0;
+
+        try {
+          await press('start-focus-session');
+          check('first press: nothing starts yet', !focusUntil());
+          check('first press: the icon asks "1h?"', badge.text === '1h?', badge.text);
+
+          await wait(5300);
+          check('no second press: the question goes away after 5 seconds', badge.text === '', badge.text);
+          await press('start-focus-session');
+          check('a press after the 5 seconds only asks again', !focusUntil() && badge.text === '1h?', badge.text);
+
+          await wait(1000);
+          const pressedAt = Date.now();
+          await press('start-focus-session');
+          check(
+            'second press within 5 seconds: a 1-hour session starts',
+            Math.abs(focusUntil() - (pressedAt + 60 * 60 * 1000)) < 5000,
+            String(focusUntil() - pressedAt)
+          );
+          check('second press: the icon shows 60m', badge.text === '60m', badge.text);
+          check(
+            'starting a session keeps the other settings',
+            stores.sync.settings.youtube === false && stores.sync.settings.instagram === true,
+            JSON.stringify(stores.sync.settings)
+          );
+          await wait(3300);
+          check('the icon clears after a moment', badge.text === '', badge.text);
+
+          const running = focusUntil();
+          stores.sync.settings.focusUntil = Date.now() + 42 * 60 * 1000 - 1000;
+          await press('start-focus-session');
+          check('during a session: a press shows the minutes left', badge.text === '42m', badge.text);
+          await press('start-focus-session');
+          check('during a session: pressing again changes nothing', badge.text === '42m' && running > 0, badge.text);
+          check('during a session: the session is not extended', focusUntil() < Date.now() + 43 * 60 * 1000);
+
+          stores.sync.settings.focusUntil = 0;
+          await wait(3300);
+          await press('some-other-command');
+          check('another command does nothing', !focusUntil() && badge.text === '', badge.text);
+        } catch (error) {
+          check('background test crashed', false, String(error && error.stack));
+        }
+
+        const output = document.createElement('pre');
+        output.id = 'results';
+        output.textContent = JSON.stringify(results);
+        document.documentElement.appendChild(output);
+      })();
+    </script>
+  </body>
+</html>

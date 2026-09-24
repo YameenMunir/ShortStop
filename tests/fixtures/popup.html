@@ -51,6 +51,7 @@
         window.chrome = {
           storage: { sync: area('sync'), local: area('local'), onChanged: { addListener: (fn) => listeners.push(fn) } },
           runtime: {},
+          commands: { getAll: () => Promise.resolve([{ name: 'start-focus-session', shortcut: 'Alt+Shift+F' }]) },
         };
 
         try {
@@ -253,10 +254,16 @@
           const focusText = () => $('#focus-text').textContent;
           const focusBox = $('#focus');
           check('focus: offers 30 min, 1 hour and 2 hours', shown($('#focus-choices')) && !shown($('#focus-confirm')));
+          check(
+            'focus: shows the keyboard shortcut',
+            shown($('#focus-hint')) && $('#focus-hint').textContent === 'Or press Alt+Shift+F twice for 1 hour.',
+            $('#focus-hint').textContent
+          );
           $('[data-focus-minutes="60"]').click();
           await step();
           check('focus: picking a length asks first', shown($('#focus-confirm')) && !shown($('#focus-choices')) && focusText().includes('for 1 hour'), focusText());
           check('focus: nothing starts before Start', !stores.sync.settings.focusUntil);
+          check('focus: no shortcut hint while confirming', !shown($('#focus-hint')));
           $('#focus-cancel').click();
           await step();
           check('focus: Cancel goes back to the choices', shown($('#focus-choices')) && !stores.sync.settings.focusUntil);
@@ -268,7 +275,7 @@
           const until = Number(stores.sync.settings.focusUntil);
           check('focus: Start saves when it ends', Math.abs(until - (startedAt + 60 * 60 * 1000)) < 5000, String(until - startedAt));
           check('focus: counting down', focusBox.classList.contains('is-active') && /^(1:00:00|59:\d\d) left\./.test(focusText()), focusText());
-          check('focus: no choices while it runs', !shown($('#focus-choices')) && !shown($('#focus-confirm')));
+          check('focus: no choices while it runs', !shown($('#focus-choices')) && !shown($('#focus-confirm')) && !shown($('#focus-hint')));
           check('focus: every switch shows on and is locked', ALL.every((platform) => toggle(platform).checked && toggle(platform).disabled));
           toggle('instagram').click();
           await step();

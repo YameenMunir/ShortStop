@@ -524,6 +524,7 @@ function tick() {
 /* ------------------------------------------------------------------ */
 
 let focusChoice = 0; // Minutes picked and waiting for "Start", or 0.
+let focusShortcut = ''; // The keyboard shortcut for a 1-hour session, if one is set.
 
 function inFocus(now) {
   return (Number(state.settings.focusUntil) || 0) > now;
@@ -563,9 +564,24 @@ function renderFocus(now) {
   setText(document.getElementById('focus-text'), text);
   document.getElementById('focus-choices').hidden = active || Boolean(focusChoice);
   document.getElementById('focus-confirm').hidden = active || !focusChoice;
+  const hint = document.getElementById('focus-hint');
+  hint.hidden = active || Boolean(focusChoice) || !focusShortcut;
+  setText(hint, focusShortcut ? `Or press ${focusShortcut} twice for 1 hour.` : '');
 }
 
 function initFocus() {
+  // The shortcut the browser actually assigned (people can change it, or it can
+  // clash with another extension's and be left unset).
+  if (chrome.commands && chrome.commands.getAll) {
+    chrome.commands
+      .getAll()
+      .then((commands) => {
+        const command = commands.find((entry) => entry.name === 'start-focus-session');
+        focusShortcut = (command && command.shortcut) || '';
+        render();
+      })
+      .catch(() => {});
+  }
   for (const choice of document.querySelectorAll('[data-focus-minutes]')) {
     choice.addEventListener('click', () => {
       focusChoice = Number(choice.dataset.focusMinutes);
