@@ -18,12 +18,11 @@
  *      replaced by a ShortStop panel, re-applied whenever the route or the DOM
  *      changes. On covered routes, scroll/next-video keys are swallowed and any
  *      media that starts playing is paused at once.
- *   5. Settings changes apply live, without reloading the tab. A temporary
- *      unlock ("allow 10 minutes", stored as an expiry time in `unlocks`) pauses
- *      blocking, then switches it back on by itself when the time runs out.
- *      Allowed times (`schedules`, see shared/schedule.js) pause blocking the
- *      same way, re-checked once a second. A focus session (`focusUntil`)
- *      overrides all of that: every platform blocks until it ends.
+ *   5. Settings changes apply live, without reloading the tab. Allowed times
+ *      (`schedules`, see shared/schedule.js) lift blocking while they last,
+ *      re-checked once a second, so it comes back by itself when they end. A
+ *      focus session (`focusUntil`) overrides that: every platform blocks until
+ *      it ends.
  *
  * Config shape (see the platform files for real examples):
  *   {
@@ -62,7 +61,7 @@
  *       text: /regex/,                      // only if the target's text matches (JS only)
  *       count: true,                        // counts toward "blocked today"
  *       independent: true,                  // keeps working while the platform's blocking is
- *                                           // off, paused or in an allowed time (its own option
+ *                                           // off or in an allowed time (its own option
  *                                           // switch, e.g. "Hide YouTube Shorts", decides)
  *     }],
  *   }
@@ -86,7 +85,6 @@
   const COUNT_FLUSH_MS = 1500; // Batch counter updates to spare storage writes.
   const URL_POLL_MS = 1000; // Last-resort check for navigations nothing else caught.
   const MAX_REDIRECT_WAIT_MS = 300; // How long a redirect waits for the counter write.
-  const MAX_TIMEOUT_MS = 2 ** 31 - 1; // Longest delay setTimeout accepts.
 
   // Keys that scroll a page or jump to the next/previous video in a feed.
   const FEED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'j', 'k', 'J', 'K']);
@@ -205,9 +203,9 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
   function createExtensionEnv() {
     const api = global.chrome;
 
-    // Settings (including allowed times) live in sync storage. Temporary
-    // unlocks ("allow 10 minutes") and "block now" skips of an allowed time
-    // live in this device's local storage and are merged in.
+    // Settings (including allowed times) live in sync storage. "Block now"
+    // skips of an allowed time live in this device's local storage and are
+    // merged in.
     function readSettings() {
       const read = (area, key) =>
         new Promise((resolve) => {
@@ -220,8 +218,8 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
             resolve({}); // Extension was reloaded: this script is orphaned.
           }
         });
-      return Promise.all([read('sync', 'settings'), read('local', 'unlocks'), read('local', 'scheduleSkips')]).then(
-        ([settings, unlocks, scheduleSkips]) => ({ ...settings, unlocks, scheduleSkips })
+      return Promise.all([read('sync', 'settings'), read('local', 'scheduleSkips')]).then(
+        ([settings, scheduleSkips]) => ({ ...settings, scheduleSkips })
       );
     }
 
@@ -247,7 +245,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
           api.storage.onChanged.addListener((changes, area) => {
             if (
               (area === 'sync' && changes.settings) ||
-              (area === 'local' && (changes.unlocks || changes.scheduleSkips))
+              (area === 'local' && changes.scheduleSkips)
             ) {
               readSettings().then(callback);
             }
@@ -385,7 +383,6 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.rules = asList(config.rules).map((rule, index) => ({ action: 'hide', ...rule, index }));
       this.options = this.resolveOptions({});
       this.lastSettings = {};
-      this.unlock = { until: 0, timer: 0 }; // A running temporary unlock, if any.
       this.scheduleOpen = false; // Inside an allowed time when settings were last applied.
       this.focusOn = false; // A focus session was running when settings were last applied.
       this.enabled = true; // Optimistic until settings load, so nothing flashes.
@@ -451,24 +448,13 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.setEnabled(this.isBlocking(settings));
     }
 
-    // Blocking is on unless this platform is switched off, a temporary unlock
-    // is still running, or it is inside one of its allowed times. When an
-    // unlock or an allowed time ends, blocking comes back by itself in every
-    // open tab (a timer for unlocks, and the once-a-second check below).
+    // Blocking is on unless this platform is switched off or inside one of its
+    // allowed times. When an allowed time ends, blocking comes back by itself
+    // in every open tab (the once-a-second check below).
     isBlocking(settings) {
-      const unlock = this.unlock;
-      clearTimeout(unlock.timer);
-      unlock.timer = 0;
-      unlock.until = 0;
       this.scheduleOpen = this.scheduleAllows(settings);
       if (this.focusOn) return true;
       if (settings[this.config.id] === false) return false;
-      const until = Number(settings.unlocks && settings.unlocks[this.config.id]) || 0;
-      if (until > Date.now()) {
-        unlock.until = until;
-        unlock.timer = setTimeout(() => this.recheck(), Math.min(until - Date.now() + 50, MAX_TIMEOUT_MS));
-        return false;
-      }
       return !this.scheduleOpen;
     }
 
@@ -482,20 +468,18 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       return skipUntil <= Date.now() && schedule.isAllowed(windows, new Date());
     }
 
-    // Re-applies the settings if time alone has changed the answer: an unlock
-    // ran out, or an allowed time started or ended. Cheap, so it runs every
-    // second (a timer can also be late after the computer sleeps).
+    // Re-applies the settings if time alone has changed the answer: an allowed
+    // time or a focus session started or ended. Cheap, so it runs every second.
     recheck() {
-      const unlockEnded = this.unlock.until && Date.now() >= this.unlock.until;
       const focusChanged = this.focusActive(this.lastSettings) !== this.focusOn;
-      if (unlockEnded || focusChanged || this.scheduleAllows(this.lastSettings) !== this.scheduleOpen) {
+      if (focusChanged || this.scheduleAllows(this.lastSettings) !== this.scheduleOpen) {
         this.applySettings(this.lastSettings);
       }
     }
 
     // `on` is the platform's own blocking. Independent rules (e.g. "Hide
-    // YouTube Shorts") keep working while it is off, paused or in an allowed
-    // time, as long as their own option allows them.
+    // YouTube Shorts") keep working while it is off or in an allowed time, as
+    // long as their own option allows them.
     setEnabled(on) {
       this.enabled = on;
       this.running = on || this.hasIndependentWork();
@@ -827,7 +811,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       }
       setInterval(() => {
         if (this.env.href() !== this.lastHref) onNavigate();
-        this.recheck(); // Unlocks and allowed times that ran out or began.
+        this.recheck(); // Allowed times that began or ended.
         this.checkOrphaned();
       }, URL_POLL_MS);
       // Capture phase on window runs before the site's own click handlers.

@@ -1,23 +1,16 @@
 /*
- * ShortStop: pause timings
- * ========================
- * How long the popup's "Allow 10 minutes" lasts, how many of those a day are
- * instant, and how long the wait is for everything else that loosens blocking
- * ("Turn off...", extra pauses, adding allowed times). Shared by the popup
- * (which enforces them) and the welcome page (which explains them), so the two
- * can never disagree. Change them here.
+ * ShortStop: the wait before loosening allowed times
+ * ==================================================
+ * Adding or lengthening an allowed time waits before it is saved, so a site
+ * can't be opened up on impulse. Shared by the popup (which enforces the wait)
+ * and the welcome page (which explains it), so the two can never disagree.
+ * Change it here.
  */
 (function (global) {
   'use strict';
 
   global.ShortStopPause = {
-    UNLOCK_MINUTES: 10, // "Allow 10 minutes"
-    DAILY_PAUSES: 3, // Instant pauses per platform per day; after that, each one waits.
-    OFF_WAIT_SECONDS: 30, // How long loosening blocking makes you wait.
-    // Platforms whose switch turns off at once, with no "Allow / Turn off" choice or wait.
-    // Remove one to give it back the "Allow 10 minutes / Turn off..." choice, the daily
-    // pause limit and the wait before turning off.
-    INSTANT_OFF: ['youtube', 'instagram', 'facebook', 'tiktok', 'reddit', 'x', 'snapchat'],
+    OFF_WAIT_SECONDS: 30, // How long adding or lengthening an allowed time waits.
     OFF_WINDOW_SECONDS: 120, // How long you then have to confirm before it lapses.
   };
 })(globalThis);

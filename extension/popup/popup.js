@@ -6,23 +6,12 @@
  * to open tabs immediately, with no reload, because content scripts listen for
  * storage changes.
  *
- * Each platform's switch turns off in one click: every platform is listed in
- * INSTANT_OFF in shared/pause.js. A platform removed from that list gets the
- * slower flow instead, where clicking its switch while it is blocking does not
- * switch it off but offers two choices:
- *
- *   - "Allow 10 minutes": a temporary unlock. Blocking pauses, then comes back
- *     by itself when the time runs out (stored on this device only). The first
- *     3 pauses a day per platform are instant; after that, each one waits.
- *   - "Turn off...": switching off for good.
- *
- * Every wait works the same way (a "pending request"): 30 seconds, then a
- * confirmation within 2 minutes. It keeps running if the popup is closed,
- * because it is stored, not held in memory. Adding or lengthening allowed
- * times waits too; shortening or removing them is instant.
- *
- * Switching blocking back ON is always instant, including "Block now" during
- * an allowed time.
+ * Each platform's switch turns off and back on in one click. The one thing
+ * that waits is loosening the allowed times: adding or lengthening a time is a
+ * "pending request", 30 seconds and then a confirmation within 2 minutes. It
+ * keeps running if the popup is closed, because it is stored, not held in
+ * memory. Shortening or removing a time is instant, and so is "Block now"
+ * during an allowed time.
  *
  * A focus session ("Focus session" at the top) blocks every platform for 30
  * minutes to 2 hours: switches, "Hide YouTube Shorts" and allowed times are
@@ -33,9 +22,9 @@
 
 const { PLATFORMS, todayKey, normalizeStats, totalOf } = globalThis.ShortStopStats;
 
-// The timings live in shared/pause.js (the welcome page explains them too).
-const { UNLOCK_MINUTES, DAILY_PAUSES, OFF_WAIT_SECONDS, OFF_WINDOW_SECONDS } = globalThis.ShortStopPause;
-const instantOff = (platform) => globalThis.ShortStopPause.INSTANT_OFF.includes(platform);
+// The wait for loosening allowed times lives in shared/pause.js (the welcome
+// page explains it too).
+const { OFF_WAIT_SECONDS, OFF_WINDOW_SECONDS } = globalThis.ShortStopPause;
 const { MAX_WINDOWS, normalizeWindows, allowedUntil, isLooser } = globalThis.ShortStopSchedule;
 
 const NAMES = {
@@ -68,14 +57,13 @@ const WEEK = [1, 2, 3, 4, 5, 6, 0].map((day) => {
 /*
  * settings: sync storage (switches, options, `schedules`).
  * Local storage, this device only:
- *   unlocks        { platform: expiry time } for "Allow 10 minutes"
- *   pending        { platform: { kind: 'off' | 'pause' | 'schedule', at, windows? } }
- *   pauseLog       { date, used: { platform: pauses started that day } }
+ *   pending        { platform: { kind: 'schedule', at, windows } } a waiting allowed-times change
  *   scheduleSkips  { platform: time } "Block now" ignores allowed times until then
  */
-const state = { settings: {}, unlocks: {}, pending: {}, pauseLog: {}, scheduleSkips: {} };
-const LOCAL_KEYS = ['unlocks', 'pending', 'pauseLog', 'scheduleSkips'];
-const chooserOpen = new Set(); // Platforms whose "Allow / Turn off" choice is showing.
+const state = { settings: {}, pending: {}, scheduleSkips: {} };
+const LOCAL_KEYS = ['pending', 'scheduleSkips'];
+// Kept by the retired pause flow ("Allow 10 minutes", "Turn off..."); removed on load.
+const RETIRED_LOCAL_KEYS = ['pendingOff', 'unlocks', 'pauseLog'];
 const panels = new Map(); // platform -> { panel, status, buttons }
 const schedulers = new Map(); // platform -> the allowed-times controls
 const drafts = new Map(); // platform -> allowed times being edited
@@ -88,12 +76,10 @@ function savedWindows(platform) {
   return normalizeWindows(state.settings.schedules && state.settings.schedules[platform]);
 }
 
-// 'blocking', 'unlocked' (temporary), 'scheduled' (an allowed time) or 'off' (for good).
+// 'blocking', 'scheduled' (an allowed time) or 'off'.
 function platformState(platform, now) {
   if (inFocus(now)) return { kind: 'focus' };
   if (state.settings[platform] === false) return { kind: 'off' };
-  const until = Number(state.unlocks[platform]) || 0;
-  if (until > now) return { kind: 'unlocked', until };
   if ((Number(state.scheduleSkips[platform]) || 0) <= now) {
     const allowed = allowedUntil(savedWindows(platform), new Date(now));
     if (allowed) return { kind: 'scheduled', until: allowed };
@@ -111,28 +97,10 @@ function pendingRequest(platform, now) {
   return now < readyAt + OFF_WINDOW_SECONDS * 1000 ? { ...request, phase: 'ready' } : null;
 }
 
-function pausesLeft(platform) {
-  const log = state.pauseLog;
-  const used = log.date === todayKey() && log.used ? Number(log.used[platform]) || 0 : 0;
-  return Math.max(0, DAILY_PAUSES - used);
-}
-
-function recordPause(platform) {
-  const today = todayKey();
-  const used = state.pauseLog.date === today ? { ...state.pauseLog.used } : {};
-  used[platform] = (Number(used[platform]) || 0) + 1;
-  state.pauseLog = { date: today, used };
-}
-
 function without(object, key) {
   const copy = { ...object };
   delete copy[key];
   return copy;
-}
-
-function formatClock(ms) {
-  const total = Math.max(0, Math.ceil(ms / 1000));
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
 function formatMinute(minute) {
@@ -200,31 +168,7 @@ async function commit({ sync = false, local = false } = {}) {
 /* Actions                                                              */
 /* ------------------------------------------------------------------ */
 
-function startPause(platform) {
-  state.unlocks = { ...state.unlocks, [platform]: Date.now() + UNLOCK_MINUTES * 60 * 1000 };
-  recordPause(platform);
-}
-
-// Instant while today's free pauses last; after that it waits like "Turn off...".
-function allowForAWhile(platform) {
-  chooserOpen.delete(platform);
-  if (pausesLeft(platform) > 0) {
-    state.pending = without(state.pending, platform);
-    startPause(platform);
-  } else {
-    state.pending = { ...state.pending, [platform]: { kind: 'pause', at: Date.now() } };
-  }
-  return commit({ local: true });
-}
-
-function requestOff(platform) {
-  chooserOpen.delete(platform);
-  state.pending = { ...state.pending, [platform]: { kind: 'off', at: Date.now() } };
-  return commit({ local: true });
-}
-
 function cancel(platform) {
-  chooserOpen.delete(platform);
   state.pending = without(state.pending, platform);
   return commit({ local: true });
 }
@@ -233,40 +177,20 @@ function confirmRequest(platform) {
   const request = pendingRequest(platform, Date.now());
   if (!request || request.phase !== 'ready') return Promise.resolve(); // Too early: nothing happens.
   state.pending = without(state.pending, platform);
-  if (request.kind === 'pause') {
-    startPause(platform);
-    return commit({ local: true });
-  }
-  if (request.kind === 'schedule') {
-    setSchedule(platform, request.windows);
-    return commit({ sync: true, local: true });
-  }
-  state.unlocks = without(state.unlocks, platform);
-  state.settings = { ...state.settings, [platform]: false };
+  setSchedule(platform, request.windows);
   return commit({ sync: true, local: true });
 }
 
-// For INSTANT_OFF platforms (all of them, as shipped): off straight away, no choice or wait.
-// A waiting change to the allowed times is left alone.
-function turnOffNow(platform) {
-  chooserOpen.delete(platform);
-  if (state.pending[platform] && state.pending[platform].kind !== 'schedule') {
-    state.pending = without(state.pending, platform);
-  }
-  state.unlocks = without(state.unlocks, platform);
+// Off in one click. A waiting change to the allowed times is left alone.
+function turnOff(platform) {
   state.settings = { ...state.settings, [platform]: false };
-  return commit({ sync: true, local: true });
+  return commit({ sync: true });
 }
 
-// Back to blocking: from a temporary unlock, an allowed time or off. Always
-// instant. A waiting change to the allowed times is left alone.
+// Back to blocking, from off or an allowed time. Always instant. A waiting
+// change to the allowed times is left alone.
 function blockAgain(platform) {
   const now = Date.now();
-  chooserOpen.delete(platform);
-  if (state.pending[platform] && state.pending[platform].kind !== 'schedule') {
-    state.pending = without(state.pending, platform);
-  }
-  state.unlocks = without(state.unlocks, platform);
   const wasOff = state.settings[platform] === false;
   if (wasOff) state.settings = { ...state.settings, [platform]: true };
   let allowed = allowedUntil(savedWindows(platform), new Date(now));
@@ -307,26 +231,23 @@ function button(label, variant, action) {
   return node;
 }
 
-// The panel that appears under a platform's row when it needs a decision or is
-// counting down. It is built once and only updated afterwards, so focus stays put.
+// The panel under a platform's row: a waiting change to its allowed times, or
+// "Block now" during an allowed time. It is built once and only updated
+// afterwards, so focus stays put.
 function buildPanel(platform, input) {
   const panel = element('div', 'unlock');
   panel.dataset.platform = platform;
   panel.hidden = true;
   const status = element('p', 'unlock-status');
   const buttons = {
-    allow: button(`Allow ${UNLOCK_MINUTES} minutes`, 'primary', 'allow'),
-    request: button('Turn off…', 'plain', 'request'),
-    confirm: button('Turn off now', 'primary', 'confirm'),
-    block: button('Block again', 'primary', 'block'),
+    confirm: button('Save now', 'primary', 'confirm'),
+    block: button('Block now', 'primary', 'block'),
     cancel: button('Cancel', 'quiet', 'cancel'),
   };
   const actions = element('div', 'unlock-actions');
   actions.append(...Object.values(buttons));
   panel.append(status, actions);
 
-  buttons.allow.addEventListener('click', () => allowForAWhile(platform));
-  buttons.request.addEventListener('click', () => requestOff(platform));
   buttons.confirm.addEventListener('click', () => confirmRequest(platform));
   buttons.block.addEventListener('click', () => blockAgain(platform));
   buttons.cancel.addEventListener('click', () => cancel(platform));
@@ -489,7 +410,6 @@ function saveSchedule(platform) {
     setSchedule(platform, next);
     return commit({ sync: true });
   }
-  chooserOpen.delete(platform);
   state.pending = { ...state.pending, [platform]: { kind: 'schedule', at: Date.now(), windows: next } };
   return commit({ local: true });
 }
@@ -497,24 +417,6 @@ function saveSchedule(platform) {
 /* ------------------------------------------------------------------ */
 /* Rendering                                                            */
 /* ------------------------------------------------------------------ */
-
-const REQUEST_TEXT = {
-  off: {
-    waiting: (seconds) => `Turning off in ${seconds}s.`,
-    ready: (name) => `Ready. Turn off ${name} blocking until you switch it back on?`,
-    confirm: 'Turn off now',
-  },
-  pause: {
-    waiting: (seconds) => `Pausing in ${seconds}s.`,
-    ready: (name) => `Ready. Pause ${name} blocking for ${UNLOCK_MINUTES} minutes?`,
-    confirm: 'Pause now',
-  },
-  schedule: {
-    waiting: (seconds) => `Saving the new allowed times in ${seconds}s.`,
-    ready: (name) => `Ready. Save ${name}'s new allowed times?`,
-    confirm: 'Save now',
-  },
-};
 
 function setText(node, text) {
   if (node.textContent !== text) node.textContent = text;
@@ -525,7 +427,6 @@ function renderPlatform(input, now) {
   const { panel, status, buttons } = panels.get(platform);
   const current = platformState(platform, now);
   const request = current.kind === 'off' ? null : pendingRequest(platform, now);
-  const words = request && (REQUEST_TEXT[request.kind] || REQUEST_TEXT.off);
 
   // The switch always shows whether blocking is active right now.
   input.checked = current.kind === 'blocking' || current.kind === 'focus';
@@ -533,36 +434,24 @@ function renderPlatform(input, now) {
 
   let mode = 'closed';
   if (request) mode = request.phase;
-  else if (current.kind === 'unlocked' || current.kind === 'scheduled') mode = current.kind;
-  else if (chooserOpen.has(platform) && current.kind === 'blocking') mode = 'choose';
+  else if (current.kind === 'scheduled') mode = 'scheduled';
 
-  const name = NAMES[platform];
-  const left = pausesLeft(platform);
   const text = {
     closed: '',
-    choose: left
-      ? `Pause ${name} blocking? ${left} of ${DAILY_PAUSES} pauses left today.`
-      : `Pause ${name} blocking? You've used today's ${DAILY_PAUSES} pauses, so the next one takes a ${OFF_WAIT_SECONDS}-second wait.`,
-    waiting: request && request.readyAt ? words.waiting(Math.ceil((request.readyAt - now) / 1000)) : '',
-    ready: words ? words.ready(name) : '',
-    unlocked: current.until ? `Unlocked, ${formatClock(current.until - now)} left. Blocking comes back by itself.` : '',
+    waiting: request && request.readyAt ? `Saving the new allowed times in ${Math.ceil((request.readyAt - now) / 1000)}s.` : '',
+    ready: `Ready. Save ${NAMES[platform]}'s new allowed times?`,
     scheduled: current.until ? `Allowed by your schedule ${describeUntil(current.until, now)}.` : '',
   }[mode];
 
   const visible = {
-    choose: ['allow', 'request', 'cancel'],
     waiting: ['cancel'],
     ready: ['confirm', 'cancel'],
-    unlocked: ['block'],
     scheduled: ['block'],
     closed: [],
   }[mode];
 
   panel.hidden = mode === 'closed';
   setText(status, text);
-  setText(buttons.allow, `Allow ${UNLOCK_MINUTES} minutes${left ? '' : '…'}`);
-  setText(buttons.confirm, words ? words.confirm : REQUEST_TEXT.off.confirm);
-  setText(buttons.block, mode === 'scheduled' ? 'Block now' : 'Block again');
   for (const [key, node] of Object.entries(buttons)) node.hidden = !visible.includes(key);
 }
 
@@ -617,10 +506,6 @@ function tick() {
   const now = Date.now();
   let stale = false;
   for (const platform of PLATFORMS) {
-    if (state.unlocks[platform] && Number(state.unlocks[platform]) <= now) {
-      state.unlocks = without(state.unlocks, platform);
-      stale = true;
-    }
     if (state.pending[platform] && !pendingRequest(platform, now)) {
       state.pending = without(state.pending, platform);
       stale = true;
@@ -703,24 +588,19 @@ function initFocus() {
 async function load() {
   const [sync, local] = await Promise.all([
     chrome.storage.sync.get('settings'),
-    chrome.storage.local.get(['stats', 'pendingOff', ...LOCAL_KEYS]),
+    chrome.storage.local.get(['stats', ...RETIRED_LOCAL_KEYS, ...LOCAL_KEYS]),
   ]);
   state.settings = sync.settings || {};
   for (const key of LOCAL_KEYS) state[key] = local[key] || {};
-  // Version 1.0 kept "turn off" requests under `pendingOff`. They last two
-  // minutes at most, so they are simply dropped.
-  if (local.pendingOff) chrome.storage.local.remove('pendingOff').catch(() => {});
-  // A "turn off" or pause wait started before a platform became instant-off
-  // would otherwise still count down; drop it.
-  let dropped = false;
-  for (const platform of PLATFORMS.filter(instantOff)) {
-    const request = state.pending[platform];
-    if (request && request.kind !== 'schedule') {
-      state.pending = without(state.pending, platform);
-      dropped = true;
-    }
+  // Tidy up after the retired pause flow: its stored pauses, and any of its
+  // "turn off" or pause waits that were still counting down.
+  const retired = RETIRED_LOCAL_KEYS.filter((key) => key in local);
+  if (retired.length) chrome.storage.local.remove(retired).catch(() => {});
+  const waits = Object.entries(state.pending).filter(([, request]) => request && request.kind === 'schedule');
+  if (waits.length !== Object.keys(state.pending).length) {
+    state.pending = Object.fromEntries(waits);
+    chrome.storage.local.set(localState()).catch(() => {});
   }
-  if (dropped) chrome.storage.local.set(localState()).catch(() => {});
   render();
   renderStats(local.stats);
 }
@@ -735,15 +615,8 @@ async function init() {
       event.preventDefault();
       const now = Date.now();
       if (inFocus(now)) return; // Locked until the focus session ends.
-      if (platformState(platform, now).kind !== 'blocking') {
-        blockAgain(platform); // Turning blocking on is instant.
-      } else if (instantOff(platform)) {
-        turnOffNow(platform);
-      } else if (!pendingRequest(platform, now)) {
-        chooserOpen.add(platform); // Turning it off is a decision.
-        render();
-        panels.get(platform).buttons.allow.focus();
-      }
+      if (platformState(platform, now).kind === 'blocking') turnOff(platform);
+      else blockAgain(platform);
     });
   }
   for (const input of optionSwitches) {

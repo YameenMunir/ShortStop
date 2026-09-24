@@ -212,7 +212,7 @@
 
     // Elements marked data-independent belong to rules with their own option
     // switch (e.g. "Hide YouTube Shorts"): they stay hidden while the
-    // platform's other blocking is off, paused or in an allowed time.
+    // platform's other blocking is off or in an allowed time.
     const independent = Array.from(document.querySelectorAll('[data-independent]'));
     const notVisible = () =>
       Array.from(document.querySelectorAll('[data-expect]:not([data-independent])')).filter(
@@ -244,45 +244,25 @@
     await wait(1700);
     check('re-enabling counts one pass only', state.counted - countBefore <= expectedCount, `+${state.counted - countBefore}`);
 
-    // Temporary unlock ("allow 10 minutes"): blocking pauses, then comes back by itself.
     const blockingOn = () => engine.enabled && Boolean(document.getElementById(`shortstop-${plan.platform}`));
-    applySettings({ [plan.platform]: true, unlocks: { [plan.platform]: Date.now() + 1500 } });
-    await wait(300);
-    check('unlocked: blocking is paused', !blockingOn() && !document.querySelector('shortstop-cover'));
-    check('unlocked: everything is visible', notVisible().length === 0, notVisible().map(describe).join(', '));
-    checkIndependent('unlocked');
-    await wait(1600);
-    check('unlock ran out: blocking comes back by itself', blockingOn());
-    checkExpectations('data-expect', 'after the unlock ran out');
-    if (plan.cover !== undefined) checkCover(plan.cover, 'after the unlock ran out');
-
-    applySettings({ [plan.platform]: true, unlocks: { [plan.platform]: Date.now() - 1000 } });
-    await wait(300);
-    check('an unlock that already ran out does nothing', blockingOn());
-    applySettings({ [plan.platform]: true, unlocks: { somewhere_else: Date.now() + 60000 } });
-    await wait(300);
-    check("another platform's unlock does nothing", blockingOn());
-
+    // A pause stored by the retired "Allow 10 minutes" flow must not lift blocking.
     applySettings({ [plan.platform]: true, unlocks: { [plan.platform]: Date.now() + 60000 } });
     await wait(300);
-    check('long unlock: blocking is paused', !blockingOn());
-    applySettings({ [plan.platform]: true, unlocks: {} });
+    check('a pause left by the retired pause flow is ignored', blockingOn());
+    applySettings({ [plan.platform]: false });
     await wait(300);
-    check('"block again" works at once', blockingOn());
-    applySettings({ [plan.platform]: false, unlocks: { [plan.platform]: Date.now() + 60000 } });
-    await wait(300);
-    check('switched off stays off, even with an unlock', !blockingOn());
-    applySettings({ [plan.platform]: true, unlocks: {} });
+    check('switching off works at once', !blockingOn());
+    applySettings({ [plan.platform]: true });
     await wait(300);
     check('switching back on works at once', blockingOn());
 
-    // Allowed times: blocking pauses inside one, like an unlock.
+    // Allowed times: blocking is lifted inside one.
     const platform = plan.platform;
     const today = new Date().getDay();
     const allDayToday = [{ days: [today], start: 0, end: 0 }];
     applySettings({ [platform]: true, schedules: { [platform]: allDayToday } });
     await wait(300);
-    check('allowed time: blocking is paused', !blockingOn() && !document.querySelector('shortstop-cover'));
+    check('allowed time: blocking is lifted', !blockingOn() && !document.querySelector('shortstop-cover'));
     check('allowed time: everything is visible', notVisible().length === 0, notVisible().map(describe).join(', '));
     checkIndependent('allowed time');
     applySettings({ [platform]: true, schedules: { [platform]: [{ days: [(today + 3) % 7], start: 0, end: 0 }] } });
@@ -322,7 +302,7 @@
       setClock(evening);
       applySettings({ [platform]: true, schedules: { [platform]: eveningSlot } });
       await wait(300);
-      check('20:59:58 inside 20:00-21:00: blocking is paused', !blockingOn());
+      check('20:59:58 inside 20:00-21:00: blocking is lifted', !blockingOn());
       await wait(3000);
       check('allowed time ended: blocking comes back by itself', blockingOn());
       if (plan.cover !== undefined) checkCover(plan.cover, 'after the allowed time ended');
