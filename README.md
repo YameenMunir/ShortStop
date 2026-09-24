@@ -183,8 +183,9 @@ ShortStop isn't on the Chrome Web Store, so you add it to Chrome yourself with *
 It takes about a minute.
 
 1. **Get the files.** Either:
-   - download `ShortStop-1.0.0-chromium.zip` from the [Releases page](../../releases) and
-     unzip it. You get a folder called `ShortStop`. Or:
+   - download `ShortStop-<version>-chromium.zip` from the
+     [latest release](../../releases/latest) and unzip it. You get a folder called
+     `ShortStop`. Or:
    - on this page, click **Code → Download ZIP**, unzip it, and use the `extension` folder
      inside. (If you cloned the repo, use its `extension` folder.)
 
@@ -224,7 +225,8 @@ Brave 111 or newer.
 
 Firefox runs Manifest V3 slightly differently, so there is a separate build:
 
-1. Run `python tools/package.py` (or download `ShortStop-1.0.0-firefox.zip` from Releases).
+1. Download `ShortStop-<version>-firefox.zip` from the [latest release](../../releases/latest)
+   (or build it with `python tools/package.py`).
 2. Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…**
    and pick the Firefox zip (or `manifest.json` inside the unzipped folder).
 3. Open `about:addons` → ShortStop → **Permissions** and allow access to the sites.
@@ -446,6 +448,20 @@ Ordinary links (`<a href="https://…">`) are fine. Run it locally with
 `python tools/check_privacy.py`; its own tests are in `tests/test_privacy_guard.py`. Adding a
 supported site is deliberate: add its patterns to `ALLOWED_HOSTS` in the guard in the same pull
 request as `manifest.json`.
+
+**Releasing.** Pushing a tag like `v1.1.0` runs the [release workflow](.github/workflows/release.yml).
+It checks the tag matches the version, runs the privacy guard and the full test suite, builds
+the Chrome and Firefox zips with `tools/package.py`, and publishes a
+[GitHub Release](../../releases) with both zips and the iPhone userscript attached. To release:
+
+1. Set the new version in `extension/manifest.json` and in `version: '…'` in
+   `extension/content/core.js`, then run `python tools/build_userscript.py` (it copies the
+   version into the userscript). `python tools/check_version.py` confirms all three agree.
+2. Merge that into `main`.
+3. Tag it and push the tag: `git tag v1.1.0 && git push origin v1.1.0`.
+
+If a release goes wrong, fix it on `main`, then re-run the workflow from the **Actions** tab or
+move the tag; re-running replaces the release's files rather than failing.
 
 The test fixtures in `tests/fixtures/` mimic each site's markup. `tests/harness.js`
 runs the real engine against them with a fake URL and in-memory settings. For each
