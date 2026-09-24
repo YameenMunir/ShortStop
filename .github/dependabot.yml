@@ -1,0 +1,16 @@
+# Keeps the actions the workflows use (actions/checkout, actions/setup-python,
+# github/codeql-action) up to date. Once a week, Dependabot opens one pull request
+# with any new versions, and the usual checks run on it before it is merged.
+# ShortStop itself has no dependencies, so the workflows are all there is to update.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      github-actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
