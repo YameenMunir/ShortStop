@@ -18,6 +18,27 @@
 
 ---
 
+## Contents
+
+- [At a glance](#at-a-glance)
+- [What it does](#what-it-does)
+  - [Switching a site off](#switching-a-site-off)
+  - [Allowed times](#allowed-times)
+  - [Focus sessions](#focus-sessions)
+  - [First-run welcome page](#first-run-welcome-page)
+- [Privacy](#privacy)
+- [Install](#install)
+  - [Google Chrome](#google-chrome)
+  - [Edge or Brave](#edge-or-brave)
+  - [Firefox](#firefox)
+  - [iPhone and iPad (Safari + the free Userscripts app)](#iphone-and-ipad-safari--the-free-userscripts-app)
+- [How it works](#how-it-works)
+- [When a site changes: updating selectors](#when-a-site-changes-updating-selectors)
+- [Development](#development)
+- [Known limitations](#known-limitations)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## At a glance
 
 - **Focus mode on YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat.** Endless
@@ -500,10 +521,32 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 - Adding sites means new host permissions. A store-installed copy would ask you to approve
   them on update; a loaded-unpacked copy just needs reloading.
 
+## Contributing
+
+Have an idea for a feature? You don't need to ask first. Build it and send it in:
+
+1. **Fork** this repository (the **Fork** button at the top of the page).
+2. Make your change on a new branch in your fork. If it changes what gets blocked, add the
+   new markup to `tests/fixtures/<platform>.html` (see
+   [When a site changes](#when-a-site-changes-updating-selectors)).
+3. Run `python tests/run_tests.py` and `python tools/build_userscript.py`.
+4. Open a **pull request** that says what your idea is and why you'd want it.
+
+Every feature idea is welcome, and a pull request is the place to suggest one. I'll test it and
+think it over, and if it fits, I may add it to the main code. The one thing I can't accept is a
+change that breaks ShortStop's privacy promise: no data collection, no analytics, no network
+requests, and no permissions beyond the supported sites.
+
 ## License
 
 Released under the [MIT License](LICENSE). You're free to use, copy, modify and
 distribute it, as long as you include the copyright and license notice.
+
+**Taking the code and passing it off as your own doesn't work.** The MIT License lets you learn
+from ShortStop, fork it and build on it, but every copy, and every project built from it, must
+keep the copyright notice naming Yameen Munir. Removing that notice, or claiming you wrote the
+code, breaks the license. Please also don't publish your copy under the ShortStop name or as the
+official version.
 
 ```
 MIT License
