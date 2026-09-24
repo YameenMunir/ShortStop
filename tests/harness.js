@@ -206,14 +206,28 @@
       `counted ${state.counted}, expected ${expectedCount}; marked now: ${marked}`
     );
 
+    // Elements marked data-independent belong to rules with their own option
+    // switch (e.g. "Hide YouTube Shorts"): they stay hidden while the
+    // platform's other blocking is off, paused or in an allowed time.
+    const independent = Array.from(document.querySelectorAll('[data-independent]'));
+    const notVisible = () =>
+      Array.from(document.querySelectorAll('[data-expect]:not([data-independent])')).filter(
+        (element) => stateOf(element) !== 'visible'
+      );
+    const checkIndependent = (label) => {
+      for (const element of independent) {
+        check(`${label}: ${describe(element)} stays hidden (its own switch)`, stateOf(element) === 'hidden', `got ${stateOf(element)}`);
+      }
+    };
+
     // Toggle off: everything comes back and the stylesheet is removed.
     setSettings(false);
     await wait(300);
-    const stillHidden = Array.from(document.querySelectorAll('[data-expect]')).filter(
-      (element) => stateOf(element) !== 'visible'
-    );
-    check('toggle off restores everything', stillHidden.length === 0, stillHidden.map(describe).join(', '));
-    check('toggle off removes the stylesheet', !document.getElementById(`shortstop-${plan.platform}`));
+    check('toggle off restores everything', notVisible().length === 0, notVisible().map(describe).join(', '));
+    checkIndependent('toggled off');
+    const styleLeft = Boolean(document.getElementById(`shortstop-${plan.platform}`));
+    if (independent.length) check('toggle off keeps a stylesheet for the independent rules only', styleLeft);
+    else check('toggle off removes the stylesheet', !styleLeft);
     if (plan.cover) checkCover(false, 'toggled off');
 
     // Toggle back on: same state as before, no double counting.
@@ -227,13 +241,12 @@
     check('re-enabling counts one pass only', state.counted - countBefore <= expectedCount, `+${state.counted - countBefore}`);
 
     // Temporary unlock ("allow 10 minutes"): blocking pauses, then comes back by itself.
-    const blockingOn = () => Boolean(document.getElementById(`shortstop-${plan.platform}`));
-    const notVisible = () =>
-      Array.from(document.querySelectorAll('[data-expect]')).filter((element) => stateOf(element) !== 'visible');
+    const blockingOn = () => engine.enabled && Boolean(document.getElementById(`shortstop-${plan.platform}`));
     applySettings({ [plan.platform]: true, unlocks: { [plan.platform]: Date.now() + 1500 } });
     await wait(300);
     check('unlocked: blocking is paused', !blockingOn() && !document.querySelector('shortstop-cover'));
     check('unlocked: everything is visible', notVisible().length === 0, notVisible().map(describe).join(', '));
+    checkIndependent('unlocked');
     await wait(1600);
     check('unlock ran out: blocking comes back by itself', blockingOn());
     checkExpectations('data-expect', 'after the unlock ran out');
@@ -267,6 +280,7 @@
     await wait(300);
     check('allowed time: blocking is paused', !blockingOn() && !document.querySelector('shortstop-cover'));
     check('allowed time: everything is visible', notVisible().length === 0, notVisible().map(describe).join(', '));
+    checkIndependent('allowed time');
     applySettings({ [platform]: true, schedules: { [platform]: [{ days: [(today + 3) % 7], start: 0, end: 0 }] } });
     await wait(300);
     check('an allowed time on another day does nothing', blockingOn());

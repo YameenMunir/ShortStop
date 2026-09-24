@@ -61,7 +61,8 @@ HEADER = """// ==UserScript==
 // end screens and autoplay are switched off.
 const BLOCK_YOUTUBE_SHORTS = true;
 // Hide YouTube Shorts: Shorts shelves, cards, the Shorts tab and /shorts/
-// links. false = Shorts are left alone; the rest of YouTube's blocking stays.
+// links. Independent of BLOCK_YOUTUBE_SHORTS above: true keeps Shorts hidden
+// even when that is false. false = Shorts are left alone.
 const HIDE_YOUTUBE_SHORTS = true;
 
 // Instagram: the Home feed, Explore, Reels and Stories are blocked.

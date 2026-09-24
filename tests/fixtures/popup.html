@@ -111,6 +111,18 @@
           shortsOption.click();
           await step();
           check('switching Hide YouTube Shorts back on saves it', stores.sync.settings.youtubeHideShorts === true);
+          await chrome.storage.sync.set({ settings: { ...stores.sync.settings, youtube: false } });
+          await step();
+          check('Hide YouTube Shorts stays usable while YouTube blocking is off', !shortsOption.disabled && shortsOption.checked);
+          shortsOption.click();
+          await step();
+          check(
+            'Hide YouTube Shorts can be switched while YouTube blocking is off',
+            stores.sync.settings.youtubeHideShorts === false && stores.sync.settings.youtube === false
+          );
+          shortsOption.click();
+          await chrome.storage.sync.set({ settings: { ...stores.sync.settings, youtube: true, youtubeHideShorts: true } });
+          await step();
 
           /* ---- Daily pause limit ---- */
           for (let pause = 1; pause <= 3; pause += 1) {

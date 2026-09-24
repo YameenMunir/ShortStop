@@ -33,7 +33,7 @@
  *     options: {                            // extra switches stored in settings
  *       notifications: { setting: 'instagramNotifications', default: false },
  *     },
- *     redirects: [{ name, match: /regex on pathname/, when?(url), onlyIf?(options), to(match, url) }],
+ *     redirects: [{ name, match: /regex on pathname/, when?(url), onlyIf?(options), independent?, to(match, url) }],
  *     cover: {                              // replace whole pages with a ShortStop panel
  *       target: 'main' | ['#feed', 'main'], // the content area; first selector that exists wins
  *       title: 'Shown on every covered page',
@@ -58,6 +58,9 @@
  *       closest: 'css selector',            // hide this ancestor of the match instead (JS only)
  *       text: /regex/,                      // only if the target's text matches (JS only)
  *       count: true,                        // counts toward "blocked today"
+ *       independent: true,                  // keeps working while the platform's blocking is
+ *                                           // off, paused or in an allowed time (its own option
+ *                                           // switch, e.g. "Hide YouTube Shorts", decides)
  *     }],
  *   }
  *
@@ -372,6 +375,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.unlock = { until: 0, timer: 0 }; // A running temporary unlock, if any.
       this.scheduleOpen = false; // Inside an allowed time when settings were last applied.
       this.enabled = true; // Optimistic until settings load, so nothing flashes.
+      this.running = true; // Blocking on, or only the independent rules working.
       this.cover = { host: null, page: null, renderedHref: null, countedHref: null, linksKey: null };
       this.redirecting = false;
       this.observer = null;
@@ -462,16 +466,27 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       }
     }
 
+    // `on` is the platform's own blocking. Independent rules (e.g. "Hide
+    // YouTube Shorts") keep working while it is off, paused or in an allowed
+    // time, as long as their own option allows them.
     setEnabled(on) {
       this.enabled = on;
-      if (on) this.activate();
+      this.running = on || this.hasIndependentWork();
+      if (this.running) this.activate();
       else this.deactivate();
+    }
+
+    hasIndependentWork() {
+      return [...this.rules, ...asList(this.config.redirects)].some(
+        (rule) => rule.independent && (!rule.onlyIf || rule.onlyIf(this.options))
+      );
     }
 
     activate() {
       if (this.redirectIfNeeded()) return;
       this.setCloak(false);
       this.injectStyle();
+      this.refreshCss(); // Full blocking and independent-only need different CSS.
       this.updatePage();
       if (!this.observer) {
         this.observer = new MutationObserver(() => this.onMutations());
@@ -513,7 +528,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       // Covered pages: hide the content area from the very first paint, and
       // stop the page scrolling if the panel had to cover the whole viewport.
       const cover = this.config.cover;
-      if (cover) {
+      if (cover && this.enabled) {
         // With several candidate content areas, a later one is only hidden when
         // it does not contain an earlier one (which is where the panel goes).
         const targets = asList(cover.target);
@@ -534,6 +549,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       for (const rule of this.rules) {
         // Rules that need JS (text match, ancestor lookup, blur label) are skipped.
         if (rule.action !== 'hide' || rule.closest || rule.text) continue;
+        if (!this.enabled && !rule.independent) continue;
         if (rule.onlyIf && !rule.onlyIf(this.options)) continue;
         const pages = asList(rule.page);
         const selector = pages.length
@@ -542,6 +558,11 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
         blocks.push(`/* ${rule.name} */\n${selector} { display: none !important; }`);
       }
       return blocks.join('\n\n');
+    }
+
+    refreshCss() {
+      const css = this.buildCss();
+      if (this.styleEl.textContent !== css) this.styleEl.textContent = css;
     }
 
     injectStyle() {
@@ -739,6 +760,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       }
       for (const rule of asList(this.config.redirects)) {
         const match = url.pathname.match(rule.match);
+        if (!this.enabled && !rule.independent) continue;
         if (!match || (rule.when && !rule.when(url)) || (rule.onlyIf && !rule.onlyIf(this.options))) continue;
         const destination = new URL(rule.to(match, url), url.origin).href;
         if (destination !== url.href) return destination;
@@ -748,7 +770,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
 
     redirectIfNeeded() {
       if (this.redirecting) return true;
-      if (!this.enabled) return false;
+      if (!this.running) return false;
       const target = this.resolveRedirect(this.env.href());
       if (!target) return false;
       // Replace, so the Back button skips the Short instead of bouncing into it.
@@ -825,7 +847,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
 
     onNavigate() {
       this.lastHref = this.env.href();
-      if (!this.enabled || this.redirectIfNeeded()) return;
+      if (!this.running || this.redirectIfNeeded()) return;
       this.updatePage();
       this.updateCover(); // Straight away, not after the scan throttle.
       this.scheduleScan();
@@ -833,7 +855,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
 
     // Stops a click on a Short/Reel link before the SPA router starts playing it.
     onClick(event) {
-      if (!this.enabled || this.redirecting || event.defaultPrevented) return;
+      if (!this.running || this.redirecting || event.defaultPrevented) return;
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return; // New-tab clicks are handled by the content script in that tab.
       }
@@ -858,7 +880,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
     }
 
     scheduleScan() {
-      if (this.scanTimer || !this.enabled) return;
+      if (this.scanTimer || !this.running) return;
       this.scanTimer = setTimeout(() => {
         this.scanTimer = 0;
         this.scan();
@@ -879,6 +901,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
 
     // Whether a rule is active on the current page with the current options.
     applies(rule) {
+      if (!this.enabled && !rule.independent) return false;
       const pages = asList(rule.page);
       if (pages.length && !pages.includes(this.page)) return false;
       return !rule.onlyIf || rule.onlyIf(this.options);
@@ -902,7 +925,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
     }
 
     scan() {
-      if (!this.enabled || this.redirecting) return;
+      if (!this.running || this.redirecting) return;
       this.injectStyle(); // Re-attach if the site replaced <head>.
       this.updatePage();
       this.updateCover(); // Re-mount the panel if the site re-rendered it away.
