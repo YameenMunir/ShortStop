@@ -226,6 +226,16 @@ body {
   cursor: pointer;
 }
 
+.option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.option-detail {
+  font-size: 11px;
+}
+
 .option-row:has(.switch:disabled) {
   opacity: 0.55;
   cursor: default;

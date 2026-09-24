@@ -32,6 +32,22 @@
           <span class="platform-count" id="count-youtube" title="Blocked today">0</span>
           <input class="switch" type="checkbox" role="switch" id="toggle-youtube" data-platform="youtube" checked />
         </label>
+        <label class="option-row" for="option-youtube-shorts">
+          <span class="option-text">
+            <span>Hide YouTube Shorts</span>
+            <span class="option-detail" id="option-youtube-shorts-detail">Remove Shorts and short-form video feeds from YouTube.</span>
+          </span>
+          <input
+            class="switch switch-small"
+            type="checkbox"
+            role="switch"
+            id="option-youtube-shorts"
+            data-setting="youtubeHideShorts"
+            data-parent="youtube"
+            data-default="true"
+            aria-describedby="option-youtube-shorts-detail"
+          />
+        </label>
       </li>
       <li class="platform">
         <label class="platform-row" for="toggle-instagram">
