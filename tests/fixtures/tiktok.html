@@ -27,6 +27,9 @@
           { "name": "sound", "url": "https://www.tiktok.com/music/original-sound-7123456789", "cover": { "message": "Explore and discovery feeds are switched off." } },
           { "name": "discover", "url": "https://www.tiktok.com/discover/funny-cats", "cover": { "message": "Explore and discovery feeds are switched off." } },
           { "name": "channel", "url": "https://www.tiktok.com/channel/comedy", "cover": { "message": "Explore and discovery feeds are switched off." } },
+          { "name": "shortdrama", "url": "https://www.tiktok.com/shortdrama", "cover": { "message": "Short dramas are switched off." } },
+          { "name": "shortdramaepisode", "url": "https://www.tiktok.com/shortdrama/episode/7675706520839033876/8", "cover": { "message": "Short dramas are switched off." } },
+          { "name": "shortdramaprofile", "url": "https://www.tiktok.com/@shortdrama", "cover": false },
           { "name": "search", "url": "https://www.tiktok.com/search?q=cats", "cover": false },
           { "name": "searchusers", "url": "https://www.tiktok.com/search/user?q=cats", "cover": false },
           { "name": "profile", "url": "https://www.tiktok.com/@natgeo", "cover": false },
@@ -68,6 +71,8 @@
         <nav>
           <a href="/" data-e2e="nav-foryou" data-name="For You link" data-expect="hidden">For You</a>
           <a href="/shortdrama" data-e2e="nav-short-drama" data-name="Short drama link" data-expect="hidden">Short drama</a>
+          <a href="/shortdrama/episode/7675706520839033876/1" data-name="Short drama episode link without data-e2e" data-expect="hidden">Episode 1</a>
+          <a href="/@shortdrama" data-name="Profile link named shortdrama" data-expect="visible">@shortdrama</a>
           <a href="/explore" data-e2e="nav-explore" data-name="Explore link" data-expect="hidden">Explore</a>
           <a href="/following" data-e2e="nav-following" data-name="Following link" data-expect="hidden">Following</a>
           <a href="/friends" data-e2e="nav-friends" data-name="Friends link" data-expect="hidden">Friends</a>
