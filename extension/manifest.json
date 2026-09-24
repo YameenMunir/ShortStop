@@ -58,6 +58,7 @@
         "*://m.youtube.com/*"
       ],
       "js": [
+        "shared/schedule.js",
         "content/core.js",
         "content/youtube.js"
       ],
@@ -68,6 +69,7 @@
         "*://www.instagram.com/*"
       ],
       "js": [
+        "shared/schedule.js",
         "content/core.js",
         "content/instagram.js"
       ],
@@ -80,6 +82,7 @@
         "*://m.facebook.com/*"
       ],
       "js": [
+        "shared/schedule.js",
         "content/core.js",
         "content/facebook.js"
       ],
@@ -90,6 +93,7 @@
         "*://*.tiktok.com/*"
       ],
       "js": [
+        "shared/schedule.js",
         "content/core.js",
         "content/tiktok.js"
       ],

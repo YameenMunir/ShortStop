@@ -165,6 +165,29 @@ in place of the videos, with TikTok's sidebar and top bar still usable.
       play as Shorts, with no redirect) until you click the switch again, which turns
       blocking back on **instantly**.
 - [ ] Leave a finished wait unconfirmed for over 2 minutes. It lapses by itself.
+- [ ] **Pause limit:** the choice says how many of today's 3 pauses are left, one fewer each time
+      (the steps above used some already). Once they're used up it says so, **Allow 10 minutes…**
+      starts a 30-second wait ("Pausing in 29s."), and **Pause now** then pauses as usual. A
+      platform you haven't paused today still has all 3.
+
+## Allowed times (popup)
+
+- [ ] Under YouTube, **Allowed times** says "None". **Edit**, **Add a time**: a new time is every
+      day, 20:00 to 21:00. Days are round chips you can tick with the mouse or keyboard (Tab, Space).
+- [ ] Set a time that includes **now** (e.g. today, from a few minutes ago to an hour from now) and
+      **Save**. It doesn't apply yet: "Saving the new allowed times in 29s.", with only Cancel.
+      After 30 seconds, **Save now**. The YouTube tab unblocks **without reloading**, and the
+      popup says "Allowed by your schedule until …".
+- [ ] **Block now** blocks the tab again at once, and doesn't use up a pause.
+- [ ] **Shorten** the time so it ends a minute or two from now, and **Save**: it saves straight
+      away, with no wait. Leave the tab open. When the time ends, blocking comes back by itself.
+- [ ] Untick every day in a time and **Save**: it says "Choose at least one day for each time."
+- [ ] **Remove** the time and **Save**: it saves straight away and the summary says "None".
+- [ ] A time with the same start and end (e.g. Saturday 00:00 to 00:00) shows "all day", and one
+      that ends before it starts (e.g. 23:00 to 01:00) runs past midnight.
+- [ ] Turn a platform off for good: its **Edit** button is greyed out.
+
+## More popup checks
 - [ ] Repeat a pause for Instagram, Facebook and TikTok (the panel disappears, the feed
       returns, and it's blocked again when the time is up).
 - [ ] The **counter** has gone up compared with the number you noted at the start, and the

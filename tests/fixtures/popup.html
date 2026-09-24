@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Popup (extension/popup)</title>
+    <link rel="stylesheet" href="../../extension/popup/popup.css" />
+  </head>
+  <body>
+    <script>
+      // Loads the real popup markup and scripts against an in-memory
+      // chrome.storage, clicks through it, and checks what it shows and saves.
+      // The 30-second wait is cut to 2 seconds to keep the run short.
+      (async function () {
+        'use strict';
+        const results = [];
+        const check = (name, pass, detail) => results.push({ name, pass: Boolean(pass), detail: detail || '' });
+        const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        const stores = {
+          sync: { settings: { youtube: true, instagram: true, facebook: true, tiktok: true } },
+          local: {},
+        };
+        const listeners = [];
+        const copy = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
+        const area = (name) => ({
+          get(keys) {
+            const out = {};
+            for (const key of [].concat(keys)) if (key in stores[name]) out[key] = copy(stores[name][key]);
+            return Promise.resolve(out);
+          },
+          set(items) {
+            const changes = {};
+            for (const [key, value] of Object.entries(items)) {
+              changes[key] = { oldValue: copy(stores[name][key]), newValue: copy(value) };
+              stores[name][key] = copy(value);
+            }
+            setTimeout(() => listeners.forEach((listener) => listener(changes, name)), 0);
+            return Promise.resolve();
+          },
+          remove(keys) {
+            for (const key of [].concat(keys)) delete stores[name][key];
+            return Promise.resolve();
+          },
+        });
+        window.chrome = {
+          storage: { sync: area('sync'), local: area('local'), onChanged: { addListener: (fn) => listeners.push(fn) } },
+          runtime: {},
+        };
+
+        try {
+          const request = new XMLHttpRequest();
+          request.open('GET', '../../extension/popup/popup.html', false);
+          request.send();
+          const markup = new DOMParser().parseFromString(request.responseText, 'text/html');
+          for (const node of Array.from(markup.body.children)) {
+            if (node.tagName !== 'SCRIPT') document.body.append(document.importNode(node, true));
+          }
+          const load = (src) =>
+            new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = src;
+              script.onload = resolve;
+              script.onerror = () => reject(new Error(`could not load ${src}`));
+              document.head.append(script);
+            });
+          await load('../../extension/shared/stats.js');
+          await load('../../extension/shared/pause.js');
+          await load('../../extension/shared/schedule.js');
+          globalThis.ShortStopPause.OFF_WAIT_SECONDS = 2;
+          globalThis.ShortStopPause.OFF_WINDOW_SECONDS = 5;
+          await load('../../extension/popup/popup.js');
+          await wait(300);
+
+          const $ = (selector) => document.querySelector(selector);
+          const toggle = (platform) => $(`#toggle-${platform}`);
+          const panel = (platform) => $(`.unlock[data-platform="${platform}"]`);
+          const status = (platform) => panel(platform).querySelector('.unlock-status').textContent;
+          const action = (platform, name) => panel(platform).querySelector(`[data-action="${name}"]`);
+          const shown = (node) => Boolean(node) && node.checkVisibility();
+          const visibleActions = (platform) =>
+            Array.from(panel(platform).querySelectorAll('button'))
+              .filter(shown)
+              .map((node) => node.dataset.action)
+              .join(',');
+          const scheduler = (platform) => $(`.schedule[data-platform="${platform}"]`);
+          const inScheduler = (platform, selector) => scheduler(platform).querySelector(selector);
+          const unlockOf = (platform) => Number((stores.local.unlocks || {})[platform]) || 0;
+          const pendingOf = (platform) => (stores.local.pending || {})[platform];
+          const schedulesOf = (platform) => ((stores.sync.settings.schedules || {})[platform]);
+          const step = () => wait(80);
+
+          check(
+            'all four switches start on',
+            ['youtube', 'instagram', 'facebook', 'tiktok'].every((platform) => toggle(platform).checked)
+          );
+
+          /* ---- Daily pause limit ---- */
+          for (let pause = 1; pause <= 3; pause += 1) {
+            const left = 4 - pause;
+            toggle('youtube').click();
+            await step();
+            check(`pause ${pause}: the choice says ${left} of 3 left`, status('youtube').includes(`${left} of 3 pauses left today`), status('youtube'));
+            check(`pause ${pause}: the allow button is instant`, action('youtube', 'allow').textContent === 'Allow 10 minutes', action('youtube', 'allow').textContent);
+            action('youtube', 'allow').click();
+            await step();
+            check(`pause ${pause}: blocking pauses straight away`, unlockOf('youtube') > Date.now() + 9 * 60 * 1000);
+            check(`pause ${pause}: the switch shows off`, !toggle('youtube').checked);
+            action('youtube', 'block').click();
+            await step();
+            check(`pause ${pause}: "Block again" ends it`, !unlockOf('youtube') && toggle('youtube').checked);
+          }
+          check('three pauses are counted', stores.local.pauseLog.used.youtube === 3, JSON.stringify(stores.local.pauseLog));
+
+          toggle('youtube').click();
+          await step();
+          check('fourth pause: the choice says it will wait', status('youtube').includes("used today's 3 pauses"), status('youtube'));
+          check('fourth pause: the allow button shows a further step', action('youtube', 'allow').textContent === 'Allow 10 minutes…');
+          action('youtube', 'allow').click();
+          await step();
+          check('fourth pause: nothing is unlocked yet', !unlockOf('youtube'));
+          check('fourth pause: a pause request is waiting', pendingOf('youtube') && pendingOf('youtube').kind === 'pause', JSON.stringify(pendingOf('youtube')));
+          check('fourth pause: counting down', /^Pausing in \ds\.$/.test(status('youtube')), status('youtube'));
+          check('fourth pause: only Cancel while waiting', visibleActions('youtube') === 'cancel', visibleActions('youtube'));
+          await wait(3200); // The 2-second wait, plus the popup's once-a-second redraw.
+          check('fourth pause: ready after the wait', status('youtube') === 'Ready. Pause YouTube blocking for 10 minutes?', status('youtube'));
+          check('fourth pause: confirm button', action('youtube', 'confirm').textContent === 'Pause now' && shown(action('youtube', 'confirm')));
+          action('youtube', 'confirm').click();
+          await step();
+          check('fourth pause: confirming pauses blocking', unlockOf('youtube') > Date.now() + 9 * 60 * 1000);
+          check('fourth pause: counted too', stores.local.pauseLog.used.youtube === 4);
+          action('youtube', 'block').click();
+          await step();
+
+          toggle('instagram').click();
+          await step();
+          check("another platform keeps its own pauses", status('instagram').includes('3 of 3 pauses left today'), status('instagram'));
+          action('instagram', 'cancel').click();
+          await step();
+          check('Cancel closes the choice', !shown(panel('instagram')));
+
+          await chrome.storage.local.set({ pauseLog: { date: '2000-01-01', used: { youtube: 9 } } });
+          await step();
+          toggle('youtube').click();
+          await step();
+          check('a new day brings the pauses back', status('youtube').includes('3 of 3 pauses left today'), status('youtube'));
+          action('youtube', 'cancel').click();
+          await step();
+
+          /* ---- "Turn off..." still waits, then confirms ---- */
+          toggle('tiktok').click();
+          await step();
+          action('tiktok', 'request').click();
+          await step();
+          check('turn off: counting down', /^Turning off in \ds\.$/.test(status('tiktok')), status('tiktok'));
+          await wait(3200);
+          check('turn off: confirm button', action('tiktok', 'confirm').textContent === 'Turn off now' && shown(action('tiktok', 'confirm')));
+          action('tiktok', 'confirm').click();
+          await step();
+          check('turn off: switched off for good', stores.sync.settings.tiktok === false && !toggle('tiktok').checked);
+          check('turn off: allowed times cannot be edited while off', inScheduler('tiktok', '.schedule-edit').disabled);
+          toggle('tiktok').click();
+          await step();
+          check('turn off: switching back on is instant', stores.sync.settings.tiktok === true && toggle('tiktok').checked);
+
+          /* ---- Allowed times ---- */
+          const edit = () => inScheduler('youtube', '.schedule-edit');
+          const summary = () => inScheduler('youtube', '.schedule-summary').textContent;
+          check('allowed times: none to start with', summary() === 'None', summary());
+          edit().click();
+          await step();
+          check('allowed times: Edit opens the editor', shown(inScheduler('youtube', '.schedule-editor')));
+          check('allowed times: empty editor explains itself', shown(inScheduler('youtube', '.schedule-empty')));
+          inScheduler('youtube', '[data-action="add-slot"]').click();
+          await step();
+          const days = () => Array.from(scheduler('youtube').querySelectorAll('.day'));
+          const times = () => Array.from(scheduler('youtube').querySelectorAll('.time'));
+          check('allowed times: a new time is every day', days().length === 7 && days().every((box) => box.checked));
+          check('allowed times: a new time is 20:00 to 21:00', times()[0].value === '20:00' && times()[1].value === '21:00', times().map((t) => t.value).join(' '));
+          check('allowed times: days are named for screen readers', days()[0].getAttribute('aria-label') === 'Monday', days()[0].getAttribute('aria-label'));
+          inScheduler('youtube', '[data-action="save-schedule"]').click();
+          await step();
+          check('adding a time: not saved straight away', !schedulesOf('youtube'), JSON.stringify(schedulesOf('youtube')));
+          check('adding a time: waits instead', pendingOf('youtube') && pendingOf('youtube').kind === 'schedule', JSON.stringify(pendingOf('youtube')));
+          check('adding a time: counting down', /^Saving the new allowed times in \ds\.$/.test(status('youtube')), status('youtube'));
+          check('adding a time: the summary says a change is waiting', summary().endsWith('(a change is waiting)'), summary());
+          check('adding a time: no more edits while it waits', edit().disabled);
+          await wait(3200);
+          check('adding a time: ready after the wait', status('youtube') === "Ready. Save YouTube's new allowed times?", status('youtube'));
+          check('adding a time: confirm button', action('youtube', 'confirm').textContent === 'Save now');
+          action('youtube', 'confirm').click();
+          await step();
+          check(
+            'adding a time: saved to the synced settings',
+            JSON.stringify(schedulesOf('youtube')) === JSON.stringify([{ days: [0, 1, 2, 3, 4, 5, 6], start: 1200, end: 1260 }]),
+            JSON.stringify(schedulesOf('youtube'))
+          );
+          check('adding a time: the summary shows it', summary().startsWith('Every day, '), summary());
+
+          edit().click();
+          await step();
+          times()[1].value = '20:30';
+          times()[1].dispatchEvent(new Event('input'));
+          inScheduler('youtube', '[data-action="save-schedule"]').click();
+          await step();
+          check('shortening a time: saved straight away', schedulesOf('youtube')[0].end === 1230 && !pendingOf('youtube'), JSON.stringify(schedulesOf('youtube')));
+
+          edit().click();
+          await step();
+          for (const box of days()) box.click();
+          inScheduler('youtube', '[data-action="save-schedule"]').click();
+          await step();
+          check('a time with no days: explains the problem', inScheduler('youtube', '.schedule-error').textContent === 'Choose at least one day for each time.');
+          check('a time with no days: nothing is saved', schedulesOf('youtube')[0].days.length === 7);
+          inScheduler('youtube', '[data-action="cancel-schedule"]').click();
+          await step();
+          check('Cancel closes the editor', !shown(inScheduler('youtube', '.schedule-editor')));
+
+          edit().click();
+          await step();
+          inScheduler('youtube', '[data-action="remove-slot"]').click();
+          await step();
+          inScheduler('youtube', '[data-action="save-schedule"]').click();
+          await step();
+          check('removing a time: saved straight away', schedulesOf('youtube').length === 0 && !pendingOf('youtube'), JSON.stringify(schedulesOf('youtube')));
+          check('removing a time: the summary says none', summary() === 'None', summary());
+
+          /* ---- Inside an allowed time ---- */
+          await chrome.storage.sync.set({
+            settings: { ...stores.sync.settings, schedules: { youtube: [{ days: [0, 1, 2, 3, 4, 5, 6], start: 0, end: 0 }] } },
+          });
+          await wait(1100);
+          check('allowed now: the switch shows off', !toggle('youtube').checked);
+          check('allowed now: every day, all day reads as all week', status('youtube') === 'Allowed by your schedule all week.', status('youtube'));
+          check('allowed now: offers "Block now"', action('youtube', 'block').textContent === 'Block now' && shown(action('youtube', 'block')));
+          const pauseLogBefore = JSON.stringify(stores.local.pauseLog);
+          action('youtube', 'block').click();
+          await step();
+          const skip = Number((stores.local.scheduleSkips || {}).youtube);
+          check(
+            '"Block now" on an all-week schedule blocks until midnight',
+            skip > Date.now() && skip - Date.now() <= 24 * 60 * 60 * 1000 && new Date(skip).getHours() === 0,
+            new Date(skip).toString()
+          );
+          check('"Block now" turns the switch back on', toggle('youtube').checked && !shown(panel('youtube')));
+          check('"Block now" does not use up a pause', JSON.stringify(stores.local.pauseLog) === pauseLogBefore);
+        } catch (error) {
+          check('popup test crashed', false, String(error && error.stack));
+        }
+
+        const output = document.createElement('pre');
+        output.id = 'results';
+        output.textContent = JSON.stringify(results);
+        document.documentElement.appendChild(output);
+      })();
+    </script>
+  </body>
+</html>

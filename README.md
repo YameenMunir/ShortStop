@@ -25,7 +25,9 @@
 - **Still useful.** Search, messages, profiles, groups, uploading and a video you open on
   purpose keep working, so the sites stay usable as communication tools.
 - **Hard to switch off on impulse.** Blocking pauses for 10 minutes and comes back by itself,
-  and turning it off for good takes a 30-second wait.
+  with 3 instant pauses a day, and turning it off for good takes a 30-second wait.
+- **Allowed times.** Let a site through at set times, like YouTube from 8 to 9pm on weekdays
+  or Instagram at weekends. Blocking switches off and on by itself.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
 - **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 695
@@ -42,7 +44,7 @@
 | **TikTok** | **Focus mode.** Every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, Short dramas (the catalog and its episodes), and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 
 The popup has a switch per platform, plus *Allow notifications* under Instagram,
-Facebook and TikTok, and *Allow Marketplace search* under Facebook.
+Facebook and TikTok, *Allow Marketplace search* under Facebook, and *Allowed times* under each.
 Changes apply to open tabs straight away, without a reload. It also shows how many
 Shorts, Reels and feeds were blocked today (visiting a blocked feed page counts once).
 
@@ -51,15 +53,37 @@ Shorts, Reels and feeds were blocked today (visiting a blocked feed page counts 
 Switching a platform off is deliberately not a single click, so it's hard to do on impulse.
 Clicking a platform's switch while it's blocking offers two choices:
 
-- **Allow 10 minutes** pauses blocking straight away, then **switches it back on by itself**
-  when the time runs out, in every open tab, with no reload. The pause is stored on this
-  device only. **Block again** ends it early.
+- **Allow 10 minutes** pauses blocking, then **switches it back on by itself** when the time
+  runs out, in every open tab, with no reload. The first **3 pauses a day** per platform start
+  straight away. After that a pause still works, but only after the same 30-second wait as
+  *Turn off…*, so ten pauses in a row are no longer a quick way round blocking. Pauses and their
+  daily count are stored on this device only, and the count resets at local midnight.
+  **Block again** ends a pause early.
 - **Turn off…** switches it off until you turn it back on, but only after a **30-second wait**,
   then a confirmation within 2 minutes. The wait keeps counting if you close the popup, and
   confirming early does nothing.
 
-Turning blocking **back on** is always instant. To change the 10 minutes or the wait, edit
-[shared/pause.js](extension/shared/pause.js), which the popup and the welcome page both read.
+Turning blocking **back on** is always instant. To change the 10 minutes, the 3 pauses or the
+wait, edit [shared/pause.js](extension/shared/pause.js), which the popup and the welcome page
+both read.
+
+### Allowed times
+
+Under each platform, **Allowed times** lets it through at set times, for example YouTube from
+20:00 to 21:00 on weekdays, or Instagram all day at weekends. Each platform can have up to 3
+times. Pick the days, then a start and end time:
+
+- The same start and end time means **all day**, and an end time earlier than the start runs
+  **past midnight** (Friday 23:00 to 01:00 ends early on Saturday).
+- Inside an allowed time, blocking switches off by itself in every open tab, and it comes back
+  on by itself when the time ends. Times follow the clock of the device you're on.
+- **Adding or lengthening** a time takes the same 30-second wait and confirmation as
+  *Turn off…*, so you can't open up a site on impulse. **Shortening or removing** one is saved
+  straight away.
+- **Block now** during an allowed time blocks the site again until that time ends (or until
+  midnight, if the site is allowed all week).
+
+Allowed times are saved with your other settings, so they follow your browser profile.
 
 ### First-run welcome page
 
@@ -92,9 +116,9 @@ at the bottom of the popup. It needs no extra permission and makes no network re
   calls `fetch`, loads no remote code and uses no third-party libraries.
 - **Minimum permissions:** `storage`, plus host access to the four sites it works on.
   It can't see any other website.
-- Your platform switches and options are saved with `chrome.storage.sync`, so they follow
-  your browser profile. The daily counter, temporary pauses and any pending turn-off
-  request live in `chrome.storage.local`, on your device only.
+- Your platform switches, options and allowed times are saved with `chrome.storage.sync`, so
+  they follow your browser profile. The daily counter, temporary pauses, today's pause count,
+  any waiting request and any *Block now* live in `chrome.storage.local`, on your device only.
 
 ## Install
 
@@ -172,8 +196,8 @@ const BLOCK_TIKTOK_FEEDS = true;                // For You, Following, Friends, 
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
 ```
 
-The userscript has no popup, daily counter or pause flow, because Safari userscripts have no
-shared storage. To pause a platform, set its constant to `false` and set it back later.
+The userscript has no popup, daily counter, pause flow or allowed times, because Safari
+userscripts have no shared storage. To pause a platform, set its constant to `false` and set it back later.
 
 ## How it works
 
@@ -182,7 +206,8 @@ extension/
 ├── manifest.json            MV3 manifest: storage + the four sites, nothing else
 ├── background.js            Service worker: keeps the daily counter (one write queue for all tabs)
 ├── shared/stats.js          Counter helpers shared by the background worker and popup
-├── shared/pause.js          The pause timings (10 minutes, 30-second wait), shared by popup and welcome page
+├── shared/pause.js          The pause timings (10 minutes, 3 a day, 30-second wait), shared by popup and welcome page
+├── shared/schedule.js       Allowed times: is a platform allowed now, until when, and is a change looser
 ├── content/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
@@ -190,7 +215,7 @@ extension/
 │   ├── instagram.js         Instagram focus mode: covered routes, selectors, redirects
 │   ├── facebook.js          Facebook focus mode: covered feeds, Marketplace rules, selectors
 │   └── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
-├── popup/                   Platform switches, pause flow, options and today's counter
+├── popup/                   Platform switches, pause flow, options, allowed times and today's counter
 ├── welcome/                 First-run page: the panel explained, pin and private-window checklist
 └── icons/                   16, 32, 48 and 128 px PNGs
 userscript/shortstop.user.js Generated from content/*.js for iOS Safari
@@ -236,6 +261,8 @@ Each platform file is a single config object, and `core.js` does the work:
    removes the panel, and switching it on re-applies everything. No reload needed. A
    temporary pause is stored as an expiry time, and each tab sets a timer for it (backed up
    by the one-second check, in case the computer slept), so blocking returns by itself.
+   Allowed times (`shared/schedule.js`, loaded before `core.js`) are checked the same way:
+   the one-second check re-applies the settings whenever an allowed time starts or ends.
 
 ## When a site changes: updating selectors
 
@@ -318,6 +345,16 @@ platform it checks:
   search box going to the right results page
 - Temporary pauses on every platform: blocking pauses, comes back by itself when the time
   runs out, ignores an expired pause or another platform's, and "block again" is instant
+- Allowed times on every platform: blocking pauses inside one, ignores another day's,
+  another platform's or a malformed one, respects *Block now*, and (with a fake clock)
+  switches off and back on by itself when an allowed time starts and ends
+
+Two more pages have no site markup. `schedule.html` unit-tests
+[shared/schedule.js](extension/shared/schedule.js): weekday, all-day and past-midnight times,
+back-to-back times, bad data, and which edits count as looser. `popup.html` loads the real
+popup with an in-memory `chrome.storage` and clicks through it: the 3 instant pauses, the
+wait for the 4th, a new day resetting them, *Turn off…*, adding a time (waits), shortening
+and removing one (instant), a time with no days, and *Block now*.
 - Facebook Marketplace: home and city browsing blocked; search, categories, listings and
   selling allowed; everything but listings and selling blocked when search is switched off
 - YouTube: Up next hidden while the playlist panel and live chat stay, end screens removed,
@@ -338,6 +375,8 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 - **This is friction, not a lock.** The pause and 30-second wait stop impulsive switching-off.
   Someone determined can still change settings in the browser's developer tools or uninstall
   the extension.
+- Allowed times follow each device's own clock and time zone, and the 3-pauses-a-day count is
+  kept per device, like the pauses themselves.
 - **Private windows.** Browsers don't run extensions in private/incognito windows unless you
   allow it under the extension's details, so blocking doesn't apply there by default.
 - Pauses are stored per device. Your platform switches sync with your browser profile, but a

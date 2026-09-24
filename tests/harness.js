@@ -259,6 +259,67 @@
     await wait(300);
     check('switching back on works at once', blockingOn());
 
+    // Allowed times: blocking pauses inside one, like an unlock.
+    const platform = plan.platform;
+    const today = new Date().getDay();
+    const allDayToday = [{ days: [today], start: 0, end: 0 }];
+    applySettings({ [platform]: true, schedules: { [platform]: allDayToday } });
+    await wait(300);
+    check('allowed time: blocking is paused', !blockingOn() && !document.querySelector('shortstop-cover'));
+    check('allowed time: everything is visible', notVisible().length === 0, notVisible().map(describe).join(', '));
+    applySettings({ [platform]: true, schedules: { [platform]: [{ days: [(today + 3) % 7], start: 0, end: 0 }] } });
+    await wait(300);
+    check('an allowed time on another day does nothing', blockingOn());
+    applySettings({ [platform]: true, schedules: { somewhere_else: allDayToday } });
+    await wait(300);
+    check("another platform's allowed time does nothing", blockingOn());
+    applySettings({ [platform]: true, schedules: { [platform]: [{ days: [today], start: 5000, end: 'x' }] } });
+    await wait(300);
+    check('a malformed allowed time is ignored', blockingOn());
+    applySettings({
+      [platform]: true,
+      schedules: { [platform]: allDayToday },
+      scheduleSkips: { [platform]: Date.now() + 60000 },
+    });
+    await wait(300);
+    check('"block now" skips the current allowed time', blockingOn());
+
+    // Time passing on its own starts and ends an allowed time, with no
+    // settings change. A fake clock stands in for the real one.
+    const RealDate = Date;
+    let offset = 0;
+    window.Date = class extends RealDate {
+      constructor(...args) {
+        if (args.length) super(...args);
+        else super(RealDate.now() + offset);
+      }
+      static now() {
+        return RealDate.now() + offset;
+      }
+    };
+    const setClock = (date) => (offset = date.getTime() - RealDate.now());
+    const evening = new RealDate(2026, 8, 23, 20, 59, 58);
+    const eveningSlot = [{ days: [evening.getDay()], start: 20 * 60, end: 21 * 60 }];
+    try {
+      setClock(evening);
+      applySettings({ [platform]: true, schedules: { [platform]: eveningSlot } });
+      await wait(300);
+      check('20:59:58 inside 20:00-21:00: blocking is paused', !blockingOn());
+      await wait(3000);
+      check('allowed time ended: blocking comes back by itself', blockingOn());
+      if (plan.cover !== undefined) checkCover(plan.cover, 'after the allowed time ended');
+      setClock(new RealDate(2026, 8, 23, 19, 59, 58));
+      await wait(300);
+      check('19:59:58 before 20:00-21:00: still blocking', blockingOn());
+      await wait(3000);
+      check('allowed time began: blocking pauses by itself', !blockingOn());
+    } finally {
+      window.Date = RealDate;
+    }
+    applySettings({ [platform]: true });
+    await wait(1300);
+    check('no allowed times: blocking is back', blockingOn());
+
     for (const phase of plan.phases || []) {
       if (phase.settings) applySettings(phase.settings);
       const pausesBefore = pauses;

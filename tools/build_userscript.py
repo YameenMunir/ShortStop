@@ -1,9 +1,10 @@
 """
 Build userscript/shortstop.user.js from the extension's own source files.
 
-The userscript is the extension's core engine plus the YouTube, Instagram and
-Facebook configs, stitched into one file with an iOS-friendly environment
-(toggles as constants, no storage, no counter). Selectors therefore only ever
+The userscript is the extension's core engine (with the allowed-times helper
+it uses) plus the YouTube, Instagram, Facebook and TikTok configs, stitched
+into one file with an iOS-friendly environment (toggles as constants, no
+storage, no counter, no allowed times). Selectors therefore only ever
 need updating in extension/content/*.js; run this afterwards:
 
     python tools/build_userscript.py
@@ -15,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CONTENT = ROOT / "extension" / "content"
+SCHEDULE = ROOT / "extension" / "shared" / "schedule.js"  # core.js needs it.
 OUTPUT = ROOT / "userscript" / "shortstop.user.js"
 
 PLATFORM_FILES = ("youtube.js", "instagram.js", "facebook.js", "tiktok.js")
@@ -111,6 +113,7 @@ def section(title, source):
 def main():
     manifest = json.loads((ROOT / "extension" / "manifest.json").read_text(encoding="utf-8"))
     parts = [HEADER.replace("__VERSION__", manifest["version"])]
+    parts.append(section("shared/schedule.js", SCHEDULE.read_text(encoding="utf-8")))
     parts.append(section("core.js", (CONTENT / "core.js").read_text(encoding="utf-8")))
     parts.append(indent(ENV))
     for name in PLATFORM_FILES:
