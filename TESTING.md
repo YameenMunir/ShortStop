@@ -18,7 +18,8 @@ Do this on a browser profile that has never had ShortStop, or remove ShortStop a
       Incognito" / "Allow in InPrivate" / "Run in Private Windows"). Click **Open ShortStop's settings**
       (Chrome, Edge, Brave), switch the option on, return to the tab, and it changes to **Done**.
 - [ ] When both are done, "You're all set." appears.
-- [ ] The pause note says **10 minutes** and **30 seconds**, matching the popup.
+- [ ] The notes say a site's switch turns off **in one click**, and that adding an allowed time
+      takes **30 seconds**, matching the popup.
 - [ ] Reloading the extension, or updating it, does **not** open the page again.
 - [ ] In the popup, **How ShortStop works** (bottom) reopens the welcome page in a new tab.
 - [ ] In Firefox, the steps show manual instructions where the browser can't report the state.
@@ -57,7 +58,7 @@ are on. Note today's counter number.
       has no Up next, and autoplay is still off.
 - [ ] **Hide YouTube Shorts on again:** switch it back on while a Short is playing. It moves to
       `/watch?v=…` at once, and Shorts disappear from search and the sidebar without a reload.
-- [ ] **Independent of the YouTube switch:** turn YouTube blocking off (or *Allow 10 minutes*).
+- [ ] **Independent of the YouTube switch:** turn YouTube blocking off.
       *Hide YouTube Shorts* stays usable, not greyed out. Home shows its normal feed and watch
       pages show Up next, but Shorts are still gone and `/shorts/…` still opens in the normal
       player. Switch *Hide YouTube Shorts* off too: Shorts come back without a reload.
@@ -205,28 +206,8 @@ These selectors haven't been checked on the live site yet, so note anything that
       shows YouTube's feed **without reloading**. *Hide YouTube Shorts* stays as it was. Click
       again: blocking is back at once. Do the same for Instagram, Facebook, TikTok, Reddit, X and
       Snapchat.
-
-**Optional slower switch-off.** The next steps only apply after you take a site out of
-`INSTANT_OFF` in `extension/shared/pause.js` (for example Instagram) and reload ShortStop.
-Put it back afterwards.
-
-- [ ] With an Instagram tab open, click Instagram's switch in the popup. It does **not** switch off.
-      It offers **Allow 10 minutes**, **Turn off…** and **Cancel**. Cancel closes it.
-- [ ] **Allow 10 minutes:** the switch turns off and the popup counts down ("Unlocked, 9:59
-      left"). The Instagram tab unblocks **without reloading**.
-- [ ] **Block again** blocks the tab again at once.
-- [ ] **Blocking returns by itself:** start another pause, then wait it out (or, to save time,
-      run `chrome.storage.local.set({unlocks:{instagram:Date.now()+15000}})` in the popup's DevTools
-      console). Blocking comes back in the open tab with no reload, and the popup goes back to normal.
-- [ ] **Turn off…** starts a 30-second wait ("Turning off in 29s.") with only Cancel available.
-      Close the popup, reopen it a few seconds later, and the wait is still counting.
-- [ ] After 30 seconds the popup offers **Turn off now**. Click it: Instagram stays off until you
-      click the switch again, which turns blocking back on **instantly**.
-- [ ] Leave a finished wait unconfirmed for over 2 minutes. It lapses by itself.
-- [ ] **Pause limit:** the choice says how many of today's 3 pauses are left, one fewer each time
-      (the steps above used some already). Once they're used up it says so, **Allow 10 minutes…**
-      starts a 30-second wait ("Pausing in 29s."), and **Pause now** then pauses as usual. A
-      platform you haven't paused today still has all 3.
+- [ ] Nowhere in the popup is there an *Allow 10 minutes* or *Turn off…* button, or a
+      "Turning off in 30s." countdown.
 
 ## Focus session (popup)
 
@@ -251,7 +232,7 @@ Put it back afterwards.
       **Save**. It doesn't apply yet: "Saving the new allowed times in 29s.", with only Cancel.
       After 30 seconds, **Save now**. The YouTube tab unblocks **without reloading**, and the
       popup says "Allowed by your schedule until …".
-- [ ] **Block now** blocks the tab again at once, and doesn't use up a pause.
+- [ ] **Block now** blocks the tab again at once.
 - [ ] **Shorten** the time so it ends a minute or two from now, and **Save**: it saves straight
       away, with no wait. Leave the tab open. When the time ends, blocking comes back by itself.
 - [ ] Untick every day in a time and **Save**: it says "Choose at least one day for each time."

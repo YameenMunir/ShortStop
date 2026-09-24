@@ -21,14 +21,14 @@
  * "Hide YouTube Shorts" is its own switch. Off, Shorts are left alone and
  * everything else in this file (the covered home page, Up next, autoplay)
  * carries on. On, Shorts stay hidden even while that other blocking is
- * switched off, paused or in an allowed time.
+ * switched off or in an allowed time.
  *
  * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
  * that slipped through, and add or adjust a rule below. See README.md.
  */
 // Every Shorts rule and redirect depends on the "Hide YouTube Shorts" option,
 // and only on it: they are `independent`, so they keep working while YouTube's
-// other blocking is switched off, paused or in an allowed time.
+// other blocking is switched off or in an allowed time.
 const youtubeShortsHidden = (options) => options.hideShorts;
 
 ShortStop.start({

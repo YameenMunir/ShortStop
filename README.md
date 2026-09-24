@@ -59,7 +59,7 @@
   locked until it ends.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,715
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,455
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -67,7 +67,7 @@
 
 | Platform | What ShortStop changes |
 | --- | --- |
-| **YouTube** | **Focus mode.** `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`), and Shorts shelves, tabs, chips and sidebar entries are removed everywhere. The **home page's recommended grid**, Trending/Explore and Gaming are replaced by the panel (*"Scrolling is blocked by your focus settings."*), with a YouTube search box and links to Subscriptions, Watch later, Your playlists and History. On the watch page, the **"Up next"** list is hidden (the playlist panel and live chat stay), **end-screen** video walls, end cards and the "More videos" overlay are removed, and **autoplay** is switched off, with any autoplay countdown cancelled. Search results lose their "For you" / "People also watched" shelves. Search, subscriptions, playlists, channels, history and any video you open keep working, and the miniplayer keeps playing when you go back to Home. **Hide YouTube Shorts** (on by default) is its own switch, independent of the YouTube switch above it. On, Shorts shelves, cards, the Shorts tab and `/shorts/` links stay removed even while the rest of YouTube's blocking is switched off, paused or in an allowed time. Off, Shorts are left alone, while the covered home page, Up next, end screens and autoplay keep following the YouTube switch. |
+| **YouTube** | **Focus mode.** `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`), and Shorts shelves, tabs, chips and sidebar entries are removed everywhere. The **home page's recommended grid**, Trending/Explore and Gaming are replaced by the panel (*"Scrolling is blocked by your focus settings."*), with a YouTube search box and links to Subscriptions, Watch later, Your playlists and History. On the watch page, the **"Up next"** list is hidden (the playlist panel and live chat stay), **end-screen** video walls, end cards and the "More videos" overlay are removed, and **autoplay** is switched off, with any autoplay countdown cancelled. Search results lose their "For you" / "People also watched" shelves. Search, subscriptions, playlists, channels, history and any video you open keep working, and the miniplayer keeps playing when you go back to Home. **Hide YouTube Shorts** (on by default) is its own switch, independent of the YouTube switch above it. On, Shorts shelves, cards, the Shorts tab and `/shorts/` links stay removed even while the rest of YouTube's blocking is switched off or in an allowed time. Off, Shorts are left alone, while the covered home page, Up next, end screens and autoplay keep following the YouTube switch. |
 | **Instagram** | **Focus mode.** The Home feed, Explore (including hashtag, place and suggested-people pages), Reels and Stories are all blocked the same way. Their content is replaced by a ShortStop panel before it paints, so there's nothing to scroll and no way round it through the Home feed. The panel links to what still works: **Messages**, **account search**, **your profile**, and posting through Instagram's own menu. Profiles and single posts you open on purpose still work, minus the Reels tab and "Suggested for you" accounts. Reels shared in DMs are blurred and can't be opened. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 | **Facebook** | **Focus mode.** Facebook stays a communication and utility tool, not an endless feed. The News Feed (including the Feeds filters), Reels, Watch, Stories, the groups feed and Discover, Gaming, friend suggestions and **Marketplace's recommended listings** are all blocked the same way. Each shows *"Scrolling is blocked by your focus settings."* where the feed was, with a Facebook search box and links to **Messenger**, **your profile** (to post), **your groups** and **Pages you manage**. A Watch link someone sent you gets an *Open this video only* button. Menu and top-bar shortcuts into feeds are hidden. On a blocked feed, feed keys (including Facebook's own J/K) are swallowed and videos are paused. Inside pages that stay open (profiles, a specific group, search), Reels, the Stories tray and "Suggested for you" / "People you may know" units are removed. **Marketplace:** searching and categories, listings, selling and the inbox work, and *Allow Marketplace search* in the popup can turn search off too. **Notifications** are blocked unless you turn on *Allow notifications*. |
 | **TikTok** | **Focus mode.** Every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, Short dramas (the catalog and its episodes), and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
@@ -85,24 +85,6 @@ Shorts, Reels and feeds were blocked today (visiting a blocked feed page counts 
 Each site's switch turns off **in one click**: blocking stops in every open tab straight away,
 with no choice, countdown or confirmation, and clicking it again turns blocking back on at
 once. *Hide YouTube Shorts* keeps its own setting either way.
-
-**Optional slower switch-off.** Every site is listed in `INSTANT_OFF` in
-[shared/pause.js](extension/shared/pause.js). Take a site out of that list to make switching
-it off a deliberate step instead. Clicking its switch while it's blocking then offers two
-choices:
-
-- **Allow 10 minutes** pauses blocking, then **switches it back on by itself** when the time
-  runs out, in every open tab, with no reload. The first **3 pauses a day** per platform start
-  straight away. After that a pause still works, but only after the same 30-second wait as
-  *Turn off…*, so ten pauses in a row are no longer a quick way round blocking. Pauses and their
-  daily count are stored on this device only, and the count resets at local midnight.
-  **Block again** ends a pause early.
-- **Turn off…** switches it off until you turn it back on, but only after a **30-second wait**,
-  then a confirmation within 2 minutes. The wait keeps counting if you close the popup, and
-  confirming early does nothing.
-
-Turning blocking **back on** is always instant. The 10 minutes, the 3 pauses and the wait are
-set in the same file.
 
 ### Allowed times
 
@@ -172,8 +154,8 @@ at the bottom of the popup. It needs no extra permission and makes no network re
   (YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat). It can't see any other
   website.
 - Your platform switches, options and allowed times are saved with `chrome.storage.sync`, so
-  they follow your browser profile. The daily counter, temporary pauses, today's pause count,
-  any waiting request and any *Block now* live in `chrome.storage.local`, on your device only.
+  they follow your browser profile. The daily counter, a waiting change to the allowed times
+  and any *Block now* live in `chrome.storage.local`, on your device only.
 
 ## Install
 
@@ -287,8 +269,9 @@ const ALLOW_X_NOTIFICATIONS = false;
 const BLOCK_SNAPCHAT_SPOTLIGHT = true;          // Spotlight, Discover, Explore
 ```
 
-The userscript has no popup, daily counter, pause flow or allowed times, because Safari
-userscripts have no shared storage. To pause a platform, set its constant to `false` and set it back later.
+The userscript has no popup, daily counter or allowed times, because Safari userscripts have
+no shared storage. To switch a platform off, set its constant to `false`, and back to `true`
+later.
 
 ## How it works
 
@@ -297,7 +280,7 @@ extension/
 ├── manifest.json            MV3 manifest: storage + the seven sites, nothing else
 ├── background.js            Service worker: keeps the daily counter (one write queue for all tabs)
 ├── shared/stats.js          Counter helpers shared by the background worker and popup
-├── shared/pause.js          Switch-off settings (one-click sites, 10 minutes, 3 a day, 30-second wait), shared by popup and welcome page
+├── shared/pause.js          The 30-second wait before loosening allowed times, shared by popup and welcome page
 ├── shared/schedule.js       Allowed times: is a platform allowed now, until when, and is a change looser
 ├── content/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
@@ -309,7 +292,7 @@ extension/
 │   ├── reddit.js            Reddit focus mode: Home, Popular, All and Explore covered
 │   ├── x.js                 X focus mode: Home timeline and Explore covered, sidebar trends
 │   └── snapchat.js          Snapchat focus mode: Spotlight, Discover and Explore covered
-├── popup/                   Platform switches, options, allowed times, today's counter (and the optional pause flow)
+├── popup/                   Platform switches, options, allowed times and today's counter
 ├── welcome/                 First-run page: the panel explained, pin and private-window checklist
 └── icons/                   16, 32, 48 and 128 px PNGs
 userscript/shortstop.user.js Generated from content/*.js for iOS Safari
@@ -350,13 +333,11 @@ Each platform file is a single config object, and `core.js` does the work:
 5. **Effects.** Some things can't be hidden, only changed: YouTube's autoplay is switched off
    through its own toggle, and a running autoplay countdown is cancelled. Effects run after
    every scan and are safe to repeat.
-6. **Live settings and pauses.** Content scripts listen to `chrome.storage.onChanged`.
-   Switching a platform or option off removes the stylesheet, un-hides everything and
-   removes the panel, and switching it on re-applies everything. No reload needed. A
-   temporary pause is stored as an expiry time, and each tab sets a timer for it (backed up
-   by the one-second check, in case the computer slept), so blocking returns by itself.
-   Allowed times (`shared/schedule.js`, loaded before `core.js`) are checked the same way:
-   the one-second check re-applies the settings whenever an allowed time starts or ends.
+6. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
+   platform or option off removes the stylesheet, un-hides everything and removes the panel,
+   and switching it on re-applies everything. No reload needed. Allowed times
+   (`shared/schedule.js`, loaded before `core.js`) are checked once a second, and the
+   settings are re-applied whenever an allowed time starts or ends.
    When ShortStop is reloaded or updated, the copy already running in open tabs is cut off
    and can no longer hear the popup, and browsers don't give those tabs the new copy. The
    one-second check notices, and a tab showing only the ShortStop panel refreshes itself, so
@@ -422,7 +403,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,715 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,455 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -477,21 +458,12 @@ platform it checks:
   notification options
 - feed keys being swallowed (but not while typing), media being paused, and the panel's
   search box going to the right results page
-- Temporary pauses on every platform: blocking pauses, comes back by itself when the time
-  runs out, ignores an expired pause or another platform's, and "block again" is instant
-- Allowed times on every platform: blocking pauses inside one, ignores another day's,
+- switching off and on at once, and ignoring a pause left behind by the retired pause flow
+- Allowed times on every platform: blocking is lifted inside one, ignores another day's,
   another platform's or a malformed one, respects *Block now*, and (with a fake clock)
   switches off and back on by itself when an allowed time starts and ends
 - Focus sessions on every platform: blocking while switched off or inside an allowed time,
   ending by itself on time, and (YouTube) hiding Shorts even with *Hide YouTube Shorts* off
-
-Two more pages have no site markup. `schedule.html` unit-tests
-[shared/schedule.js](extension/shared/schedule.js): weekday, all-day and past-midnight times,
-back-to-back times, bad data, and which edits count as looser. `popup.html` loads the real
-popup with an in-memory `chrome.storage` and clicks through it: every switch turning off and
-back on in one click, then (with the optional slower flow) the 3 instant pauses, the wait for
-the 4th, a new day resetting them, *Turn off…*, adding a time (waits), shortening
-and removing one (instant), a time with no days, and *Block now*.
 - Facebook Marketplace: home and city browsing blocked; search, categories, listings and
   selling allowed; everything but listings and selling blocked when search is switched off
 - YouTube: Up next hidden while the playlist panel and live chat stay, end screens removed,
@@ -499,6 +471,14 @@ and removing one (instant), a time with no days, and *Block now*.
   miniplayer left playing on the covered home page
 - every redirect rule
 - redirects triggered by SPA navigation
+
+Two more pages have no site markup. `schedule.html` unit-tests
+[shared/schedule.js](extension/shared/schedule.js): weekday, all-day and past-midnight times,
+back-to-back times, bad data, and which edits count as looser. `popup.html` loads the real
+popup with an in-memory `chrome.storage` and clicks through it: leftovers from the retired
+pause flow being tidied away, every switch turning off and back on in one click, *Hide YouTube
+Shorts*, adding a time (waits), shortening and removing one (instant), a time with no days,
+*Block now*, and a focus session starting, locking everything and unlocking by itself.
 
 A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 
@@ -509,19 +489,16 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
   Facebook need a signed-in account, so run their sections of [TESTING.md](TESTING.md) on real
   accounts. The Firefox build and the iPhone userscript haven't been run on a real Firefox or
   iPhone yet, so treat them as untested.
-- **This isn't a lock.** Switches turn off in one click. The 30-second wait now only applies
-  to adding or lengthening allowed times (and to any site you take out of `INSTANT_OFF`), and
-  someone determined can still change settings in the browser's developer tools or uninstall
-  the extension.
-- Allowed times follow each device's own clock and time zone, and the 3-pauses-a-day count is
-  kept per device, like the pauses themselves.
+- **This isn't a lock.** Switches turn off in one click, except during a focus session. The
+  30-second wait only applies to adding or lengthening allowed times, and someone determined can
+  still change settings in the browser's developer tools or uninstall the extension, even
+  during a focus session.
+- Allowed times follow each device's own clock and time zone.
 - **Private windows.** Browsers don't run extensions in private/incognito windows unless you
   allow it under the extension's details, so blocking doesn't apply there by default.
-- Pauses are stored per device. Your platform switches sync with your browser profile, but a
-  10-minute pause on one computer doesn't pause your others.
 - The smaller options (*Hide YouTube Shorts*, *Allow notifications*, *Allow Marketplace
   search*) switch instantly too. *Hide YouTube Shorts* is independent of the YouTube switch:
-  switching YouTube off, a pause or an allowed time lifts the
+  switching YouTube off or an allowed time lifts the
   rest of YouTube's blocking but keeps Shorts hidden. Switch *Hide YouTube Shorts* off to see
   them.
 - YouTube's "For you" / "People also watched" shelves in search are matched by their English
