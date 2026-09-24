@@ -1,0 +1,62 @@
+name: Release
+
+# Push a tag like v1.1.0 (matching the version in extension/manifest.json) and this
+# checks, tests and builds ShortStop, then publishes a GitHub Release with the zips.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # Creating the release and uploading its files.
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Tag matches the version
+        run: python tools/check_version.py "$GITHUB_REF_NAME"
+
+      - name: Privacy guard
+        run: python tools/check_privacy.py
+
+      - name: Userscript is up to date
+        run: |
+          python tools/build_userscript.py
+          if ! git diff --quiet -- userscript/shortstop.user.js; then
+            echo "::error file=userscript/shortstop.user.js::The userscript is out of date. Run python tools/build_userscript.py and commit the result."
+            exit 1
+          fi
+
+      - name: Run the tests
+        run: python tests/run_tests.py
+
+      - name: Build the zips
+        run: python tools/package.py
+
+      # Uses GitHub's own gh command-line tool. Re-running a release replaces its files.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          files=(
+            "dist/ShortStop-${version}-chromium.zip"
+            "dist/ShortStop-${version}-firefox.zip"
+            "userscript/shortstop.user.js"
+          )
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --title "ShortStop ${version}" --generate-notes
+          fi
