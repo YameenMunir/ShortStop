@@ -234,6 +234,21 @@ body {
 
 .option-detail {
   font-size: 11px;
+  text-wrap: balance;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+/* With a description under the label, the switch lines up with the label. */
+.option-row:has(.option-detail) {
+  align-items: flex-start;
+}
+
+.option-row:has(.option-detail) .switch {
+  flex: none;
+  margin-top: 1px;
 }
 
 .option-row:has(.switch:disabled) {
@@ -483,4 +498,10 @@ body {
   .switch::before {
     transition: none;
   }
+}
+
+/* Focus rings only once the keyboard is in use (popup.js sets data-keyboard);
+   Chrome's own focus on opening the popup, or a click, draws none. */
+html:not([data-keyboard]) :focus-visible {
+  outline: none;
 }
