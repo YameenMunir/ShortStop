@@ -1,0 +1,34 @@
+name: Privacy guard
+
+# ShortStop promises no data collection, no analytics, no network requests and no
+# permissions beyond the supported sites. This fails any change that breaks that.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: privacy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  privacy:
+    name: Privacy guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: No network requests, remote code or extra permissions
+        run: python tools/check_privacy.py
+
+      - name: The guard itself still catches every kind of break
+        run: python -m unittest tests/test_privacy_guard.py -v
