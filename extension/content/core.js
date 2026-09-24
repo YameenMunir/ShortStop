@@ -228,6 +228,16 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
         if (replace) location.replace(url);
         else location.assign(url);
       },
+      // True once the extension has been reloaded, updated or switched off:
+      // this copy of the script can no longer read settings or hear changes.
+      isOrphaned() {
+        try {
+          return !api.runtime || !api.runtime.id;
+        } catch (error) {
+          return true;
+        }
+      },
+      reload: () => location.reload(),
       getSettings: readSettings,
       onSettingsChanged(callback) {
         try {
@@ -378,6 +388,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.running = true; // Blocking on, or only the independent rules working.
       this.cover = { host: null, page: null, renderedHref: null, countedHref: null, linksKey: null };
       this.redirecting = false;
+      this.reloadingForUpdate = false; // See checkOrphaned().
       this.observer = null;
       this.styleEl = null;
       this.cloakEl = null;
@@ -801,6 +812,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       setInterval(() => {
         if (this.env.href() !== this.lastHref) onNavigate();
         this.recheck(); // Unlocks and allowed times that ran out or began.
+        this.checkOrphaned();
       }, URL_POLL_MS);
       // Capture phase on window runs before the site's own click handlers.
       window.addEventListener('click', (event) => this.onClick(event), true);
@@ -839,6 +851,19 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
           true
         );
       }
+    }
+
+    // After the extension is reloaded or updated, this copy of the script is
+    // cut off: it keeps blocking with the old settings and never hears the
+    // popup again, and Chrome does not give open tabs the new copy. A page
+    // showing only the ShortStop panel has nothing to lose, so it is reloaded
+    // to pick up the new copy (not while typing in the panel's search box).
+    // Pages with real content are left alone until they reach a covered page.
+    checkOrphaned() {
+      if (this.reloadingForUpdate || !this.env.isOrphaned || !this.env.isOrphaned()) return;
+      if (!this.isCovered() || document.activeElement === this.cover.host) return;
+      this.reloadingForUpdate = true;
+      this.env.reload();
     }
 
     isCovered() {

@@ -84,12 +84,67 @@
             "navigation": null
           },
           {
+            "name": "homecovered",
+            "settings": { "youtube": true },
+            "url": "https://www.youtube.com/",
+            "cover": { "message": "YouTube's recommended videos are switched off." }
+          },
+          {
+            "name": "switchedoffinplace",
+            "settings": { "youtube": false },
+            "stay": true,
+            "wait": 50,
+            "url": "https://www.youtube.com/",
+            "cover": false,
+            "navigation": null
+          },
+          {
+            "name": "backoninplace",
+            "settings": { "youtube": true },
+            "stay": true,
+            "wait": 50,
+            "url": "https://www.youtube.com/",
+            "cover": { "message": "YouTube's recommended videos are switched off." }
+          },
+          {
+            "name": "pausedinplace",
+            "settings": { "youtube": true, "unlocks": { "youtube": 4102444800000 } },
+            "stay": true,
+            "wait": 50,
+            "url": "https://www.youtube.com/",
+            "cover": false,
+            "navigation": null
+          },
+          {
             "name": "mainbackon",
             "settings": { "youtube": true },
             "url": "https://www.youtube.com/",
             "cover": { "message": "YouTube's recommended videos are switched off." },
             "redirects": [["https://www.youtube.com/shorts/abc123DEF45", "https://www.youtube.com/watch?v=abc123DEF45"]]
-          }
+          },
+          {
+            "name": "orphanedwatch",
+            "orphaned": true,
+            "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123",
+            "wait": 2300,
+            "reloads": 0
+          },
+          {
+            "name": "orphanedtyping",
+            "url": "https://www.youtube.com/",
+            "focusPanelSearch": true,
+            "wait": 2300,
+            "reloads": 0
+          },
+          {
+            "name": "orphanedhome",
+            "stay": true,
+            "url": "https://www.youtube.com/",
+            "focusPanelSearch": false,
+            "wait": 1300,
+            "reloads": 1
+          },
+          { "name": "orphanedonce", "stay": true, "url": "https://www.youtube.com/", "wait": 2300, "reloads": 0 }
         ],
         "redirects": [
           ["https://www.youtube.com/shorts/abc123DEF45", "https://www.youtube.com/watch?v=abc123DEF45"],
@@ -114,7 +169,7 @@
     <ytd-mini-guide-entry-renderer data-name="mini sidebar Home" aria-label="Home" data-expect="visible">Home</ytd-mini-guide-entry-renderer>
 
     <!-- Home feed -->
-    <ytd-rich-section-renderer data-name="home Shorts section" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count>
+    <ytd-rich-section-renderer data-name="home Shorts section" data-expect-switchedoffinplace="hidden" data-expect-pausedinplace="hidden" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count>
       <ytd-rich-shelf-renderer is-shorts>
         <ytm-shorts-lockup-view-model><a href="/shorts/aaaaaaaaaaa">Short A</a></ytm-shorts-lockup-view-model>
         <ytm-shorts-lockup-view-model><a href="/shorts/bbbbbbbbbbb">Short B</a></ytm-shorts-lockup-view-model>
@@ -164,7 +219,7 @@
 
     <!-- Focus mode: the home page's recommended grid (YouTube keeps browse pages in memory) -->
     <ytd-page-manager>
-      <ytd-browse page-subtype="home" data-name="home recommendations grid" data-expect-mainoffhome="visible" data-expect-shortsallowedhome="hidden" data-expect-home="hidden" data-expect-subscriptions="visible">
+      <ytd-browse page-subtype="home" data-name="home recommendations grid" data-expect-homecovered="hidden" data-expect-switchedoffinplace="visible" data-expect-backoninplace="hidden" data-expect-pausedinplace="visible" data-expect-mainoffhome="visible" data-expect-shortsallowedhome="hidden" data-expect-home="hidden" data-expect-subscriptions="visible">
         <ytd-rich-item-renderer><a href="/watch?v=recommended1">Recommended video</a></ytd-rich-item-renderer>
       </ytd-browse>
     </ytd-page-manager>

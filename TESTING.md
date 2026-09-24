@@ -241,6 +241,11 @@ These selectors haven't been checked on the live site yet, so note anything that
       returns, and it's blocked again when the time is up).
 - [ ] The **counter** has gone up compared with the number you noted at the start, and the
       per-platform numbers add up to the big number.
+- [ ] With YouTube's home page showing the panel, switch YouTube off (or *Allow 10 minutes*):
+      the feed appears at once, with no reload.
+- [ ] **After reloading ShortStop:** with the YouTube home page open on the panel, press ↻ on
+      ShortStop in the extensions page. The YouTube tab refreshes itself within a second or two.
+      Switching YouTube off then shows the feed at once. A tab playing a video is not refreshed.
 - [ ] Close and reopen the browser. Switches keep their state and today's counter is kept.
 - [ ] (Optional) Change the system clock to tomorrow. "Today" resets to 0 and the all-time total is kept.
 - [ ] Dark mode (switch your OS theme): the popup and the blocking panels are readable,

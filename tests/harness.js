@@ -26,12 +26,16 @@
     url: plan.url,
     counted: 0,
     navigations: [],
+    orphaned: false,
+    reloads: 0,
     listeners: [],
   };
 
   ShortStop.useEnv({
     href: () => state.url,
     navigate: (url, replace) => state.navigations.push({ url, replace }),
+    isOrphaned: () => state.orphaned,
+    reload: () => (state.reloads += 1),
     getSettings: () => Promise.resolve({}),
     onSettingsChanged: (callback) => state.listeners.push(callback),
     count: (platform, amount) => {
@@ -338,8 +342,18 @@
       const navigationsBefore = state.navigations.length;
       if (phase.settings) applySettings(phase.settings);
       const pausesBefore = pauses;
-      navigateTo(phase.url);
-      await wait(400);
+      const reloadsBefore = state.reloads;
+      // `orphaned`: the extension was reloaded, cutting this copy of the script off.
+      if (phase.orphaned) state.orphaned = true;
+      // `stay`: the settings change happens on the page already open, with no navigation.
+      if (!phase.stay) navigateTo(phase.url);
+      // `focusPanelSearch`: true puts the cursor in the panel's search box, false takes it out.
+      if (phase.focusPanelSearch !== undefined) {
+        const host = document.querySelector('shortstop-cover');
+        if (phase.focusPanelSearch && host) host.shadowRoot.querySelector('input').focus();
+        else if (document.activeElement) document.activeElement.blur();
+      }
+      await wait(phase.wait || 400);
       checkExpectations(`data-expect-${phase.name}`, `on ${phase.name}`);
       checkAttributes(`data-expect-attr-${phase.name}`, `on ${phase.name}`);
       if (phase.cover !== undefined) checkCover(phase.cover, `on ${phase.name} (${phase.url})`);
@@ -349,6 +363,10 @@
       for (const [from, to] of phase.redirects || []) {
         const got = engine.resolveRedirect(from);
         check(`on ${phase.name}: redirect ${from} -> ${to}`, got === to, `got ${got}`);
+      }
+      if (phase.reloads !== undefined) {
+        const made = state.reloads - reloadsBefore;
+        check(`on ${phase.name}: page reloads ${phase.reloads} time(s)`, made === phase.reloads, `reloaded ${made} time(s)`);
       }
       // Links whose clicks must reach the site, not be taken over by ShortStop.
       for (const href of phase.passClicks || []) {

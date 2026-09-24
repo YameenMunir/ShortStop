@@ -31,7 +31,7 @@
   or Instagram at weekends. Blocking switches off and on by itself.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,425
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,443
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -280,6 +280,11 @@ Each platform file is a single config object, and `core.js` does the work:
    by the one-second check, in case the computer slept), so blocking returns by itself.
    Allowed times (`shared/schedule.js`, loaded before `core.js`) are checked the same way:
    the one-second check re-applies the settings whenever an allowed time starts or ends.
+   When ShortStop is reloaded or updated, the copy already running in open tabs is cut off
+   and can no longer hear the popup, and browsers don't give those tabs the new copy. The
+   one-second check notices, and a tab showing only the ShortStop panel refreshes itself, so
+   switches work there straight away. Tabs showing a video or other content are never
+   refreshed under you; they pick up the new copy on their next blocked page or refresh.
 
 ## When a site changes: updating selectors
 
@@ -340,7 +345,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,425 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,443 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
