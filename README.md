@@ -25,13 +25,13 @@
   there's nothing to scroll.
 - **Still useful.** Search, messages, profiles, groups, uploading and a video you open on
   purpose keep working, so the sites stay usable as communication tools.
-- **Hard to switch off on impulse.** Blocking pauses for 10 minutes and comes back by itself,
-  with 3 instant pauses a day, and turning it off for good takes a 30-second wait.
+- **One-click switches.** Each site's blocking turns off and back on in one click, and open
+  tabs follow at once, with no reload.
 - **Allowed times.** Let a site through at set times, like YouTube from 8 to 9pm on weekdays
   or Instagram at weekends. Blocking switches off and on by itself.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,443
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,466
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -52,10 +52,16 @@ Facebook, TikTok and X, *Allow Marketplace search* under Facebook, and *Allowed 
 Changes apply to open tabs straight away, without a reload. It also shows how many
 Shorts, Reels and feeds were blocked today (visiting a blocked feed page counts once).
 
-### Pausing blocking on purpose
+### Switching a site off
 
-Switching a platform off is deliberately not a single click, so it's hard to do on impulse.
-Clicking a platform's switch while it's blocking offers two choices:
+Each site's switch turns off **in one click**: blocking stops in every open tab straight away,
+with no choice, countdown or confirmation, and clicking it again turns blocking back on at
+once. *Hide YouTube Shorts* keeps its own setting either way.
+
+**Optional slower switch-off.** Every site is listed in `INSTANT_OFF` in
+[shared/pause.js](extension/shared/pause.js). Take a site out of that list to make switching
+it off a deliberate step instead. Clicking its switch while it's blocking then offers two
+choices:
 
 - **Allow 10 minutes** pauses blocking, then **switches it back on by itself** when the time
   runs out, in every open tab, with no reload. The first **3 pauses a day** per platform start
@@ -67,9 +73,8 @@ Clicking a platform's switch while it's blocking offers two choices:
   then a confirmation within 2 minutes. The wait keeps counting if you close the popup, and
   confirming early does nothing.
 
-Turning blocking **back on** is always instant. To change the 10 minutes, the 3 pauses or the
-wait, edit [shared/pause.js](extension/shared/pause.js), which the popup and the welcome page
-both read.
+Turning blocking **back on** is always instant. The 10 minutes, the 3 pauses and the wait are
+set in the same file.
 
 ### Allowed times
 
@@ -81,8 +86,8 @@ times. Pick the days, then a start and end time:
   **past midnight** (Friday 23:00 to 01:00 ends early on Saturday).
 - Inside an allowed time, blocking switches off by itself in every open tab, and it comes back
   on by itself when the time ends. Times follow the clock of the device you're on.
-- **Adding or lengthening** a time takes the same 30-second wait and confirmation as
-  *Turn off…*, so you can't open up a site on impulse. **Shortening or removing** one is saved
+- **Adding or lengthening** a time takes a 30-second wait and a confirmation, so you can't
+  open up a site on impulse. **Shortening or removing** one is saved
   straight away.
 - **Block now** during an allowed time blocks the site again until that time ends (or until
   midnight, if the site is allowed all week).
@@ -220,7 +225,7 @@ extension/
 ├── manifest.json            MV3 manifest: storage + the seven sites, nothing else
 ├── background.js            Service worker: keeps the daily counter (one write queue for all tabs)
 ├── shared/stats.js          Counter helpers shared by the background worker and popup
-├── shared/pause.js          The pause timings (10 minutes, 3 a day, 30-second wait), shared by popup and welcome page
+├── shared/pause.js          Switch-off settings (one-click sites, 10 minutes, 3 a day, 30-second wait), shared by popup and welcome page
 ├── shared/schedule.js       Allowed times: is a platform allowed now, until when, and is a change looser
 ├── content/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
@@ -232,7 +237,7 @@ extension/
 │   ├── reddit.js            Reddit focus mode: Home, Popular, All and Explore covered
 │   ├── x.js                 X focus mode: Home timeline and Explore covered, sidebar trends
 │   └── snapchat.js          Snapchat focus mode: Spotlight, Discover and Explore covered
-├── popup/                   Platform switches, pause flow, options, allowed times and today's counter
+├── popup/                   Platform switches, options, allowed times, today's counter (and the optional pause flow)
 ├── welcome/                 First-run page: the panel explained, pin and private-window checklist
 └── icons/                   16, 32, 48 and 128 px PNGs
 userscript/shortstop.user.js Generated from content/*.js for iOS Safari
@@ -345,7 +350,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,443 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,466 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -374,8 +379,9 @@ platform it checks:
 Two more pages have no site markup. `schedule.html` unit-tests
 [shared/schedule.js](extension/shared/schedule.js): weekday, all-day and past-midnight times,
 back-to-back times, bad data, and which edits count as looser. `popup.html` loads the real
-popup with an in-memory `chrome.storage` and clicks through it: the 3 instant pauses, the
-wait for the 4th, a new day resetting them, *Turn off…*, adding a time (waits), shortening
+popup with an in-memory `chrome.storage` and clicks through it: every switch turning off and
+back on in one click, then (with the optional slower flow) the 3 instant pauses, the wait for
+the 4th, a new day resetting them, *Turn off…*, adding a time (waits), shortening
 and removing one (instant), a time with no days, and *Block now*.
 - Facebook Marketplace: home and city browsing blocked; search, categories, listings and
   selling allowed; everything but listings and selling blocked when search is switched off
@@ -394,8 +400,9 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
   Facebook need a signed-in account, so run their sections of [TESTING.md](TESTING.md) on real
   accounts. The Firefox build and the iPhone userscript haven't been run on a real Firefox or
   iPhone yet, so treat them as untested.
-- **This is friction, not a lock.** The pause and 30-second wait stop impulsive switching-off.
-  Someone determined can still change settings in the browser's developer tools or uninstall
+- **This isn't a lock.** Switches turn off in one click. The 30-second wait now only applies
+  to adding or lengthening allowed times (and to any site you take out of `INSTANT_OFF`), and
+  someone determined can still change settings in the browser's developer tools or uninstall
   the extension.
 - Allowed times follow each device's own clock and time zone, and the 3-pauses-a-day count is
   kept per device, like the pauses themselves.
@@ -404,8 +411,8 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 - Pauses are stored per device. Your platform switches sync with your browser profile, but a
   10-minute pause on one computer doesn't pause your others.
 - The smaller options (*Hide YouTube Shorts*, *Allow notifications*, *Allow Marketplace
-  search*) switch instantly, without the pause flow. *Hide YouTube Shorts* is independent of
-  the YouTube switch: pausing YouTube, an allowed time or switching YouTube off lifts the
+  search*) switch instantly too. *Hide YouTube Shorts* is independent of the YouTube switch:
+  switching YouTube off, a pause or an allowed time lifts the
   rest of YouTube's blocking but keeps Shorts hidden. Switch *Hide YouTube Shorts* off to see
   them.
 - YouTube's "For you" / "People also watched" shelves in search are matched by their English
