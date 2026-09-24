@@ -31,7 +31,15 @@ const { PLATFORMS, todayKey, normalizeStats, totalOf } = globalThis.ShortStopSta
 const { UNLOCK_MINUTES, DAILY_PAUSES, OFF_WAIT_SECONDS, OFF_WINDOW_SECONDS } = globalThis.ShortStopPause;
 const { MAX_WINDOWS, normalizeWindows, allowedUntil, isLooser } = globalThis.ShortStopSchedule;
 
-const NAMES = { youtube: 'YouTube', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok' };
+const NAMES = {
+  youtube: 'YouTube',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  tiktok: 'TikTok',
+  reddit: 'Reddit',
+  x: 'X',
+  snapchat: 'Snapchat',
+};
 const numberFormat = new Intl.NumberFormat();
 const timeFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 const platformSwitches = Array.from(document.querySelectorAll('.switch[data-platform]'));

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Reddit fixture</title>
+    <script src="../../extension/shared/schedule.js"></script>
+    <script src="../../extension/content/core.js"></script>
+    <script type="application/json" id="plan">
+      {
+        "platform": "reddit",
+        "url": "https://www.reddit.com/",
+        "cover": {
+          "title": "Scrolling is blocked by your focus settings.",
+          "message": "Your Reddit Home feed is switched off.",
+          "links": ["Your profile", "Saved posts", "Chat"],
+          "search": "Search for a community or post"
+        },
+        "keyTest": true,
+        "searchTest": { "query": "cat dance", "expect": "https://www.reddit.com/search/?q=cat%20dance" },
+        "phases": [
+          { "name": "best", "url": "https://www.reddit.com/best/", "cover": { "message": "Your Reddit Home feed is switched off." } },
+          { "name": "newsort", "url": "https://www.reddit.com/new/", "cover": { "message": "Your Reddit Home feed is switched off." } },
+          { "name": "popular", "url": "https://www.reddit.com/r/popular/", "cover": { "message": "Popular and All are switched off." } },
+          { "name": "alltop", "url": "https://www.reddit.com/r/all/top/?t=day", "cover": { "message": "Popular and All are switched off." } },
+          { "name": "explore", "url": "https://www.reddit.com/explore/", "cover": { "message": "Explore and topic feeds are switched off." } },
+          { "name": "topic", "url": "https://www.reddit.com/t/gaming/", "cover": { "message": "Explore and topic feeds are switched off." } },
+          { "name": "community", "url": "https://www.reddit.com/r/aww/", "cover": false },
+          { "name": "lookalikeall", "url": "https://www.reddit.com/r/allthingsdnd/", "cover": false },
+          { "name": "lookalikepopular", "url": "https://www.reddit.com/r/popularmemes/", "cover": false },
+          { "name": "post", "url": "https://www.reddit.com/r/aww/comments/abc123/a_very_good_dog/", "cover": false },
+          { "name": "search", "url": "https://www.reddit.com/search/?q=cats", "cover": false },
+          { "name": "profile", "url": "https://www.reddit.com/user/someone/", "cover": false },
+          { "name": "backtofeed", "url": "https://www.reddit.com/", "cover": { "message": "Your Reddit Home feed is switched off." } }
+        ]
+      }
+    </script>
+    <script src="../harness.js"></script>
+    <script src="../../extension/content/reddit.js"></script>
+  </head>
+  <body>
+    <header>
+      <input type="search" placeholder="Search Reddit" data-name="Reddit's own search box" data-expect="visible" />
+    </header>
+
+    <!-- Left navigation: feed links disappear, communities stay. -->
+    <nav data-name="left navigation">
+      <a href="/" data-name="Home link" data-expect="visible">Home</a>
+      <a href="/r/popular/" data-name="Popular link" data-expect="hidden">Popular</a>
+      <a href="/explore/" data-name="Explore link" data-expect="hidden">Explore</a>
+      <a href="/r/all/" data-name="All link" data-expect="hidden">All</a>
+      <a href="/r/aww/" data-name="community link r/aww" data-expect="visible">r/aww</a>
+      <a href="/r/allthingsdnd/" data-name="community link r/allthingsdnd" data-expect="visible">r/allthingsdnd</a>
+      <a href="/r/popularmemes/" data-name="community link r/popularmemes" data-expect="visible">r/popularmemes</a>
+    </nav>
+
+    <main data-name="content area">
+      <article data-name="post" data-expect-community="visible" data-expect-post="visible">
+        <video muted></video>
+        <a href="/r/aww/comments/abc123/a_very_good_dog/">A very good dog</a>
+      </article>
+      <section data-name="More posts you may like" data-expect-post="hidden" data-expect-community="hidden">
+        <h2>More posts you may like</h2>
+        <a href="/r/pics/comments/def456/sunset/">Sunset</a>
+      </section>
+      <section data-name="Comments" data-expect-post="visible">
+        <h2>Comments</h2>
+        <p>Great dog.</p>
+      </section>
+    </main>
+
+    <!-- Right rail outside the content area. -->
+    <aside data-name="Popular communities box" data-expect="hidden" data-count>
+      <h2>Popular communities</h2>
+      <a href="/r/funny/">r/funny</a>
+    </aside>
+    <aside data-name="About this community box" data-expect="visible">
+      <h2>About Community</h2>
+      <p>Things that make you go aww.</p>
+    </aside>
+
+    <template id="dynamic">
+      <a href="/r/popular/" data-name="Popular link rendered later" data-expect-dynamic="hidden">Popular</a>
+      <a href="/r/aww/" data-name="community link rendered later" data-expect-dynamic="visible">r/aww</a>
+    </template>
+  </body>
+</html>

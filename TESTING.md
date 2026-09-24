@@ -25,7 +25,7 @@ Do this on a browser profile that has never had ShortStop, or remove ShortStop a
 - [ ] Brave: the private-window setting is named "Allow in Private". Check that this matches
       what Brave shows.
 
-Before you start the rest: load the extension, open the popup, and check that all four switches
+Before you start the rest: load the extension, open the popup, and check that all seven switches
 are on. Note today's counter number.
 
 ## YouTube (desktop, www.youtube.com)
@@ -149,6 +149,44 @@ in place of the videos, with TikTok's sidebar and top bar still usable.
 - [ ] **Notifications on:** turn on *Allow notifications* under TikTok in the popup. The button
       comes back without a reload. Turn it off again.
 
+## Reddit (www.reddit.com, then old.reddit.com)
+
+These selectors haven't been checked on the live site yet, so note anything that slips through.
+
+- [ ] **Home:** reddit.com shows the panel ("Your Reddit Home feed is switched off.") straight away.
+      So do `/best/`, `/new/` and `/top/`.
+- [ ] **Popular / All / Explore:** the left menu has no Popular, All or Explore links. Typing
+      `/r/popular`, `/r/all` or `/explore` shows the panel each time.
+- [ ] **Panel:** its search box shows results. Your profile, Saved posts and Chat all open.
+- [ ] **Communities:** open a community (e.g. `/r/aww`). It works, and so does a post with its
+      comments. A community whose name starts with "all" or "popular" is not blocked.
+- [ ] **Recommendations:** no "More posts you may like" or "Popular communities" boxes.
+- [ ] **old.reddit.com:** the front page and `/r/popular` show the panel; a community works.
+
+## X (x.com)
+
+These selectors haven't been checked on the live site yet, so note anything that slips through.
+
+- [ ] **Home:** x.com/home shows the panel straight away, on both For you and Following. J/K,
+      Space and Page Down do nothing, and no video plays.
+- [ ] **Explore:** the navigation has no Home or Explore links. `/explore` shows the panel.
+- [ ] **Panel:** its search box shows results. Messages, Bookmarks and Your profile open.
+- [ ] **Profiles and posts:** open a profile and a single post. They work, with no "What's
+      happening" or "Who to follow" in the right-hand column.
+- [ ] **Messages** work. twitter.com/home also shows the panel.
+- [ ] **Notifications:** hidden by default, and `/notifications` shows the panel. Turn on
+      *Allow notifications* under X: they come back without a reload.
+
+## Snapchat (www.snapchat.com)
+
+These selectors haven't been checked on the live site yet, so note anything that slips through.
+
+- [ ] **Spotlight:** snapchat.com/spotlight shows the panel ("Spotlight is switched off.") and
+      nothing plays. A shared Spotlight link (`/spotlight/…`) does too.
+- [ ] **Discover:** `/discover` shows the panel.
+- [ ] **Chat:** the panel's "Chat on Snapchat for web" link opens Snapchat for web, which works.
+- [ ] **Profiles:** a public profile (`/add/<name>`) opens, without links into Spotlight.
+
 ## Popup and switches
 
 - [ ] With a YouTube tab open, click YouTube's switch in the popup. It does **not** switch off.
@@ -201,7 +239,8 @@ in place of the videos, with TikTok's sidebar and top bar still usable.
 
 - [ ] Open the popup, right-click → **Inspect** → **Network** tab, then use the popup. Nothing is requested.
 - [ ] On `chrome://extensions` → ShortStop → **Details**, site access lists only YouTube,
-      Instagram, Facebook and TikTok.
+      Instagram, Facebook, TikTok, Reddit (www and old), X (x.com, twitter.com, and their
+      mobile. versions) and Snapchat.
 
 ## iPhone (Userscripts app)
 

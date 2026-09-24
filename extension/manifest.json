@@ -3,7 +3,7 @@
   "name": "ShortStop: Block Shorts, Reels & Endless Feeds",
   "short_name": "ShortStop",
   "version": "1.0.0",
-  "description": "Blocks Shorts, Reels and the endless recommendation feeds on YouTube, Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.",
+  "description": "Blocks Shorts, Reels, Spotlight and endless feeds on YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat. No tracking.",
   "minimum_chrome_version": "111",
   "icons": {
     "16": "icons/icon16.png",
@@ -33,7 +33,14 @@
     "*://www.facebook.com/*",
     "*://web.facebook.com/*",
     "*://m.facebook.com/*",
-    "*://*.tiktok.com/*"
+    "*://*.tiktok.com/*",
+    "*://www.reddit.com/*",
+    "*://old.reddit.com/*",
+    "*://x.com/*",
+    "*://mobile.x.com/*",
+    "*://twitter.com/*",
+    "*://mobile.twitter.com/*",
+    "*://www.snapchat.com/*"
   ],
   "content_scripts": [
     {
@@ -44,7 +51,14 @@
         "*://www.facebook.com/*",
         "*://web.facebook.com/*",
         "*://m.facebook.com/*",
-        "*://*.tiktok.com/*"
+        "*://*.tiktok.com/*",
+        "*://www.reddit.com/*",
+        "*://old.reddit.com/*",
+        "*://x.com/*",
+        "*://mobile.x.com/*",
+        "*://twitter.com/*",
+        "*://mobile.twitter.com/*",
+        "*://www.snapchat.com/*"
       ],
       "js": [
         "content/nav-hook.js"
@@ -96,6 +110,43 @@
         "shared/schedule.js",
         "content/core.js",
         "content/tiktok.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://www.reddit.com/*",
+        "*://old.reddit.com/*"
+      ],
+      "js": [
+        "shared/schedule.js",
+        "content/core.js",
+        "content/reddit.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://x.com/*",
+        "*://mobile.x.com/*",
+        "*://twitter.com/*",
+        "*://mobile.twitter.com/*"
+      ],
+      "js": [
+        "shared/schedule.js",
+        "content/core.js",
+        "content/x.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://www.snapchat.com/*"
+      ],
+      "js": [
+        "shared/schedule.js",
+        "content/core.js",
+        "content/snapchat.js"
       ],
       "run_at": "document_start"
     }

@@ -8,8 +8,8 @@
 
 <p align="center">
   A free, open-source browser extension that blocks short-form video and endless
-  recommendation feeds on YouTube, Instagram, Facebook and TikTok, while keeping the
-  useful parts of each site working.
+  recommendation feeds on YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat,
+  while keeping the useful parts of each site working.
 </p>
 
 <p align="center">
@@ -20,8 +20,9 @@
 
 ## At a glance
 
-- **Focus mode on YouTube, Instagram, Facebook and TikTok.** Endless feeds, Shorts, Reels,
-  Stories, LIVE and autoplay are replaced by a calm panel, so there's nothing to scroll.
+- **Focus mode on YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat.** Endless
+  feeds, Shorts, Reels, Spotlight, Stories, LIVE and autoplay are replaced by a calm panel, so
+  there's nothing to scroll.
 - **Still useful.** Search, messages, profiles, groups, uploading and a video you open on
   purpose keep working, so the sites stay usable as communication tools.
 - **Hard to switch off on impulse.** Blocking pauses for 10 minutes and comes back by itself,
@@ -30,7 +31,7 @@
   or Instagram at weekends. Blocking switches off and on by itself.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 695
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,230
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -42,9 +43,12 @@
 | **Instagram** | **Focus mode.** The Home feed, Explore (including hashtag, place and suggested-people pages), Reels and Stories are all blocked the same way. Their content is replaced by a ShortStop panel before it paints, so there's nothing to scroll and no way round it through the Home feed. The panel links to what still works: **Messages**, **account search**, **your profile**, and posting through Instagram's own menu. Profiles and single posts you open on purpose still work, minus the Reels tab and "Suggested for you" accounts. Reels shared in DMs are blurred and can't be opened. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 | **Facebook** | **Focus mode.** Facebook stays a communication and utility tool, not an endless feed. The News Feed (including the Feeds filters), Reels, Watch, Stories, the groups feed and Discover, Gaming, friend suggestions and **Marketplace's recommended listings** are all blocked the same way. Each shows *"Scrolling is blocked by your focus settings."* where the feed was, with a Facebook search box and links to **Messenger**, **your profile** (to post), **your groups** and **Pages you manage**. A Watch link someone sent you gets an *Open this video only* button. Menu and top-bar shortcuts into feeds are hidden. On a blocked feed, feed keys (including Facebook's own J/K) are swallowed and videos are paused. Inside pages that stay open (profiles, a specific group, search), Reels, the Stories tray and "Suggested for you" / "People you may know" units are removed. **Marketplace:** searching and categories, listings, selling and the inbox work, and *Allow Marketplace search* in the popup can turn search off too. **Notifications** are blocked unless you turn on *Allow notifications*. |
 | **TikTok** | **Focus mode.** Every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, Short dramas (the catalog and its episodes), and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
+| **Reddit** | **Focus mode.** The **Home feed** (every sort order: Best, Hot, New, Top, Rising), **Popular**, **All**, and **Explore** and topic pages are replaced by the panel, with a Reddit search box and links to **your profile**, **saved posts** and **chat**. The Popular, All and Explore links are hidden (communities with similar names, like r/allthingsdnd, are not). A **community you open on purpose** still works, like a Facebook group, and so do **posts and comments**, **search** and **profiles**. "More posts you may like", "Popular communities" and similar boxes are removed. Works on www.reddit.com and old.reddit.com. |
+| **X** | **Focus mode.** The **Home timeline** (For you and Following both live at `/home`), **Explore** with its trending tabs, and topic timelines are replaced by the panel, with an X search box and links to **Messages**, **Bookmarks** and **your profile**. The Home and Explore links are hidden, and so are "What's happening" and "Who to follow" in the right-hand column. On a blocked timeline, X's J/K and Space shortcuts are swallowed and videos are paused. **Search**, **messages**, **profiles**, **single posts**, **bookmarks** and **lists** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. Works on x.com and twitter.com. |
+| **Snapchat** | **Focus mode.** **Spotlight** (the feed, single Spotlight links, which play on into the next video, and a profile's Spotlight) and the **Discover** and **Explore** pages are replaced by the panel, with a link to **Snapchat for web** (chat). Links into Spotlight, Discover and Explore are hidden. Chat and public profiles keep working. |
 
 The popup has a switch per platform, plus *Allow notifications* under Instagram,
-Facebook and TikTok, *Allow Marketplace search* under Facebook, and *Allowed times* under each.
+Facebook, TikTok and X, *Allow Marketplace search* under Facebook, and *Allowed times* under each.
 Changes apply to open tabs straight away, without a reload. It also shows how many
 Shorts, Reels and feeds were blocked today (visiting a blocked feed page counts once).
 
@@ -114,8 +118,9 @@ at the bottom of the popup. It needs no extra permission and makes no network re
 
 - **No data collection, no analytics, no network requests.** The extension never
   calls `fetch`, loads no remote code and uses no third-party libraries.
-- **Minimum permissions:** `storage`, plus host access to the four sites it works on.
-  It can't see any other website.
+- **Minimum permissions:** `storage`, plus host access to the seven sites it works on
+  (YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat). It can't see any other
+  website.
 - Your platform switches, options and allowed times are saved with `chrome.storage.sync`, so
   they follow your browser profile. The daily counter, temporary pauses, today's pause count,
   any waiting request and any *Block now* live in `chrome.storage.local`, on your device only.
@@ -166,13 +171,14 @@ Temporary add-ons are removed when Firefox restarts. To keep it installed, sign 
 
 iOS Safari extensions can't be side-loaded, so ShortStop also ships as a single
 userscript: [`userscript/shortstop.user.js`](userscript/shortstop.user.js), with the same
-focus modes for YouTube, Instagram, Facebook and TikTok.
+focus modes for YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat.
 
 1. Install **Userscripts** (by Justin Wasack, free) from the App Store.
 2. Open the Userscripts app and choose a folder for your scripts, for example
    `iCloud Drive/Userscripts`.
 3. Turn the extension on: **Settings → Apps → Safari → Extensions → Userscripts**.
-   Enable it and set **youtube.com, instagram.com, facebook.com and tiktok.com** (or All Websites) to **Allow**.
+   Enable it and set **youtube.com, instagram.com, facebook.com, tiktok.com, reddit.com, x.com,
+   twitter.com and snapchat.com** (or All Websites) to **Allow**.
    On older iOS versions this is under **Settings → Safari → Extensions**.
 4. Put `shortstop.user.js` in that folder. Either:
    - open the raw file on GitHub in Safari, tap the **Userscripts** icon in the address
@@ -194,6 +200,13 @@ const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
 
 const BLOCK_TIKTOK_FEEDS = true;                // For You, Following, Friends, LIVE, Explore
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
+
+const BLOCK_REDDIT_FEEDS = true;                // Home, Popular, All, Explore
+
+const BLOCK_X_FEEDS = true;                     // Home timeline, Explore
+const ALLOW_X_NOTIFICATIONS = false;
+
+const BLOCK_SNAPCHAT_SPOTLIGHT = true;          // Spotlight, Discover, Explore
 ```
 
 The userscript has no popup, daily counter, pause flow or allowed times, because Safari
@@ -203,7 +216,7 @@ userscripts have no shared storage. To pause a platform, set its constant to `fa
 
 ```
 extension/
-├── manifest.json            MV3 manifest: storage + the four sites, nothing else
+├── manifest.json            MV3 manifest: storage + the seven sites, nothing else
 ├── background.js            Service worker: keeps the daily counter (one write queue for all tabs)
 ├── shared/stats.js          Counter helpers shared by the background worker and popup
 ├── shared/pause.js          The pause timings (10 minutes, 3 a day, 30-second wait), shared by popup and welcome page
@@ -214,7 +227,10 @@ extension/
 │   ├── youtube.js           YouTube focus mode: Shorts redirects, covered home feed, autoplay effects
 │   ├── instagram.js         Instagram focus mode: covered routes, selectors, redirects
 │   ├── facebook.js          Facebook focus mode: covered feeds, Marketplace rules, selectors
-│   └── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
+│   ├── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
+│   ├── reddit.js            Reddit focus mode: Home, Popular, All and Explore covered
+│   ├── x.js                 X focus mode: Home timeline and Explore covered, sidebar trends
+│   └── snapchat.js          Snapchat focus mode: Spotlight, Discover and Explore covered
 ├── popup/                   Platform switches, pause flow, options, allowed times and today's counter
 ├── welcome/                 First-run page: the panel explained, pin and private-window checklist
 └── icons/                   16, 32, 48 and 128 px PNGs
@@ -239,8 +255,8 @@ Each platform file is a single config object, and `core.js` does the work:
    for a `pushState`/`replaceState` hook (`nav-hook.js`), YouTube's `yt-navigate-finish`,
    `popstate`, and a one-second URL check as a safety net. It also catches clicks on
    Short/Reel links before the site's router plays them.
-4. **Covered routes.** A config can list whole routes to cover: every feed on YouTube,
-   Instagram, Facebook and TikTok. A route is a pathname pattern, or a test on the whole URL
+4. **Covered routes.** A config can list whole routes to cover: every feed on each of the
+   seven sites. A route is a pathname pattern, or a test on the whole URL
    when the site keeps the feed choice in the query string. On those routes the content area
    (`main`, Facebook's `div[role="main"]`, TikTok's `div#main-content-…`, YouTube's
    `ytd-browse`) is hidden by the same `document_start` stylesheet, and a ShortStop panel takes
@@ -266,7 +282,7 @@ Each platform file is a single config object, and `core.js` does the work:
 
 ## When a site changes: updating selectors
 
-All four sites change their markup regularly. When something slips through, the fix is
+All seven sites change their markup regularly. When something slips through, the fix is
 usually one line in one file.
 
 1. **Find the element.** Right-click the Short, Reel or recommendation that got through →
@@ -323,7 +339,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 695 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,230 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -338,7 +354,7 @@ platform it checks:
 - the counter total, with no double counting
 - switching off and back on
 - page-scoped rules (Explore, DMs)
-- covered routes on all four platforms: the panel's title, message, links and search box,
+- covered routes on every platform: the panel's title, message, links and search box,
   the panel re-mounting after the site removes it, the full-viewport fallback, and the
   notification options
 - feed keys being swallowed (but not while typing), media being paused, and the panel's
@@ -408,6 +424,20 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
   than a live check, because the feed wasn't shown to the test account.
 - m.facebook.com uses a different layout. Its feeds are still blocked by URL, with the
   panel covering the whole screen.
+- **Reddit, X and Snapchat are new and haven't been checked on the live sites yet.** Their
+  feeds are blocked by URL, which is the dependable part. The selectors for links,
+  sidebars and recommendation boxes come from their known markup and are tested against
+  mock pages only, so run their sections of [TESTING.md](TESTING.md) and adjust
+  `extension/content/<site>.js` where something slips through.
+- Reddit keeps communities you open on purpose, so a community's own post list can still be
+  scrolled, just as a Facebook group can. Reddit's "More posts you may like", "Popular
+  communities" and similar boxes, and X's right-hand-column boxes other than "Who to
+  follow" and trends, are found by their English headings.
+- On X, the "Discover more" posts under a post's replies aren't removed yet.
+- Snapchat's web markup has no reliable content area, so on Spotlight the panel may cover
+  the whole window rather than just the feed.
+- Adding sites means new host permissions. A store-installed copy would ask you to approve
+  them on update; a loaded-unpacked copy just needs reloading.
 
 ## License
 
@@ -439,4 +469,4 @@ SOFTWARE.
 ```
 
 ShortStop isn't affiliated with or endorsed by YouTube, Google, Instagram, Facebook,
-Meta or TikTok.
+Meta, TikTok, Reddit, X or Snap.

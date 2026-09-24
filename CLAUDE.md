@@ -2,9 +2,9 @@
 
 ShortStop is a Chrome Manifest V3 extension (plain JavaScript and CSS, no build step, no
 libraries) that blocks Shorts, Reels and endless recommendation feeds on YouTube, Instagram,
-Facebook and TikTok. `extension/` is the extension, `userscript/` is a generated iPhone
-version, `tests/` has fixture pages and a headless-browser runner, and `tools/` has the
-Python helpers. See [README.md](README.md) for how it works.
+Facebook, TikTok, Reddit, X and Snapchat. `extension/` is the extension, `userscript/` is a
+generated iPhone version, `tests/` has fixture pages and a headless-browser runner, and
+`tools/` has the Python helpers. See [README.md](README.md) for how it works.
 
 ## Git workflow: one branch per feature or improvement
 
@@ -36,4 +36,5 @@ This keeps each change reviewable and easy to revert on its own.
 ## Constraints that must not be broken
 
 - Zero data collection, zero analytics, zero network requests, no third-party libraries.
-- Permissions stay minimal: `storage`, plus host access to the four sites.
+- Permissions stay minimal: `storage`, plus host access to the supported sites (listed in
+  `extension/manifest.json`). Adding a site is a deliberate change to that list.

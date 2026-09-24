@@ -6,14 +6,14 @@
  *
  *   stats = {
  *     date: '2026-09-23',                                   // local calendar day
- *     today: { youtube: 3, instagram: 0, facebook: 1, tiktok: 2 },
+ *     today: { youtube: 3, instagram: 0, facebook: 1, tiktok: 2, reddit: 0, x: 4, snapchat: 0 },
  *     allTime: 1204,
  *   }
  */
 (function (global) {
   'use strict';
 
-  const PLATFORMS = ['youtube', 'instagram', 'facebook', 'tiktok'];
+  const PLATFORMS = ['youtube', 'instagram', 'facebook', 'tiktok', 'reddit', 'x', 'snapchat'];
 
   // YYYY-MM-DD in the user's own time zone, so "today" resets at local midnight.
   function todayKey(date = new Date()) {

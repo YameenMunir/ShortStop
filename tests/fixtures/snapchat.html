@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Snapchat fixture</title>
+    <script src="../../extension/shared/schedule.js"></script>
+    <script src="../../extension/content/core.js"></script>
+    <script type="application/json" id="plan">
+      {
+        "platform": "snapchat",
+        "url": "https://www.snapchat.com/spotlight",
+        "cover": {
+          "title": "Scrolling is blocked by your focus settings.",
+          "message": "Spotlight is switched off.",
+          "links": ["Chat on Snapchat for web"],
+          "search": false
+        },
+        "keyTest": true,
+        "phases": [
+          { "name": "single", "url": "https://www.snapchat.com/spotlight/W7_EDlXWTBiXAEEniNoMPwAAYaWxsZmtmdWlpAZkS0yLuAZkS0yLeAAAAAQ", "cover": { "message": "Spotlight is switched off." } },
+          { "name": "profilespotlight", "url": "https://www.snapchat.com/@creator/spotlight/abc", "cover": { "message": "Spotlight is switched off." } },
+          { "name": "discover", "url": "https://www.snapchat.com/discover", "cover": { "message": "Discover and Explore are switched off." } },
+          { "name": "explore", "url": "https://www.snapchat.com/explore/funny", "cover": { "message": "Discover and Explore are switched off." } },
+          { "name": "web", "url": "https://www.snapchat.com/web", "cover": false },
+          { "name": "profile", "url": "https://www.snapchat.com/add/someone", "cover": false },
+          { "name": "atprofile", "url": "https://www.snapchat.com/@spotlightfan", "cover": false },
+          { "name": "backtofeed", "url": "https://www.snapchat.com/spotlight", "cover": { "message": "Spotlight is switched off." } }
+        ]
+      }
+    </script>
+    <script src="../harness.js"></script>
+    <script src="../../extension/content/snapchat.js"></script>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/spotlight" data-name="Spotlight link" data-expect="hidden">Spotlight</a>
+        <a href="/discover" data-name="Discover link" data-expect="hidden">Discover</a>
+        <a href="/explore/funny" data-name="Explore link" data-expect="hidden">Funny</a>
+        <a href="/web" data-name="Snapchat for web link" data-expect="visible">Chat</a>
+        <a href="/add/someone" data-name="profile link" data-expect="visible">someone</a>
+        <a href="/@spotlightfan" data-name="profile link named spotlightfan" data-expect="visible">@spotlightfan</a>
+      </nav>
+    </header>
+
+    <main data-name="content area">
+      <input type="text" placeholder="Send a chat" data-name="text field" />
+      <div data-name="Spotlight player">
+        <video muted></video>
+      </div>
+      <a href="/@creator/spotlight/abc" data-name="a profile's Spotlight video link" data-expect-profile="hidden">Spotlight video</a>
+      <p data-name="profile bio" data-expect-profile="visible">Hello!</p>
+    </main>
+
+    <template id="dynamic">
+      <a href="https://www.snapchat.com/spotlight/xyz" data-name="full Spotlight link rendered later" data-expect-dynamic="hidden">Watch</a>
+      <a href="/web" data-name="chat link rendered later" data-expect-dynamic="visible">Chat</a>
+    </template>
+  </body>
+</html>

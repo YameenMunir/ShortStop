@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>X fixture</title>
+    <script src="../../extension/shared/schedule.js"></script>
+    <script src="../../extension/content/core.js"></script>
+    <script type="application/json" id="plan">
+      {
+        "platform": "x",
+        "url": "https://x.com/home",
+        "cover": {
+          "title": "Scrolling is blocked by your focus settings.",
+          "message": "Your X timeline is switched off, For you and Following both.",
+          "links": ["Messages", "Bookmarks", "Your profile"],
+          "search": "Search for a person or post"
+        },
+        "keyTest": true,
+        "searchTest": { "query": "cat dance", "expect": "https://x.com/search?q=cat%20dance&src=typed_query" },
+        "phases": [
+          { "name": "explore", "url": "https://x.com/explore", "cover": { "message": "Explore and trending are switched off." } },
+          { "name": "exploretab", "url": "https://x.com/explore/tabs/trending", "cover": { "message": "Explore and trending are switched off." } },
+          { "name": "topic", "url": "https://x.com/i/topics/848920371311001600", "cover": { "message": "Explore and trending are switched off." } },
+          { "name": "search", "url": "https://x.com/search?q=cats&src=typed_query", "cover": false },
+          { "name": "profile", "url": "https://x.com/someuser", "cover": false },
+          { "name": "homeprofile", "url": "https://x.com/homeowner", "cover": false },
+          { "name": "status", "url": "https://x.com/someuser/status/1800000000000000000", "cover": false },
+          { "name": "messages", "url": "https://x.com/messages", "cover": false },
+          { "name": "chat", "url": "https://x.com/i/chat", "cover": false },
+          { "name": "bookmarks", "url": "https://x.com/i/bookmarks", "cover": false },
+          { "name": "notifications", "url": "https://x.com/notifications", "cover": { "message": "Notifications are switched off. Turn on \"Allow notifications\" in the ShortStop menu if you need them." } },
+          {
+            "name": "notifallowed",
+            "settings": { "x": true, "xNotifications": true },
+            "url": "https://x.com/notifications",
+            "cover": false
+          },
+          {
+            "name": "backtofeed",
+            "settings": { "x": true },
+            "url": "https://x.com/home",
+            "cover": { "links": ["Messages", "Bookmarks", "Your profile"] }
+          }
+        ]
+      }
+    </script>
+    <script src="../harness.js"></script>
+    <script src="../../extension/content/x.js"></script>
+  </head>
+  <body>
+    <header role="banner">
+      <nav aria-label="Primary">
+        <a href="/home" data-testid="AppTabBar_Home_Link" data-name="Home link" data-expect="hidden">Home</a>
+        <a href="/explore" data-testid="AppTabBar_Explore_Link" data-name="Explore link" data-expect="hidden">Explore</a>
+        <a href="/notifications" data-testid="AppTabBar_Notifications_Link" data-name="Notifications link" data-expect="hidden" data-expect-notifallowed="visible">Notifications</a>
+        <a href="/messages" data-testid="AppTabBar_DirectMessage_Link" data-name="Messages link" data-expect="visible">Messages</a>
+        <a href="/someuser" data-testid="AppTabBar_Profile_Link" data-name="Own profile link" data-expect="visible">Profile</a>
+      </nav>
+    </header>
+
+    <main role="main" data-name="content area">
+      <div data-testid="primaryColumn">
+        <input type="search" placeholder="Search" data-name="X's own search box" data-expect-search="visible" />
+        <article data-testid="tweet" data-name="post" data-expect-profile="visible" data-expect-status="visible">
+          <video muted></video>
+          <a href="/someuser/status/1800000000000000000">A post</a>
+        </article>
+      </div>
+      <div data-testid="sidebarColumn">
+        <section aria-labelledby="trends-title" data-name="What's happening box" data-expect-profile="hidden">
+          <h2 id="trends-title">What's happening</h2>
+          <div data-testid="trend">#SomethingTrending</div>
+        </section>
+        <aside aria-label="Who to follow" data-name="Who to follow box" data-expect-profile="hidden">
+          <h2>Who to follow</h2>
+          <div data-testid="UserCell">@suggested</div>
+        </aside>
+        <section data-name="You might like box" data-expect-status="hidden">
+          <h2>You might like</h2>
+          <a href="/another">@another</a>
+        </section>
+        <section data-name="Relevant people box" data-expect-status="visible">
+          <h2>Relevant people</h2>
+          <div data-testid="UserCell">@someuser</div>
+        </section>
+      </div>
+    </main>
+
+    <template id="dynamic">
+      <a href="/explore" data-testid="AppTabBar_Explore_Link" data-name="Explore link rendered later" data-expect-dynamic="hidden">Explore</a>
+      <a href="/messages" data-name="Messages link rendered later" data-expect-dynamic="visible">Messages</a>
+    </template>
+  </body>
+</html>
