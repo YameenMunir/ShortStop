@@ -29,6 +29,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     tiktokNotifications: false,
     facebookNotifications: false,
     facebookMarketplaceSearch: true,
+    xNotifications: false,
     ...settings,
   };
   for (const platform of PLATFORMS) complete[platform] = settings[platform] !== false;

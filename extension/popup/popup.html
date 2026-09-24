@@ -108,6 +108,47 @@
           />
         </label>
       </li>
+      <li class="platform">
+        <label class="platform-row" for="toggle-reddit">
+          <span class="platform-text">
+            <span class="platform-name">Reddit</span>
+            <span class="platform-detail">Home, Popular and All off</span>
+          </span>
+          <span class="platform-count" id="count-reddit" title="Blocked today">0</span>
+          <input class="switch" type="checkbox" role="switch" id="toggle-reddit" data-platform="reddit" checked />
+        </label>
+      </li>
+      <li class="platform">
+        <label class="platform-row" for="toggle-x">
+          <span class="platform-text">
+            <span class="platform-name">X</span>
+            <span class="platform-detail">Home timeline and Explore off</span>
+          </span>
+          <span class="platform-count" id="count-x" title="Blocked today">0</span>
+          <input class="switch" type="checkbox" role="switch" id="toggle-x" data-platform="x" checked />
+        </label>
+        <label class="option-row" for="option-x-notifications">
+          <span>Allow notifications</span>
+          <input
+            class="switch switch-small"
+            type="checkbox"
+            role="switch"
+            id="option-x-notifications"
+            data-setting="xNotifications"
+            data-parent="x"
+          />
+        </label>
+      </li>
+      <li class="platform">
+        <label class="platform-row" for="toggle-snapchat">
+          <span class="platform-text">
+            <span class="platform-name">Snapchat</span>
+            <span class="platform-detail">Spotlight and Discover off</span>
+          </span>
+          <span class="platform-count" id="count-snapchat" title="Blocked today">0</span>
+          <input class="switch" type="checkbox" role="switch" id="toggle-snapchat" data-platform="snapchat" checked />
+        </label>
+      </li>
     </ul>
 
     <footer class="footer">

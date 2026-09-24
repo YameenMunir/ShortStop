@@ -2,8 +2,8 @@
 Build userscript/shortstop.user.js from the extension's own source files.
 
 The userscript is the extension's core engine (with the allowed-times helper
-it uses) plus the YouTube, Instagram, Facebook and TikTok configs, stitched
-into one file with an iOS-friendly environment (toggles as constants, no
+it uses) plus the YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat
+configs, stitched into one file with an iOS-friendly environment (toggles as constants, no
 storage, no counter, no allowed times). Selectors therefore only ever
 need updating in extension/content/*.js; run this afterwards:
 
@@ -19,13 +19,13 @@ CONTENT = ROOT / "extension" / "content"
 SCHEDULE = ROOT / "extension" / "shared" / "schedule.js"  # core.js needs it.
 OUTPUT = ROOT / "userscript" / "shortstop.user.js"
 
-PLATFORM_FILES = ("youtube.js", "instagram.js", "facebook.js", "tiktok.js")
+PLATFORM_FILES = ("youtube.js", "instagram.js", "facebook.js", "tiktok.js", "reddit.js", "x.js", "snapchat.js")
 
 HEADER = """// ==UserScript==
 // @name         ShortStop: Block Shorts, Reels & Endless Feeds
 // @namespace    https://github.com/YameenMunir/ShortStop
 // @version      __VERSION__
-// @description  Blocks Shorts, Reels and the endless recommendation feeds on YouTube, Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.
+// @description  Blocks Shorts, Reels, Spotlight and endless feeds on YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat, while keeping search, messages and profiles usable. No tracking.
 // @author       Yameen Munir
 // @license      MIT
 // @match        *://www.youtube.com/*
@@ -35,6 +35,13 @@ HEADER = """// ==UserScript==
 // @match        *://web.facebook.com/*
 // @match        *://m.facebook.com/*
 // @match        *://*.tiktok.com/*
+// @match        *://www.reddit.com/*
+// @match        *://old.reddit.com/*
+// @match        *://x.com/*
+// @match        *://mobile.x.com/*
+// @match        *://twitter.com/*
+// @match        *://mobile.twitter.com/*
+// @match        *://www.snapchat.com/*
 // @run-at       document-start
 // @inject-into  content
 // @noframes
@@ -68,6 +75,17 @@ const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
 const BLOCK_TIKTOK_FEEDS = true;
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
 
+// Reddit: the Home feed, Popular, All and Explore are blocked. Communities,
+// posts, search and chat keep working.
+const BLOCK_REDDIT_FEEDS = true;
+
+// X: the Home timeline (For you and Following) and Explore are blocked.
+const BLOCK_X_FEEDS = true;
+const ALLOW_X_NOTIFICATIONS = false;
+
+// Snapchat: Spotlight, Discover and Explore are blocked.
+const BLOCK_SNAPCHAT_SPOTLIGHT = true;
+
 /* ================================================================ */
 
 (function () {
@@ -82,6 +100,10 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
     instagramNotifications: ALLOW_INSTAGRAM_NOTIFICATIONS,
     tiktok: BLOCK_TIKTOK_FEEDS,
     tiktokNotifications: ALLOW_TIKTOK_NOTIFICATIONS,
+    reddit: BLOCK_REDDIT_FEEDS,
+    x: BLOCK_X_FEEDS,
+    xNotifications: ALLOW_X_NOTIFICATIONS,
+    snapchat: BLOCK_SNAPCHAT_SPOTLIGHT,
   };
 """
 

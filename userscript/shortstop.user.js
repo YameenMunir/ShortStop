@@ -2,7 +2,7 @@
 // @name         ShortStop: Block Shorts, Reels & Endless Feeds
 // @namespace    https://github.com/YameenMunir/ShortStop
 // @version      1.0.0
-// @description  Blocks Shorts, Reels and the endless recommendation feeds on YouTube, Instagram, Facebook and TikTok, while keeping search, messages and profiles usable. No tracking.
+// @description  Blocks Shorts, Reels, Spotlight and endless feeds on YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat, while keeping search, messages and profiles usable. No tracking.
 // @author       Yameen Munir
 // @license      MIT
 // @match        *://www.youtube.com/*
@@ -12,6 +12,13 @@
 // @match        *://web.facebook.com/*
 // @match        *://m.facebook.com/*
 // @match        *://*.tiktok.com/*
+// @match        *://www.reddit.com/*
+// @match        *://old.reddit.com/*
+// @match        *://x.com/*
+// @match        *://mobile.x.com/*
+// @match        *://twitter.com/*
+// @match        *://mobile.twitter.com/*
+// @match        *://www.snapchat.com/*
 // @run-at       document-start
 // @inject-into  content
 // @noframes
@@ -45,6 +52,17 @@ const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
 const BLOCK_TIKTOK_FEEDS = true;
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
 
+// Reddit: the Home feed, Popular, All and Explore are blocked. Communities,
+// posts, search and chat keep working.
+const BLOCK_REDDIT_FEEDS = true;
+
+// X: the Home timeline (For you and Following) and Explore are blocked.
+const BLOCK_X_FEEDS = true;
+const ALLOW_X_NOTIFICATIONS = false;
+
+// Snapchat: Spotlight, Discover and Explore are blocked.
+const BLOCK_SNAPCHAT_SPOTLIGHT = true;
+
 /* ================================================================ */
 
 (function () {
@@ -59,6 +77,10 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
     instagramNotifications: ALLOW_INSTAGRAM_NOTIFICATIONS,
     tiktok: BLOCK_TIKTOK_FEEDS,
     tiktokNotifications: ALLOW_TIKTOK_NOTIFICATIONS,
+    reddit: BLOCK_REDDIT_FEEDS,
+    x: BLOCK_X_FEEDS,
+    xNotifications: ALLOW_X_NOTIFICATIONS,
+    snapchat: BLOCK_SNAPCHAT_SPOTLIGHT,
   };
 
   /* ======== shared/schedule.js ======== */
@@ -1916,6 +1938,234 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         closest: 'div:has(a[href*="/video/"], a[href^="/@"]):not(:has(video, [data-e2e="user-page"], h1))',
         page: ['video', 'other'],
         count: true,
+      },
+    ],
+  });
+
+  /* ======== reddit.js ======== */
+  /*
+   * ShortStop: Reddit (focus mode)
+   * ==============================
+   * Reddit's algorithmic feeds are treated like the other platforms' feeds:
+   * the Home feed (every sort order), Popular, All, and Explore / topic pages.
+   * On those routes the content area is hidden from the first paint and
+   * replaced with a ShortStop panel, with a Reddit search box.
+   *
+   * Still available on purpose:
+   *   - A community (subreddit) you open, like a Facebook group you open
+   *   - Posts and their comments
+   *   - Search, profiles, saved posts, chat and messages
+   *
+   * Works on www.reddit.com and old.reddit.com (same URLs, different markup),
+   * so selectors key off URLs rather than either layout's class names.
+   * See README.md for how to update them.
+   */
+  ShortStop.start({
+    id: 'reddit',
+    hosts: ['reddit.com'],
+
+    // Named pages (matched against location.pathname, first match wins).
+    pages: {
+      home: /^\/(?:best|hot|new|top|rising)?\/?$/, // The Home feed and its sort orders.
+      popular: /^\/r\/(?:popular|all)(?:\/|$)/, // r/popular and r/all, any sort.
+      explore: /^\/(?:explore|t)(?:\/|$)/, // Explore and topic pages.
+      search: /^\/search(?:\/|$)/,
+    },
+
+    cover: {
+      // www.reddit.com's <main>; old.reddit.com's content column.
+      target: ['main', 'div.content[role="main"]'],
+      title: 'Scrolling is blocked by your focus settings.',
+      pages: {
+        home: { message: 'Your Reddit Home feed is switched off.' },
+        popular: { message: 'Popular and All are switched off.' },
+        explore: { message: 'Explore and topic feeds are switched off.' },
+      },
+      search: {
+        label: 'Search Reddit',
+        placeholder: 'Search for a community or post',
+        url: (query) => `/search/?q=${encodeURIComponent(query)}`,
+      },
+      links: () => [
+        { label: 'Your profile', href: '/user/me/' },
+        { label: 'Saved posts', href: '/user/me/saved/' },
+        { label: 'Chat', href: 'https://chat.reddit.com/' },
+      ],
+    },
+
+    rules: [
+      /* ---- Navigation into feeds ---- */
+      {
+        name: 'Popular and All links',
+        // Exact paths, so communities like r/allthingsX or r/popularmemes stay.
+        selector:
+          'a[href="/r/popular"], a[href^="/r/popular/"], a[href^="/r/popular?"], a[href="/r/all"], a[href^="/r/all/"], a[href^="/r/all?"]',
+      },
+      {
+        name: 'Explore link',
+        selector: 'a[href="/explore"], a[href^="/explore/"]',
+      },
+
+      /* ---- Recommendations on pages that stay open (English headings) ---- */
+      {
+        name: 'Recommended posts and communities',
+        selector: 'h2, h3, span, faceplate-tracker span',
+        text: /^(More posts you may like|Related posts|Similar posts|Popular posts|Trending today|Popular communities|Recommended for you)$/i,
+        closest: 'aside, section, [role="complementary"]',
+        count: true,
+      },
+    ],
+  });
+
+  /* ======== x.js ======== */
+  /*
+   * ShortStop: X, formerly Twitter (focus mode)
+   * ============================================
+   * The Home timeline ("For you" and "Following" share /home), Explore and
+   * topic timelines are treated like the other platforms' feeds: the content
+   * area is hidden from the first paint and replaced with a ShortStop panel,
+   * with an X search box. While a feed is covered, X's j/k and space shortcuts
+   * are swallowed and any video that starts playing is paused.
+   *
+   * Still available on purpose:
+   *   - Search results
+   *   - Messages and chat
+   *   - Profiles and single posts you open, bookmarks and lists
+   *   - Notifications, only if "Allow notifications" is on in the popup
+   *
+   * Selectors prefer X's data-testid attributes (used by its own tests, so
+   * they change far less than its generated class names) and URL patterns.
+   * See README.md for how to update them.
+   */
+
+  // Your own profile link in X's navigation, if it has rendered yet.
+  function findOwnXProfileHref() {
+    const link = document.querySelector('a[data-testid="AppTabBar_Profile_Link"]');
+    const href = link && link.getAttribute('href');
+    return href && /^\/[A-Za-z0-9_]+$/.test(href) ? href : null;
+  }
+
+  ShortStop.start({
+    id: 'x',
+    hosts: ['x.com', 'twitter.com'],
+
+    // Named pages (matched against location.pathname, first match wins).
+    pages: {
+      home: /^\/home\/?$/,
+      explore: /^\/(?:explore(?:\/|$)|i\/topics\/)/, // Explore, its tabs and topic timelines.
+      notifications: /^\/notifications(?:\/|$)/,
+      search: /^\/search(?:\/|$)/,
+      messages: /^\/(?:messages|i\/chat)(?:\/|$)/,
+    },
+
+    // Extra switches shown in the popup under X.
+    options: {
+      notifications: { setting: 'xNotifications', default: false },
+    },
+
+    cover: {
+      // X's content area (the timeline and the right-hand column); the left
+      // navigation sits outside it.
+      target: ['main[role="main"]', 'main'],
+      title: 'Scrolling is blocked by your focus settings.',
+      pages: {
+        home: { message: 'Your X timeline is switched off, For you and Following both.' },
+        explore: { message: 'Explore and trending are switched off.' },
+        notifications: {
+          message: 'Notifications are switched off. Turn on "Allow notifications" in the ShortStop menu if you need them.',
+          onlyIf: (options) => !options.notifications,
+        },
+      },
+      search: {
+        label: 'Search X',
+        placeholder: 'Search for a person or post',
+        url: (query) => `/search?q=${encodeURIComponent(query)}&src=typed_query`,
+      },
+      links: (options) => [
+        { label: 'Messages', href: '/messages' },
+        { label: 'Bookmarks', href: '/i/bookmarks' },
+        options.notifications && { label: 'Notifications', href: '/notifications' },
+        { label: 'Your profile', href: findOwnXProfileHref() },
+      ],
+    },
+
+    rules: [
+      /* ---- Navigation into feeds ---- */
+      {
+        name: 'Home link in the navigation',
+        selector: 'a[data-testid="AppTabBar_Home_Link"], nav a[href="/home"]',
+      },
+      {
+        name: 'Explore link in the navigation',
+        selector: 'a[data-testid="AppTabBar_Explore_Link"], nav a[href="/explore"]',
+      },
+      {
+        name: 'Notifications link',
+        selector: 'a[data-testid="AppTabBar_Notifications_Link"], nav a[href="/notifications"]',
+        onlyIf: (options) => !options.notifications,
+      },
+
+      /* ---- Recommendations beside pages that stay open ---- */
+      {
+        name: 'Trends in the right-hand column',
+        selector: '[aria-label="Timeline: Trending now"], [data-testid="sidebarColumn"] section:has([data-testid="trend"])',
+      },
+      {
+        name: '"Who to follow" in the right-hand column',
+        // Only the labelled box: "Relevant people" on a post also lists accounts, and stays.
+        selector: 'aside[aria-label="Who to follow"]',
+      },
+      {
+        name: 'Other recommendation boxes in the right-hand column (English headings)',
+        selector: '[data-testid="sidebarColumn"] :is(h2, span)',
+        text: /^(What's happening|Trends for you|Who to follow|You might like|Today's News|Live on X)$/i,
+        closest: 'section, aside',
+      },
+    ],
+  });
+
+  /* ======== snapchat.js ======== */
+  /*
+   * ShortStop: Snapchat (focus mode)
+   * ================================
+   * Spotlight is Snapchat's short-video feed. It is covered like the other
+   * platforms' feeds, together with the Discover and Explore pages that lead
+   * into it. A single Spotlight link is covered too, because its player goes
+   * straight on to the next video. While covered, feed keys are swallowed and
+   * any video that starts playing is paused.
+   *
+   * Still available on purpose:
+   *   - Snapchat for web (chat), at /web
+   *   - Public profiles you open (their Spotlight links are hidden)
+   *
+   * See README.md for how to update the selectors.
+   */
+  ShortStop.start({
+    id: 'snapchat',
+    hosts: ['snapchat.com'],
+
+    // Named pages (matched against location.pathname, first match wins).
+    pages: {
+      spotlight: /^\/(?:@[^/]+\/)?spotlight(?:\/|$)/, // The feed, single videos and a profile's Spotlight.
+      discover: /^\/(?:discover|explore)(?:\/|$)/,
+    },
+
+    cover: {
+      // With no content area to find, the panel covers the whole viewport.
+      target: ['main'],
+      title: 'Scrolling is blocked by your focus settings.',
+      pages: {
+        spotlight: { message: 'Spotlight is switched off.' },
+        discover: { message: 'Discover and Explore are switched off.' },
+      },
+      links: () => [{ label: 'Chat on Snapchat for web', href: '/web' }],
+    },
+
+    rules: [
+      {
+        name: 'Links into Spotlight, Discover and Explore',
+        selector:
+          'a[href^="/spotlight"], a[href*="/spotlight/"], a[href^="/discover"], a[href^="/explore"], a[href*="snapchat.com/spotlight"]',
       },
     ],
   });
