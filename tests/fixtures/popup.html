@@ -18,7 +18,8 @@
 
         const stores = {
           sync: { settings: { youtube: true, instagram: true, facebook: true, tiktok: true } },
-          local: {},
+          // A YouTube countdown saved by an older version: it must not show.
+          local: { pending: { youtube: { kind: 'off', at: Date.now() } } },
         };
         const listeners = [];
         const copy = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
@@ -89,10 +90,32 @@
           const schedulesOf = (platform) => ((stores.sync.settings.schedules || {})[platform]);
           const step = () => wait(80);
 
+          const ALL = ['youtube', 'instagram', 'facebook', 'tiktok', 'reddit', 'x', 'snapchat'];
+          check('all seven switches start on', ALL.every((platform) => toggle(platform).checked));
+
+          /* ---- As shipped: every switch turns off in one click ---- */
           check(
-            'all four switches start on',
-            ['youtube', 'instagram', 'facebook', 'tiktok'].every((platform) => toggle(platform).checked)
+            'every platform is instant-off as shipped',
+            ALL.every((platform) => globalThis.ShortStopPause.INSTANT_OFF.includes(platform)),
+            JSON.stringify(globalThis.ShortStopPause.INSTANT_OFF)
           );
+          for (const platform of ALL) {
+            toggle(platform).click();
+            await step();
+            check(
+              `${platform}: one click switches blocking off, with no choice or countdown`,
+              stores.sync.settings[platform] === false && !toggle(platform).checked && !shown(panel(platform)) && !pendingOf(platform),
+              `${JSON.stringify(stores.sync.settings[platform])} ${status(platform)}`
+            );
+            toggle(platform).click();
+            await step();
+            check(`${platform}: one click switches it back on`, stores.sync.settings[platform] === true && toggle(platform).checked);
+          }
+          check('switching off in one click does not use up pauses', !stores.local.pauseLog || !stores.local.pauseLog.used);
+
+          // The rest checks the optional slower flow, which a platform gets when it
+          // is taken out of INSTANT_OFF. Here, only YouTube stays instant-off.
+          globalThis.ShortStopPause.INSTANT_OFF = ['youtube'];
 
           /* ---- Hide YouTube Shorts ---- */
           const shortsOption = $('#option-youtube-shorts');
@@ -127,54 +150,68 @@
           /* ---- Daily pause limit ---- */
           for (let pause = 1; pause <= 3; pause += 1) {
             const left = 4 - pause;
-            toggle('youtube').click();
+            toggle('instagram').click();
             await step();
-            check(`pause ${pause}: the choice says ${left} of 3 left`, status('youtube').includes(`${left} of 3 pauses left today`), status('youtube'));
-            check(`pause ${pause}: the allow button is instant`, action('youtube', 'allow').textContent === 'Allow 10 minutes', action('youtube', 'allow').textContent);
-            action('youtube', 'allow').click();
+            check(`pause ${pause}: the choice says ${left} of 3 left`, status('instagram').includes(`${left} of 3 pauses left today`), status('instagram'));
+            check(`pause ${pause}: the allow button is instant`, action('instagram', 'allow').textContent === 'Allow 10 minutes', action('instagram', 'allow').textContent);
+            action('instagram', 'allow').click();
             await step();
-            check(`pause ${pause}: blocking pauses straight away`, unlockOf('youtube') > Date.now() + 9 * 60 * 1000);
-            check(`pause ${pause}: the switch shows off`, !toggle('youtube').checked);
-            action('youtube', 'block').click();
+            check(`pause ${pause}: blocking pauses straight away`, unlockOf('instagram') > Date.now() + 9 * 60 * 1000);
+            check(`pause ${pause}: the switch shows off`, !toggle('instagram').checked);
+            action('instagram', 'block').click();
             await step();
-            check(`pause ${pause}: "Block again" ends it`, !unlockOf('youtube') && toggle('youtube').checked);
+            check(`pause ${pause}: "Block again" ends it`, !unlockOf('instagram') && toggle('instagram').checked);
           }
-          check('three pauses are counted', stores.local.pauseLog.used.youtube === 3, JSON.stringify(stores.local.pauseLog));
-
-          toggle('youtube').click();
-          await step();
-          check('fourth pause: the choice says it will wait', status('youtube').includes("used today's 3 pauses"), status('youtube'));
-          check('fourth pause: the allow button shows a further step', action('youtube', 'allow').textContent === 'Allow 10 minutes…');
-          action('youtube', 'allow').click();
-          await step();
-          check('fourth pause: nothing is unlocked yet', !unlockOf('youtube'));
-          check('fourth pause: a pause request is waiting', pendingOf('youtube') && pendingOf('youtube').kind === 'pause', JSON.stringify(pendingOf('youtube')));
-          check('fourth pause: counting down', /^Pausing in \ds\.$/.test(status('youtube')), status('youtube'));
-          check('fourth pause: only Cancel while waiting', visibleActions('youtube') === 'cancel', visibleActions('youtube'));
-          await wait(3200); // The 2-second wait, plus the popup's once-a-second redraw.
-          check('fourth pause: ready after the wait', status('youtube') === 'Ready. Pause YouTube blocking for 10 minutes?', status('youtube'));
-          check('fourth pause: confirm button', action('youtube', 'confirm').textContent === 'Pause now' && shown(action('youtube', 'confirm')));
-          action('youtube', 'confirm').click();
-          await step();
-          check('fourth pause: confirming pauses blocking', unlockOf('youtube') > Date.now() + 9 * 60 * 1000);
-          check('fourth pause: counted too', stores.local.pauseLog.used.youtube === 4);
-          action('youtube', 'block').click();
-          await step();
+          check('three pauses are counted', stores.local.pauseLog.used.instagram === 3, JSON.stringify(stores.local.pauseLog));
 
           toggle('instagram').click();
           await step();
-          check("another platform keeps its own pauses", status('instagram').includes('3 of 3 pauses left today'), status('instagram'));
+          check('fourth pause: the choice says it will wait', status('instagram').includes("used today's 3 pauses"), status('instagram'));
+          check('fourth pause: the allow button shows a further step', action('instagram', 'allow').textContent === 'Allow 10 minutes…');
+          action('instagram', 'allow').click();
+          await step();
+          check('fourth pause: nothing is unlocked yet', !unlockOf('instagram'));
+          check('fourth pause: a pause request is waiting', pendingOf('instagram') && pendingOf('instagram').kind === 'pause', JSON.stringify(pendingOf('instagram')));
+          check('fourth pause: counting down', /^Pausing in \ds\.$/.test(status('instagram')), status('instagram'));
+          check('fourth pause: only Cancel while waiting', visibleActions('instagram') === 'cancel', visibleActions('instagram'));
+          await wait(3200); // The 2-second wait, plus the popup's once-a-second redraw.
+          check('fourth pause: ready after the wait', status('instagram') === 'Ready. Pause Instagram blocking for 10 minutes?', status('instagram'));
+          check('fourth pause: confirm button', action('instagram', 'confirm').textContent === 'Pause now' && shown(action('instagram', 'confirm')));
+          action('instagram', 'confirm').click();
+          await step();
+          check('fourth pause: confirming pauses blocking', unlockOf('instagram') > Date.now() + 9 * 60 * 1000);
+          check('fourth pause: counted too', stores.local.pauseLog.used.instagram === 4);
+          action('instagram', 'block').click();
+          await step();
+
+          toggle('facebook').click();
+          await step();
+          check("another platform keeps its own pauses", status('facebook').includes('3 of 3 pauses left today'), status('facebook'));
+          action('facebook', 'cancel').click();
+          await step();
+          check('Cancel closes the choice', !shown(panel('facebook')));
+
+          await chrome.storage.local.set({ pauseLog: { date: '2000-01-01', used: { instagram: 9 } } });
+          await step();
+          toggle('instagram').click();
+          await step();
+          check('a new day brings the pauses back', status('instagram').includes('3 of 3 pauses left today'), status('instagram'));
           action('instagram', 'cancel').click();
           await step();
-          check('Cancel closes the choice', !shown(panel('instagram')));
 
-          await chrome.storage.local.set({ pauseLog: { date: '2000-01-01', used: { youtube: 9 } } });
-          await step();
+          /* ---- YouTube switches off at once ---- */
+          check('a YouTube countdown saved before this update is dropped', !pendingOf('youtube') && !shown(panel('youtube')));
+          const pausesBeforeOff = JSON.stringify(stores.local.pauseLog);
           toggle('youtube').click();
           await step();
-          check('a new day brings the pauses back', status('youtube').includes('3 of 3 pauses left today'), status('youtube'));
-          action('youtube', 'cancel').click();
+          check('YouTube: one click switches blocking off', stores.sync.settings.youtube === false && !toggle('youtube').checked);
+          check('YouTube: no choice or countdown appears', !shown(panel('youtube')), status('youtube'));
+          check('YouTube: nothing is left waiting', !pendingOf('youtube'));
+          check('YouTube: switching off does not use up a pause', JSON.stringify(stores.local.pauseLog) === pausesBeforeOff);
+          check('YouTube: Hide YouTube Shorts is untouched', stores.sync.settings.youtubeHideShorts === true);
+          toggle('youtube').click();
           await step();
+          check('YouTube: switching back on is instant', stores.sync.settings.youtube === true && toggle('youtube').checked);
 
           /* ---- "Turn off..." still waits, then confirms ---- */
           toggle('tiktok').click();

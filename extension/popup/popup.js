@@ -6,9 +6,10 @@
  * to open tabs immediately, with no reload, because content scripts listen for
  * storage changes.
  *
- * Loosening a platform takes a moment on purpose, so it is hard to do on
- * impulse. Clicking a platform's switch while it is blocking does not switch
- * it off. It offers two choices instead:
+ * Each platform's switch turns off in one click: every platform is listed in
+ * INSTANT_OFF in shared/pause.js. A platform removed from that list gets the
+ * slower flow instead, where clicking its switch while it is blocking does not
+ * switch it off but offers two choices:
  *
  *   - "Allow 10 minutes": a temporary unlock. Blocking pauses, then comes back
  *     by itself when the time runs out (stored on this device only). The first
@@ -29,6 +30,7 @@ const { PLATFORMS, todayKey, normalizeStats, totalOf } = globalThis.ShortStopSta
 
 // The timings live in shared/pause.js (the welcome page explains them too).
 const { UNLOCK_MINUTES, DAILY_PAUSES, OFF_WAIT_SECONDS, OFF_WINDOW_SECONDS } = globalThis.ShortStopPause;
+const instantOff = (platform) => globalThis.ShortStopPause.INSTANT_OFF.includes(platform);
 const { MAX_WINDOWS, normalizeWindows, allowedUntil, isLooser } = globalThis.ShortStopSchedule;
 
 const NAMES = {
@@ -232,6 +234,18 @@ function confirmRequest(platform) {
   if (request.kind === 'schedule') {
     setSchedule(platform, request.windows);
     return commit({ sync: true, local: true });
+  }
+  state.unlocks = without(state.unlocks, platform);
+  state.settings = { ...state.settings, [platform]: false };
+  return commit({ sync: true, local: true });
+}
+
+// For INSTANT_OFF platforms (all of them, as shipped): off straight away, no choice or wait.
+// A waiting change to the allowed times is left alone.
+function turnOffNow(platform) {
+  chooserOpen.delete(platform);
+  if (state.pending[platform] && state.pending[platform].kind !== 'schedule') {
+    state.pending = without(state.pending, platform);
   }
   state.unlocks = without(state.unlocks, platform);
   state.settings = { ...state.settings, [platform]: false };
@@ -621,6 +635,17 @@ async function load() {
   // Version 1.0 kept "turn off" requests under `pendingOff`. They last two
   // minutes at most, so they are simply dropped.
   if (local.pendingOff) chrome.storage.local.remove('pendingOff').catch(() => {});
+  // A "turn off" or pause wait started before a platform became instant-off
+  // would otherwise still count down; drop it.
+  let dropped = false;
+  for (const platform of PLATFORMS.filter(instantOff)) {
+    const request = state.pending[platform];
+    if (request && request.kind !== 'schedule') {
+      state.pending = without(state.pending, platform);
+      dropped = true;
+    }
+  }
+  if (dropped) chrome.storage.local.set(localState()).catch(() => {});
   render();
   renderStats(local.stats);
 }
@@ -636,6 +661,8 @@ async function init() {
       const now = Date.now();
       if (platformState(platform, now).kind !== 'blocking') {
         blockAgain(platform); // Turning blocking on is instant.
+      } else if (instantOff(platform)) {
+        turnOffNow(platform);
       } else if (!pendingRequest(platform, now)) {
         chooserOpen.add(platform); // Turning it off is a decision.
         render();

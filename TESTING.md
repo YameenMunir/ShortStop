@@ -200,19 +200,28 @@ These selectors haven't been checked on the live site yet, so note anything that
 
 ## Popup and switches
 
-- [ ] With a YouTube tab open, click YouTube's switch in the popup. It does **not** switch off.
+- [ ] **Every switch turns off in one click:** with the YouTube home page showing the panel, click
+      YouTube's switch. It turns off at once, with no choice, countdown or Cancel, and the tab
+      shows YouTube's feed **without reloading**. *Hide YouTube Shorts* stays as it was. Click
+      again: blocking is back at once. Do the same for Instagram, Facebook, TikTok, Reddit, X and
+      Snapchat.
+
+**Optional slower switch-off.** The next steps only apply after you take a site out of
+`INSTANT_OFF` in `extension/shared/pause.js` (for example Instagram) and reload ShortStop.
+Put it back afterwards.
+
+- [ ] With an Instagram tab open, click Instagram's switch in the popup. It does **not** switch off.
       It offers **Allow 10 minutes**, **Turn off…** and **Cancel**. Cancel closes it.
 - [ ] **Allow 10 minutes:** the switch turns off and the popup counts down ("Unlocked, 9:59
-      left"). The YouTube tab unblocks **without reloading**.
+      left"). The Instagram tab unblocks **without reloading**.
 - [ ] **Block again** blocks the tab again at once.
 - [ ] **Blocking returns by itself:** start another pause, then wait it out (or, to save time,
-      run `chrome.storage.local.set({unlocks:{youtube:Date.now()+15000}})` in the popup's DevTools
+      run `chrome.storage.local.set({unlocks:{instagram:Date.now()+15000}})` in the popup's DevTools
       console). Blocking comes back in the open tab with no reload, and the popup goes back to normal.
 - [ ] **Turn off…** starts a 30-second wait ("Turning off in 29s.") with only Cancel available.
       Close the popup, reopen it a few seconds later, and the wait is still counting.
-- [ ] After 30 seconds the popup offers **Turn off now**. Click it: YouTube stays off (Shorts
-      play as Shorts, with no redirect) until you click the switch again, which turns
-      blocking back on **instantly**.
+- [ ] After 30 seconds the popup offers **Turn off now**. Click it: Instagram stays off until you
+      click the switch again, which turns blocking back on **instantly**.
 - [ ] Leave a finished wait unconfirmed for over 2 minutes. It lapses by itself.
 - [ ] **Pause limit:** the choice says how many of today's 3 pauses are left, one fewer each time
       (the steps above used some already). Once they're used up it says so, **Allow 10 minutes…**
@@ -237,12 +246,12 @@ These selectors haven't been checked on the live site yet, so note anything that
 - [ ] Turn a platform off for good: its **Edit** button is greyed out.
 
 ## More popup checks
-- [ ] Repeat a pause for Instagram, Facebook and TikTok (the panel disappears, the feed
-      returns, and it's blocked again when the time is up).
+- [ ] Switch Facebook and TikTok off and back on (the panel disappears, the feed returns, and
+      it's blocked again as soon as you switch it back on).
 - [ ] The **counter** has gone up compared with the number you noted at the start, and the
       per-platform numbers add up to the big number.
-- [ ] With YouTube's home page showing the panel, switch YouTube off (or *Allow 10 minutes*):
-      the feed appears at once, with no reload.
+- [ ] With Instagram's feed showing the panel, switch Instagram off: the feed appears at once,
+      with no reload.
 - [ ] **After reloading ShortStop:** with the YouTube home page open on the panel, press ↻ on
       ShortStop in the extensions page. The YouTube tab refreshes itself within a second or two.
       Switching YouTube off then shows the feed at once. A tab playing a video is not refreshed.

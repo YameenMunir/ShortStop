@@ -14,6 +14,10 @@
     UNLOCK_MINUTES: 10, // "Allow 10 minutes"
     DAILY_PAUSES: 3, // Instant pauses per platform per day; after that, each one waits.
     OFF_WAIT_SECONDS: 30, // How long loosening blocking makes you wait.
+    // Platforms whose switch turns off at once, with no "Allow / Turn off" choice or wait.
+    // Remove one to give it back the "Allow 10 minutes / Turn off..." choice, the daily
+    // pause limit and the wait before turning off.
+    INSTANT_OFF: ['youtube', 'instagram', 'facebook', 'tiktok', 'reddit', 'x', 'snapchat'],
     OFF_WINDOW_SECONDS: 120, // How long you then have to confirm before it lapses.
   };
 })(globalThis);
