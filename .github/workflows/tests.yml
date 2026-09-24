@@ -1,0 +1,48 @@
+name: Tests
+
+# Every pull request (including from forks), every push to main, and on demand.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request cancels the older run.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # The userscript is generated from extension/content/, so it must match.
+      - name: Userscript is up to date
+        run: |
+          python tools/build_userscript.py
+          if ! git diff --quiet -- userscript/shortstop.user.js; then
+            echo "::error file=userscript/shortstop.user.js::The userscript is out of date. Run python tools/build_userscript.py and commit the result."
+            git diff --stat -- userscript/shortstop.user.js
+            exit 1
+          fi
+
+      # GitHub's Ubuntu machines come with Google Chrome, which the runner finds itself.
+      - name: Run the tests
+        run: python tests/run_tests.py | tee test-output.txt
+
+      - name: README states the right number of checks
+        run: python tools/check_readme_count.py test-output.txt
