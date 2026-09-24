@@ -17,7 +17,7 @@
  */
 'use strict';
 
-const { UNLOCK_MINUTES, OFF_WAIT_SECONDS } = globalThis.ShortStopPause;
+const { UNLOCK_MINUTES, DAILY_PAUSES, OFF_WAIT_SECONDS } = globalThis.ShortStopPause;
 
 const POLL_MS = 1500; // How often to re-check while the page is visible.
 
@@ -139,6 +139,7 @@ function init() {
   for (const node of document.querySelectorAll('[data-private-name]')) node.textContent = WORDS.privateName;
   for (const node of document.querySelectorAll('[data-pause-minutes]')) node.textContent = String(UNLOCK_MINUTES);
   for (const node of document.querySelectorAll('[data-off-wait]')) node.textContent = String(OFF_WAIT_SECONDS);
+  for (const node of document.querySelectorAll('[data-daily-pauses]')) node.textContent = String(DAILY_PAUSES);
 
   document.getElementById('open-settings').addEventListener('click', openSettings);
 

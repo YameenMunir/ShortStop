@@ -61,6 +61,122 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
     tiktokNotifications: ALLOW_TIKTOK_NOTIFICATIONS,
   };
 
+  /* ======== shared/schedule.js ======== */
+  /*
+   * ShortStop: allowed times ("focus schedule")
+   * ===========================================
+   * A platform can be allowed at set times, e.g. YouTube 20:00-21:00 on weekdays,
+   * or Instagram all day at weekends. Shared by the content scripts (which stop
+   * blocking inside an allowed time) and the popup (which edits the times).
+   *
+   * Stored in the synced settings as `schedules`, one list per platform:
+   *
+   *   schedules = {
+   *     youtube: [{ days: [1, 2, 3, 4, 5], start: 1200, end: 1260 }],
+   *   }
+   *
+   *   days    0 = Sunday ... 6 = Saturday (the day the window starts on)
+   *   start   minutes after local midnight, 0-1439
+   *   end     minutes after local midnight, 0-1439. end < start runs past
+   *           midnight into the next day; end === start means all day.
+   *
+   * Times are the device's own local time, so "20:00" means 20:00 wherever the
+   * browser is.
+   */
+  (function (global) {
+    'use strict';
+
+    const DAY = 1440; // Minutes in a day.
+    const WEEK = 7 * DAY;
+    const MAX_WINDOWS = 3; // Per platform, to keep the popup small.
+
+    const isMinute = (value) => Number.isInteger(value) && value >= 0 && value < DAY;
+
+    // Drops anything malformed, so a bad sync value can never unblock by accident.
+    function normalizeWindows(list) {
+      if (!Array.isArray(list)) return [];
+      const windows = [];
+      for (const item of list) {
+        if (!item || !isMinute(item.start) || !isMinute(item.end) || !Array.isArray(item.days)) continue;
+        const days = [...new Set(item.days.filter((day) => Number.isInteger(day) && day >= 0 && day < 7))].sort((a, b) => a - b);
+        if (days.length) windows.push({ days, start: item.start, end: item.end });
+      }
+      return windows.slice(0, MAX_WINDOWS);
+    }
+
+    // A local time `dayOffset` days after `date`'s day, `minute` minutes after midnight.
+    function localTime(date, dayOffset, minute) {
+      const result = new Date(date.getTime());
+      result.setDate(result.getDate() + dayOffset);
+      result.setHours(0, minute, 0, 0);
+      return result.getTime();
+    }
+
+    // When `slot` stops allowing, if it allows `date`; otherwise 0.
+    function slotEnd(slot, date) {
+      const day = date.getDay();
+      const minute = date.getHours() * 60 + date.getMinutes();
+      const startsToday = slot.days.includes(day);
+      if (slot.start === slot.end) return startsToday ? localTime(date, 1, 0) : 0;
+      if (slot.start < slot.end) {
+        return startsToday && minute >= slot.start && minute < slot.end ? localTime(date, 0, slot.end) : 0;
+      }
+      // Runs past midnight: tonight's slot, or the tail of last night's.
+      if (startsToday && minute >= slot.start) return localTime(date, 1, slot.end);
+      const startedYesterday = slot.days.includes((day + 6) % 7);
+      return startedYesterday && minute < slot.end ? localTime(date, 0, slot.end) : 0;
+    }
+
+    // Returns the time (ms) the allowed period around `date` ends, or 0 if
+    // `date` is not in an allowed time. Back-to-back windows (Saturday all day,
+    // then Sunday all day) count as one period.
+    function allowedUntil(list, date = new Date()) {
+      const windows = normalizeWindows(list);
+      let until = 0;
+      let at = date;
+      for (let step = 0; step < 8; step += 1) {
+        const ends = windows.map((slot) => slotEnd(slot, at));
+        const latest = Math.max(0, ...ends);
+        if (!latest) break;
+        until = latest;
+        at = new Date(latest);
+      }
+      return until;
+    }
+
+    function isAllowed(list, date = new Date()) {
+      return allowedUntil(list, date) > 0;
+    }
+
+    // Every minute of the week (Sunday 00:00 = 0) that the windows allow.
+    function allowedMinutes(list) {
+      const minutes = new Uint8Array(WEEK);
+      const mark = (from, to) => {
+        for (let minute = from; minute < to; minute += 1) minutes[minute % WEEK] = 1;
+      };
+      for (const slot of normalizeWindows(list)) {
+        for (const day of slot.days) {
+          const base = day * DAY;
+          if (slot.start === slot.end) mark(base, base + DAY);
+          else if (slot.start < slot.end) mark(base + slot.start, base + slot.end);
+          else mark(base + slot.start, base + DAY + slot.end);
+        }
+      }
+      return minutes;
+    }
+
+    // True if `next` allows any minute that `current` does not. Loosening the
+    // schedule takes the same wait as switching blocking off; tightening it is
+    // instant.
+    function isLooser(next, current) {
+      const before = allowedMinutes(current);
+      const after = allowedMinutes(next);
+      return after.some((allowed, minute) => allowed && !before[minute]);
+    }
+
+    global.ShortStopSchedule = { MAX_WINDOWS, normalizeWindows, allowedUntil, isAllowed, isLooser };
+  })(globalThis);
+
   /* ======== core.js ======== */
   /*
    * ShortStop core engine
@@ -85,6 +201,8 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
    *   5. Settings changes apply live, without reloading the tab. A temporary
    *      unlock ("allow 10 minutes", stored as an expiry time in `unlocks`) pauses
    *      blocking, then switches it back on by itself when the time runs out.
+   *      Allowed times (`schedules`, see shared/schedule.js) pause blocking the
+   *      same way, re-checked once a second.
    *
    * Config shape (see the platform files for real examples):
    *   {
@@ -261,8 +379,9 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
     function createExtensionEnv() {
       const api = global.chrome;
 
-      // Settings live in sync storage. Temporary unlocks ("allow 10 minutes")
-      // live in this device's local storage and are merged in as `unlocks`.
+      // Settings (including allowed times) live in sync storage. Temporary
+      // unlocks ("allow 10 minutes") and "block now" skips of an allowed time
+      // live in this device's local storage and are merged in.
       function readSettings() {
         const read = (area, key) =>
           new Promise((resolve) => {
@@ -275,10 +394,9 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
               resolve({}); // Extension was reloaded: this script is orphaned.
             }
           });
-        return Promise.all([read('sync', 'settings'), read('local', 'unlocks')]).then(([settings, unlocks]) => ({
-          ...settings,
-          unlocks,
-        }));
+        return Promise.all([read('sync', 'settings'), read('local', 'unlocks'), read('local', 'scheduleSkips')]).then(
+          ([settings, unlocks, scheduleSkips]) => ({ ...settings, unlocks, scheduleSkips })
+        );
       }
 
       return {
@@ -291,7 +409,10 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         onSettingsChanged(callback) {
           try {
             api.storage.onChanged.addListener((changes, area) => {
-              if ((area === 'sync' && changes.settings) || (area === 'local' && changes.unlocks)) {
+              if (
+                (area === 'sync' && changes.settings) ||
+                (area === 'local' && (changes.unlocks || changes.scheduleSkips))
+              ) {
                 readSettings().then(callback);
               }
             });
@@ -429,6 +550,7 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         this.options = this.resolveOptions({});
         this.lastSettings = {};
         this.unlock = { until: 0, timer: 0 }; // A running temporary unlock, if any.
+        this.scheduleOpen = false; // Inside an allowed time when settings were last applied.
         this.enabled = true; // Optimistic until settings load, so nothing flashes.
         this.cover = { host: null, page: null, renderedHref: null, countedHref: null, linksKey: null };
         this.redirecting = false;
@@ -480,24 +602,44 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         this.setEnabled(this.isBlocking(settings));
       }
 
-      // Blocking is on unless this platform is switched off, or a temporary
-      // unlock is still running. When an unlock runs out, blocking comes back by
-      // itself in every open tab (a timer, backed up by the URL poll below).
+      // Blocking is on unless this platform is switched off, a temporary unlock
+      // is still running, or it is inside one of its allowed times. When an
+      // unlock or an allowed time ends, blocking comes back by itself in every
+      // open tab (a timer for unlocks, and the once-a-second check below).
       isBlocking(settings) {
         const unlock = this.unlock;
         clearTimeout(unlock.timer);
         unlock.timer = 0;
         unlock.until = 0;
+        this.scheduleOpen = this.scheduleAllows(settings);
         if (settings[this.config.id] === false) return false;
         const until = Number(settings.unlocks && settings.unlocks[this.config.id]) || 0;
-        if (until <= Date.now()) return true;
-        unlock.until = until;
-        unlock.timer = setTimeout(() => this.checkUnlock(), Math.min(until - Date.now() + 50, MAX_TIMEOUT_MS));
-        return false;
+        if (until > Date.now()) {
+          unlock.until = until;
+          unlock.timer = setTimeout(() => this.recheck(), Math.min(until - Date.now() + 50, MAX_TIMEOUT_MS));
+          return false;
+        }
+        return !this.scheduleOpen;
       }
 
-      checkUnlock() {
-        if (this.unlock.until && Date.now() >= this.unlock.until) this.applySettings(this.lastSettings);
+      // Whether this platform's allowed times allow it right now, unless
+      // "Block now" in the popup skipped the current allowed time.
+      scheduleAllows(settings) {
+        const schedule = global.ShortStopSchedule;
+        const windows = settings.schedules && settings.schedules[this.config.id];
+        if (!schedule || !Array.isArray(windows) || !windows.length) return false;
+        const skipUntil = Number(settings.scheduleSkips && settings.scheduleSkips[this.config.id]) || 0;
+        return skipUntil <= Date.now() && schedule.isAllowed(windows, new Date());
+      }
+
+      // Re-applies the settings if time alone has changed the answer: an unlock
+      // ran out, or an allowed time started or ended. Cheap, so it runs every
+      // second (a timer can also be late after the computer sleeps).
+      recheck() {
+        const unlockEnded = this.unlock.until && Date.now() >= this.unlock.until;
+        if (unlockEnded || this.scheduleAllows(this.lastSettings) !== this.scheduleOpen) {
+          this.applySettings(this.lastSettings);
+        }
       }
 
       setEnabled(on) {
@@ -816,7 +958,7 @@ const ALLOW_TIKTOK_NOTIFICATIONS = false;
         }
         setInterval(() => {
           if (this.env.href() !== this.lastHref) onNavigate();
-          this.checkUnlock(); // A timer can be late after the computer sleeps.
+          this.recheck(); // Unlocks and allowed times that ran out or began.
         }, URL_POLL_MS);
         // Capture phase on window runs before the site's own click handlers.
         window.addEventListener('click', (event) => this.onClick(event), true);

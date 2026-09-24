@@ -21,6 +21,8 @@
  *   5. Settings changes apply live, without reloading the tab. A temporary
  *      unlock ("allow 10 minutes", stored as an expiry time in `unlocks`) pauses
  *      blocking, then switches it back on by itself when the time runs out.
+ *      Allowed times (`schedules`, see shared/schedule.js) pause blocking the
+ *      same way, re-checked once a second.
  *
  * Config shape (see the platform files for real examples):
  *   {
@@ -197,8 +199,9 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
   function createExtensionEnv() {
     const api = global.chrome;
 
-    // Settings live in sync storage. Temporary unlocks ("allow 10 minutes")
-    // live in this device's local storage and are merged in as `unlocks`.
+    // Settings (including allowed times) live in sync storage. Temporary
+    // unlocks ("allow 10 minutes") and "block now" skips of an allowed time
+    // live in this device's local storage and are merged in.
     function readSettings() {
       const read = (area, key) =>
         new Promise((resolve) => {
@@ -211,10 +214,9 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
             resolve({}); // Extension was reloaded: this script is orphaned.
           }
         });
-      return Promise.all([read('sync', 'settings'), read('local', 'unlocks')]).then(([settings, unlocks]) => ({
-        ...settings,
-        unlocks,
-      }));
+      return Promise.all([read('sync', 'settings'), read('local', 'unlocks'), read('local', 'scheduleSkips')]).then(
+        ([settings, unlocks, scheduleSkips]) => ({ ...settings, unlocks, scheduleSkips })
+      );
     }
 
     return {
@@ -227,7 +229,10 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       onSettingsChanged(callback) {
         try {
           api.storage.onChanged.addListener((changes, area) => {
-            if ((area === 'sync' && changes.settings) || (area === 'local' && changes.unlocks)) {
+            if (
+              (area === 'sync' && changes.settings) ||
+              (area === 'local' && (changes.unlocks || changes.scheduleSkips))
+            ) {
               readSettings().then(callback);
             }
           });
@@ -365,6 +370,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.options = this.resolveOptions({});
       this.lastSettings = {};
       this.unlock = { until: 0, timer: 0 }; // A running temporary unlock, if any.
+      this.scheduleOpen = false; // Inside an allowed time when settings were last applied.
       this.enabled = true; // Optimistic until settings load, so nothing flashes.
       this.cover = { host: null, page: null, renderedHref: null, countedHref: null, linksKey: null };
       this.redirecting = false;
@@ -416,24 +422,44 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.setEnabled(this.isBlocking(settings));
     }
 
-    // Blocking is on unless this platform is switched off, or a temporary
-    // unlock is still running. When an unlock runs out, blocking comes back by
-    // itself in every open tab (a timer, backed up by the URL poll below).
+    // Blocking is on unless this platform is switched off, a temporary unlock
+    // is still running, or it is inside one of its allowed times. When an
+    // unlock or an allowed time ends, blocking comes back by itself in every
+    // open tab (a timer for unlocks, and the once-a-second check below).
     isBlocking(settings) {
       const unlock = this.unlock;
       clearTimeout(unlock.timer);
       unlock.timer = 0;
       unlock.until = 0;
+      this.scheduleOpen = this.scheduleAllows(settings);
       if (settings[this.config.id] === false) return false;
       const until = Number(settings.unlocks && settings.unlocks[this.config.id]) || 0;
-      if (until <= Date.now()) return true;
-      unlock.until = until;
-      unlock.timer = setTimeout(() => this.checkUnlock(), Math.min(until - Date.now() + 50, MAX_TIMEOUT_MS));
-      return false;
+      if (until > Date.now()) {
+        unlock.until = until;
+        unlock.timer = setTimeout(() => this.recheck(), Math.min(until - Date.now() + 50, MAX_TIMEOUT_MS));
+        return false;
+      }
+      return !this.scheduleOpen;
     }
 
-    checkUnlock() {
-      if (this.unlock.until && Date.now() >= this.unlock.until) this.applySettings(this.lastSettings);
+    // Whether this platform's allowed times allow it right now, unless
+    // "Block now" in the popup skipped the current allowed time.
+    scheduleAllows(settings) {
+      const schedule = global.ShortStopSchedule;
+      const windows = settings.schedules && settings.schedules[this.config.id];
+      if (!schedule || !Array.isArray(windows) || !windows.length) return false;
+      const skipUntil = Number(settings.scheduleSkips && settings.scheduleSkips[this.config.id]) || 0;
+      return skipUntil <= Date.now() && schedule.isAllowed(windows, new Date());
+    }
+
+    // Re-applies the settings if time alone has changed the answer: an unlock
+    // ran out, or an allowed time started or ended. Cheap, so it runs every
+    // second (a timer can also be late after the computer sleeps).
+    recheck() {
+      const unlockEnded = this.unlock.until && Date.now() >= this.unlock.until;
+      if (unlockEnded || this.scheduleAllows(this.lastSettings) !== this.scheduleOpen) {
+        this.applySettings(this.lastSettings);
+      }
     }
 
     setEnabled(on) {
@@ -752,7 +778,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       }
       setInterval(() => {
         if (this.env.href() !== this.lastHref) onNavigate();
-        this.checkUnlock(); // A timer can be late after the computer sleeps.
+        this.recheck(); // Unlocks and allowed times that ran out or began.
       }, URL_POLL_MS);
       // Capture phase on window runs before the site's own click handlers.
       window.addEventListener('click', (event) => this.onClick(event), true);

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Allowed times (shared/schedule.js)</title>
+    <script src="../../extension/shared/schedule.js"></script>
+  </head>
+  <body>
+    <script>
+      // Unit checks for the allowed-times logic. Dates are local time;
+      // 23 September 2026 is a Wednesday.
+      (function () {
+        'use strict';
+        const { normalizeWindows, allowedUntil, isAllowed, isLooser, MAX_WINDOWS } = globalThis.ShortStopSchedule;
+        const results = [];
+        const check = (name, pass, detail) => results.push({ name, pass: Boolean(pass), detail: detail || '' });
+        const at = (day, hour, minute) => new Date(2026, 8, day, hour, minute || 0);
+        const label = (ms) => (ms ? new Date(ms).toString().slice(0, 21) : 'not allowed');
+        const expectUntil = (name, list, date, expected) => {
+          const got = allowedUntil(list, date);
+          check(name, got === (expected ? expected.getTime() : 0), `got ${label(got)}`);
+        };
+
+        const weekdays = [{ days: [1, 2, 3, 4, 5], start: 20 * 60, end: 21 * 60 }];
+        expectUntil('weekday 20:00-21:00: Wednesday 20:30 is allowed until 21:00', weekdays, at(23, 20, 30), at(23, 21));
+        expectUntil('weekday 20:00-21:00: starts at 20:00 exactly', weekdays, at(23, 20), at(23, 21));
+        expectUntil('weekday 20:00-21:00: ends at 21:00 exactly', weekdays, at(23, 21), null);
+        expectUntil('weekday 20:00-21:00: not at 19:59', weekdays, at(23, 19, 59), null);
+        expectUntil('weekday 20:00-21:00: not on Saturday', weekdays, at(26, 20, 30), null);
+
+        const weekends = [{ days: [0, 6], start: 0, end: 0 }];
+        expectUntil('weekends all day: Saturday runs on through Sunday', weekends, at(26, 10), at(28, 0));
+        expectUntil('weekends all day: Sunday 23:59 until Monday', weekends, at(27, 23, 59), at(28, 0));
+        expectUntil('weekends all day: not Friday 23:59', weekends, at(25, 23, 59), null);
+        expectUntil('weekends all day: not Monday 00:00', weekends, at(28, 0), null);
+
+        const fridayNight = [{ days: [5], start: 23 * 60, end: 60 }];
+        expectUntil('Friday 23:00-01:00: Friday 23:30 allowed until Saturday 01:00', fridayNight, at(25, 23, 30), at(26, 1));
+        expectUntil('Friday 23:00-01:00: Saturday 00:30 is the tail of Friday night', fridayNight, at(26, 0, 30), at(26, 1));
+        expectUntil('Friday 23:00-01:00: not Saturday 23:30', fridayNight, at(26, 23, 30), null);
+        expectUntil('Friday 23:00-01:00: not Friday 00:30 (Thursday night)', fridayNight, at(25, 0, 30), null);
+
+        const backToBack = [
+          { days: [3], start: 20 * 60, end: 21 * 60 },
+          { days: [3], start: 21 * 60, end: 22 * 60 },
+        ];
+        expectUntil('back-to-back times join up', backToBack, at(23, 20, 30), at(23, 22));
+
+        check('no allowed times: nothing is allowed', !isAllowed([], at(23, 12)));
+        check('missing allowed times: nothing is allowed', !isAllowed(undefined, at(23, 12)));
+
+        const messy = normalizeWindows([
+          { days: [3], start: 1440, end: 60 },
+          { days: [], start: 0, end: 60 },
+          { days: [7, -1, 2.5], start: 0, end: 60 },
+          { days: ['3'], start: 0, end: 60 },
+          { days: [3, 3, 1], start: '20', end: 60 },
+          null,
+          { days: [3, 1, 3], start: 0, end: 60 },
+        ]);
+        check(
+          'malformed times are dropped and days are tidied',
+          JSON.stringify(messy) === JSON.stringify([{ days: [1, 3], start: 0, end: 60 }]),
+          JSON.stringify(messy)
+        );
+        const many = Array.from({ length: 5 }, (_, i) => ({ days: [i], start: 0, end: 60 }));
+        check(`at most ${MAX_WINDOWS} times per platform`, normalizeWindows(many).length === MAX_WINDOWS);
+
+        const evening = { days: [1, 2, 3], start: 20 * 60, end: 21 * 60 };
+        check('adding a time is looser', isLooser([evening], []));
+        check('removing a time is not looser', !isLooser([], [evening]));
+        check('the same times are not looser', !isLooser([evening], [evening]));
+        check('a shorter time is not looser', !isLooser([{ ...evening, end: 20 * 60 + 30 }], [evening]));
+        check('a longer time is looser', isLooser([{ ...evening, end: 22 * 60 }], [evening]));
+        check('fewer days is not looser', !isLooser([{ ...evening, days: [1] }], [evening]));
+        check('an extra day is looser', isLooser([{ ...evening, days: [1, 2, 3, 4] }], [evening]));
+        check('moving a time is looser', isLooser([{ ...evening, start: 19 * 60, end: 20 * 60 }], [evening]));
+        check(
+          'all day cut down to part of the day is not looser',
+          !isLooser([{ days: [6], start: 600, end: 720 }], [{ days: [6], start: 0, end: 0 }])
+        );
+        check(
+          'the tail past midnight counts',
+          isLooser([{ days: [5], start: 23 * 60, end: 120 }], [{ days: [5], start: 23 * 60, end: 60 }])
+        );
+        check(
+          'splitting a time in two is not looser',
+          !isLooser(
+            [
+              { days: [3], start: 20 * 60, end: 20 * 60 + 20 },
+              { days: [3], start: 20 * 60 + 40, end: 21 * 60 },
+            ],
+            [evening]
+          )
+        );
+
+        const output = document.createElement('pre');
+        output.id = 'results';
+        output.textContent = JSON.stringify(results);
+        document.documentElement.appendChild(output);
+      })();
+    </script>
+  </body>
+</html>
