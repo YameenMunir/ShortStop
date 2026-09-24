@@ -31,7 +31,7 @@
   or Instagram at weekends. Blocking switches off and on by itself.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,311
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,425
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -39,7 +39,7 @@
 
 | Platform | What ShortStop changes |
 | --- | --- |
-| **YouTube** | **Focus mode.** `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`), and Shorts shelves, tabs, chips and sidebar entries are removed everywhere. The **home page's recommended grid**, Trending/Explore and Gaming are replaced by the panel (*"Scrolling is blocked by your focus settings."*), with a YouTube search box and links to Subscriptions, Watch later, Your playlists and History. On the watch page, the **"Up next"** list is hidden (the playlist panel and live chat stay), **end-screen** video walls, end cards and the "More videos" overlay are removed, and **autoplay** is switched off, with any autoplay countdown cancelled. Search results lose their "For you" / "People also watched" shelves. Search, subscriptions, playlists, channels, history and any video you open keep working, and the miniplayer keeps playing when you go back to Home. **Hide YouTube Shorts** (on by default) controls the Shorts part on its own: switched off, Shorts shelves, cards, the Shorts tab and `/shorts/` links are left alone, while the covered home page, Up next, end screens and autoplay stay blocked. |
+| **YouTube** | **Focus mode.** `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`), and Shorts shelves, tabs, chips and sidebar entries are removed everywhere. The **home page's recommended grid**, Trending/Explore and Gaming are replaced by the panel (*"Scrolling is blocked by your focus settings."*), with a YouTube search box and links to Subscriptions, Watch later, Your playlists and History. On the watch page, the **"Up next"** list is hidden (the playlist panel and live chat stay), **end-screen** video walls, end cards and the "More videos" overlay are removed, and **autoplay** is switched off, with any autoplay countdown cancelled. Search results lose their "For you" / "People also watched" shelves. Search, subscriptions, playlists, channels, history and any video you open keep working, and the miniplayer keeps playing when you go back to Home. **Hide YouTube Shorts** (on by default) is its own switch, independent of the YouTube switch above it. On, Shorts shelves, cards, the Shorts tab and `/shorts/` links stay removed even while the rest of YouTube's blocking is switched off, paused or in an allowed time. Off, Shorts are left alone, while the covered home page, Up next, end screens and autoplay keep following the YouTube switch. |
 | **Instagram** | **Focus mode.** The Home feed, Explore (including hashtag, place and suggested-people pages), Reels and Stories are all blocked the same way. Their content is replaced by a ShortStop panel before it paints, so there's nothing to scroll and no way round it through the Home feed. The panel links to what still works: **Messages**, **account search**, **your profile**, and posting through Instagram's own menu. Profiles and single posts you open on purpose still work, minus the Reels tab and "Suggested for you" accounts. Reels shared in DMs are blurred and can't be opened. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 | **Facebook** | **Focus mode.** Facebook stays a communication and utility tool, not an endless feed. The News Feed (including the Feeds filters), Reels, Watch, Stories, the groups feed and Discover, Gaming, friend suggestions and **Marketplace's recommended listings** are all blocked the same way. Each shows *"Scrolling is blocked by your focus settings."* where the feed was, with a Facebook search box and links to **Messenger**, **your profile** (to post), **your groups** and **Pages you manage**. A Watch link someone sent you gets an *Open this video only* button. Menu and top-bar shortcuts into feeds are hidden. On a blocked feed, feed keys (including Facebook's own J/K) are swallowed and videos are paused. Inside pages that stay open (profiles, a specific group, search), Reels, the Stories tray and "Suggested for you" / "People you may know" units are removed. **Marketplace:** searching and categories, listings, selling and the inbox work, and *Allow Marketplace search* in the popup can turn search off too. **Notifications** are blocked unless you turn on *Allow notifications*. |
 | **TikTok** | **Focus mode.** Every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, Short dramas (the catalog and its episodes), and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
@@ -340,7 +340,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,311 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,425 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -399,8 +399,10 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 - Pauses are stored per device. Your platform switches sync with your browser profile, but a
   10-minute pause on one computer doesn't pause your others.
 - The smaller options (*Hide YouTube Shorts*, *Allow notifications*, *Allow Marketplace
-  search*) switch instantly, without the pause flow. *Hide YouTube Shorts* works while YouTube
-  blocking is on; pausing or switching off YouTube lets Shorts through as before.
+  search*) switch instantly, without the pause flow. *Hide YouTube Shorts* is independent of
+  the YouTube switch: pausing YouTube, an allowed time or switching YouTube off lifts the
+  rest of YouTube's blocking but keeps Shorts hidden. Switch *Hide YouTube Shorts* off to see
+  them.
 - YouTube's "For you" / "People also watched" shelves in search are matched by their English
   titles, and the m.youtube.com "related videos" rule hasn't been checked on a phone.
 - Instagram and Facebook selectors that use ARIA labels (the DM Reel badge, the

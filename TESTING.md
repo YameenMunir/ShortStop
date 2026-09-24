@@ -57,6 +57,10 @@ are on. Note today's counter number.
       has no Up next, and autoplay is still off.
 - [ ] **Hide YouTube Shorts on again:** switch it back on while a Short is playing. It moves to
       `/watch?v=…` at once, and Shorts disappear from search and the sidebar without a reload.
+- [ ] **Independent of the YouTube switch:** turn YouTube blocking off (or *Allow 10 minutes*).
+      *Hide YouTube Shorts* stays usable, not greyed out. Home shows its normal feed and watch
+      pages show Up next, but Shorts are still gone and `/shorts/…` still opens in the normal
+      player. Switch *Hide YouTube Shorts* off too: Shorts come back without a reload.
 - [ ] Close and reopen the browser: *Hide YouTube Shorts* keeps its setting.
 
 ## YouTube (mobile, m.youtube.com)

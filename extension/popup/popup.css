@@ -232,6 +232,12 @@ body {
   min-width: 0;
 }
 
+/* A setting of its own (not dependent on the platform switch above it). */
+.option-title {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .option-detail {
   font-size: 11px;
   text-wrap: balance;

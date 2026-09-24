@@ -18,13 +18,17 @@
  * playing through them), channels, history, Watch later and any video you
  * open. The miniplayer keeps playing when you go back to the home page.
  *
- * Switching "Hide YouTube Shorts" off leaves Shorts alone but keeps
- * everything else in this file (the covered home page, Up next, autoplay).
+ * "Hide YouTube Shorts" is its own switch. Off, Shorts are left alone and
+ * everything else in this file (the covered home page, Up next, autoplay)
+ * carries on. On, Shorts stay hidden even while that other blocking is
+ * switched off, paused or in an allowed time.
  *
  * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
  * that slipped through, and add or adjust a rule below. See README.md.
  */
-// Every Shorts rule and redirect depends on the "Hide YouTube Shorts" option.
+// Every Shorts rule and redirect depends on the "Hide YouTube Shorts" option,
+// and only on it: they are `independent`, so they keep working while YouTube's
+// other blocking is switched off, paused or in an allowed time.
 const youtubeShortsHidden = (options) => options.hideShorts;
 
 ShortStop.start({
@@ -44,12 +48,14 @@ ShortStop.start({
       name: 'Shorts player to the regular player',
       match: /^\/shorts\/([\w-]{5,})/,
       onlyIf: youtubeShortsHidden,
+      independent: true,
       to: (match) => `/watch?v=${match[1]}`,
     },
     {
       name: 'Bare Shorts feed to the home page',
       match: /^\/shorts\/?$/,
       onlyIf: youtubeShortsHidden,
+      independent: true,
       to: () => '/',
     },
   ],
@@ -117,24 +123,28 @@ ShortStop.start({
     {
       name: 'Shorts shelf on search, watch and channel pages',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytd-reel-shelf-renderer',
       count: true,
     },
     {
       name: 'Shorts section on the home page',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])',
       count: true,
     },
     {
       name: 'Shorts rich shelf (outside a section)',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytd-rich-shelf-renderer[is-shorts]',
       count: true,
     },
     {
       name: 'Shorts grid shelf in search (2025 layout)',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector:
         'grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, a[href^="/shorts/"])',
       count: true,
@@ -142,6 +152,7 @@ ShortStop.start({
     {
       name: 'Mobile: Shorts section on the home page',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector:
         'ytm-rich-section-renderer:has(ytm-reel-shelf-renderer, ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2)',
       count: true,
@@ -149,6 +160,7 @@ ShortStop.start({
     {
       name: 'Mobile: Shorts shelf (outside a section)',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytm-reel-shelf-renderer',
       count: true,
     },
@@ -157,30 +169,35 @@ ShortStop.start({
     {
       name: 'Short in the home / subscriptions grid',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytd-rich-item-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short in search results',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytd-video-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short in a channel or legacy grid',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytd-grid-video-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short in watch-page suggestions',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytd-compact-video-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Mobile: Short in a video list',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector:
         'ytm-video-with-context-renderer:has(a[href^="/shorts/"]), ytm-rich-item-renderer:has(a[href^="/shorts/"])',
       count: true,
@@ -188,12 +205,14 @@ ShortStop.start({
     {
       name: 'Short as a new-style lockup card',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'yt-lockup-view-model:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short marked by the SHORTS badge on its thumbnail',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       // Some lists link a Short as /watch?v=; the thumbnail badge still says SHORTS.
       selector:
         ':is(ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer):has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"])',
@@ -202,6 +221,7 @@ ShortStop.start({
     {
       name: 'Any leftover Shorts tile',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-reel-item-renderer',
       count: true,
     },
@@ -210,29 +230,34 @@ ShortStop.start({
     {
       name: 'Sidebar "Shorts" entry',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector:
         'ytd-guide-entry-renderer:has(a[title="Shorts"]), ytd-guide-entry-renderer:has(a[href^="/shorts"])',
     },
     {
       name: 'Mini sidebar "Shorts" entry',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector:
         'ytd-mini-guide-entry-renderer[aria-label="Shorts"], ytd-mini-guide-entry-renderer:has(a[title="Shorts"])',
     },
     {
       name: 'Channel page "Shorts" tab',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'yt-tab-shape[tab-title="Shorts"], tp-yt-paper-tab:has(a[href$="/shorts"])',
     },
     {
       name: 'Search filter chip "Shorts"',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'yt-chip-cloud-chip-renderer, chip-shape',
       text: /^Shorts$/i, // Text match needs JS, so this rule is not in the CSS.
     },
     {
       name: 'Mobile: bottom bar "Shorts" tab',
       onlyIf: youtubeShortsHidden,
+      independent: true,
       selector: 'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
     },
 

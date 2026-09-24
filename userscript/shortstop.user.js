@@ -38,7 +38,8 @@
 // end screens and autoplay are switched off.
 const BLOCK_YOUTUBE_SHORTS = true;
 // Hide YouTube Shorts: Shorts shelves, cards, the Shorts tab and /shorts/
-// links. false = Shorts are left alone; the rest of YouTube's blocking stays.
+// links. Independent of BLOCK_YOUTUBE_SHORTS above: true keeps Shorts hidden
+// even when that is false. false = Shorts are left alone.
 const HIDE_YOUTUBE_SHORTS = true;
 
 // Instagram: the Home feed, Explore, Reels and Stories are blocked.
@@ -239,7 +240,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    *     options: {                            // extra switches stored in settings
    *       notifications: { setting: 'instagramNotifications', default: false },
    *     },
-   *     redirects: [{ name, match: /regex on pathname/, when?(url), onlyIf?(options), to(match, url) }],
+   *     redirects: [{ name, match: /regex on pathname/, when?(url), onlyIf?(options), independent?, to(match, url) }],
    *     cover: {                              // replace whole pages with a ShortStop panel
    *       target: 'main' | ['#feed', 'main'], // the content area; first selector that exists wins
    *       title: 'Shown on every covered page',
@@ -264,6 +265,9 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    *       closest: 'css selector',            // hide this ancestor of the match instead (JS only)
    *       text: /regex/,                      // only if the target's text matches (JS only)
    *       count: true,                        // counts toward "blocked today"
+   *       independent: true,                  // keeps working while the platform's blocking is
+   *                                           // off, paused or in an allowed time (its own option
+   *                                           // switch, e.g. "Hide YouTube Shorts", decides)
    *     }],
    *   }
    *
@@ -578,6 +582,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         this.unlock = { until: 0, timer: 0 }; // A running temporary unlock, if any.
         this.scheduleOpen = false; // Inside an allowed time when settings were last applied.
         this.enabled = true; // Optimistic until settings load, so nothing flashes.
+        this.running = true; // Blocking on, or only the independent rules working.
         this.cover = { host: null, page: null, renderedHref: null, countedHref: null, linksKey: null };
         this.redirecting = false;
         this.observer = null;
@@ -668,16 +673,27 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         }
       }
 
+      // `on` is the platform's own blocking. Independent rules (e.g. "Hide
+      // YouTube Shorts") keep working while it is off, paused or in an allowed
+      // time, as long as their own option allows them.
       setEnabled(on) {
         this.enabled = on;
-        if (on) this.activate();
+        this.running = on || this.hasIndependentWork();
+        if (this.running) this.activate();
         else this.deactivate();
+      }
+
+      hasIndependentWork() {
+        return [...this.rules, ...asList(this.config.redirects)].some(
+          (rule) => rule.independent && (!rule.onlyIf || rule.onlyIf(this.options))
+        );
       }
 
       activate() {
         if (this.redirectIfNeeded()) return;
         this.setCloak(false);
         this.injectStyle();
+        this.refreshCss(); // Full blocking and independent-only need different CSS.
         this.updatePage();
         if (!this.observer) {
           this.observer = new MutationObserver(() => this.onMutations());
@@ -719,7 +735,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         // Covered pages: hide the content area from the very first paint, and
         // stop the page scrolling if the panel had to cover the whole viewport.
         const cover = this.config.cover;
-        if (cover) {
+        if (cover && this.enabled) {
           // With several candidate content areas, a later one is only hidden when
           // it does not contain an earlier one (which is where the panel goes).
           const targets = asList(cover.target);
@@ -740,6 +756,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         for (const rule of this.rules) {
           // Rules that need JS (text match, ancestor lookup, blur label) are skipped.
           if (rule.action !== 'hide' || rule.closest || rule.text) continue;
+          if (!this.enabled && !rule.independent) continue;
           if (rule.onlyIf && !rule.onlyIf(this.options)) continue;
           const pages = asList(rule.page);
           const selector = pages.length
@@ -748,6 +765,11 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
           blocks.push(`/* ${rule.name} */\n${selector} { display: none !important; }`);
         }
         return blocks.join('\n\n');
+      }
+
+      refreshCss() {
+        const css = this.buildCss();
+        if (this.styleEl.textContent !== css) this.styleEl.textContent = css;
       }
 
       injectStyle() {
@@ -945,6 +967,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         }
         for (const rule of asList(this.config.redirects)) {
           const match = url.pathname.match(rule.match);
+          if (!this.enabled && !rule.independent) continue;
           if (!match || (rule.when && !rule.when(url)) || (rule.onlyIf && !rule.onlyIf(this.options))) continue;
           const destination = new URL(rule.to(match, url), url.origin).href;
           if (destination !== url.href) return destination;
@@ -954,7 +977,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
       redirectIfNeeded() {
         if (this.redirecting) return true;
-        if (!this.enabled) return false;
+        if (!this.running) return false;
         const target = this.resolveRedirect(this.env.href());
         if (!target) return false;
         // Replace, so the Back button skips the Short instead of bouncing into it.
@@ -1031,7 +1054,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
       onNavigate() {
         this.lastHref = this.env.href();
-        if (!this.enabled || this.redirectIfNeeded()) return;
+        if (!this.running || this.redirectIfNeeded()) return;
         this.updatePage();
         this.updateCover(); // Straight away, not after the scan throttle.
         this.scheduleScan();
@@ -1039,7 +1062,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
       // Stops a click on a Short/Reel link before the SPA router starts playing it.
       onClick(event) {
-        if (!this.enabled || this.redirecting || event.defaultPrevented) return;
+        if (!this.running || this.redirecting || event.defaultPrevented) return;
         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
           return; // New-tab clicks are handled by the content script in that tab.
         }
@@ -1064,7 +1087,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       }
 
       scheduleScan() {
-        if (this.scanTimer || !this.enabled) return;
+        if (this.scanTimer || !this.running) return;
         this.scanTimer = setTimeout(() => {
           this.scanTimer = 0;
           this.scan();
@@ -1085,6 +1108,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
       // Whether a rule is active on the current page with the current options.
       applies(rule) {
+        if (!this.enabled && !rule.independent) return false;
         const pages = asList(rule.page);
         if (pages.length && !pages.includes(this.page)) return false;
         return !rule.onlyIf || rule.onlyIf(this.options);
@@ -1108,7 +1132,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       }
 
       scan() {
-        if (!this.enabled || this.redirecting) return;
+        if (!this.running || this.redirecting) return;
         this.injectStyle(); // Re-attach if the site replaced <head>.
         this.updatePage();
         this.updateCover(); // Re-mount the panel if the site re-rendered it away.
@@ -1240,13 +1264,17 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    * playing through them), channels, history, Watch later and any video you
    * open. The miniplayer keeps playing when you go back to the home page.
    *
-   * Switching "Hide YouTube Shorts" off leaves Shorts alone but keeps
-   * everything else in this file (the covered home page, Up next, autoplay).
+   * "Hide YouTube Shorts" is its own switch. Off, Shorts are left alone and
+   * everything else in this file (the covered home page, Up next, autoplay)
+   * carries on. On, Shorts stay hidden even while that other blocking is
+   * switched off, paused or in an allowed time.
    *
    * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
    * that slipped through, and add or adjust a rule below. See README.md.
    */
-  // Every Shorts rule and redirect depends on the "Hide YouTube Shorts" option.
+  // Every Shorts rule and redirect depends on the "Hide YouTube Shorts" option,
+  // and only on it: they are `independent`, so they keep working while YouTube's
+  // other blocking is switched off, paused or in an allowed time.
   const youtubeShortsHidden = (options) => options.hideShorts;
 
   ShortStop.start({
@@ -1266,12 +1294,14 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         name: 'Shorts player to the regular player',
         match: /^\/shorts\/([\w-]{5,})/,
         onlyIf: youtubeShortsHidden,
+        independent: true,
         to: (match) => `/watch?v=${match[1]}`,
       },
       {
         name: 'Bare Shorts feed to the home page',
         match: /^\/shorts\/?$/,
         onlyIf: youtubeShortsHidden,
+        independent: true,
         to: () => '/',
       },
     ],
@@ -1339,24 +1369,28 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       {
         name: 'Shorts shelf on search, watch and channel pages',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytd-reel-shelf-renderer',
         count: true,
       },
       {
         name: 'Shorts section on the home page',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])',
         count: true,
       },
       {
         name: 'Shorts rich shelf (outside a section)',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytd-rich-shelf-renderer[is-shorts]',
         count: true,
       },
       {
         name: 'Shorts grid shelf in search (2025 layout)',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector:
           'grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, a[href^="/shorts/"])',
         count: true,
@@ -1364,6 +1398,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       {
         name: 'Mobile: Shorts section on the home page',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector:
           'ytm-rich-section-renderer:has(ytm-reel-shelf-renderer, ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2)',
         count: true,
@@ -1371,6 +1406,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       {
         name: 'Mobile: Shorts shelf (outside a section)',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytm-reel-shelf-renderer',
         count: true,
       },
@@ -1379,30 +1415,35 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       {
         name: 'Short in the home / subscriptions grid',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytd-rich-item-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in search results',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytd-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in a channel or legacy grid',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytd-grid-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in watch-page suggestions',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytd-compact-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Mobile: Short in a video list',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector:
           'ytm-video-with-context-renderer:has(a[href^="/shorts/"]), ytm-rich-item-renderer:has(a[href^="/shorts/"])',
         count: true,
@@ -1410,12 +1451,14 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       {
         name: 'Short as a new-style lockup card',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'yt-lockup-view-model:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short marked by the SHORTS badge on its thumbnail',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         // Some lists link a Short as /watch?v=; the thumbnail badge still says SHORTS.
         selector:
           ':is(ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer):has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"])',
@@ -1424,6 +1467,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       {
         name: 'Any leftover Shorts tile',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-reel-item-renderer',
         count: true,
       },
@@ -1432,29 +1476,34 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       {
         name: 'Sidebar "Shorts" entry',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector:
           'ytd-guide-entry-renderer:has(a[title="Shorts"]), ytd-guide-entry-renderer:has(a[href^="/shorts"])',
       },
       {
         name: 'Mini sidebar "Shorts" entry',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector:
           'ytd-mini-guide-entry-renderer[aria-label="Shorts"], ytd-mini-guide-entry-renderer:has(a[title="Shorts"])',
       },
       {
         name: 'Channel page "Shorts" tab',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'yt-tab-shape[tab-title="Shorts"], tp-yt-paper-tab:has(a[href$="/shorts"])',
       },
       {
         name: 'Search filter chip "Shorts"',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'yt-chip-cloud-chip-renderer, chip-shape',
         text: /^Shorts$/i, // Text match needs JS, so this rule is not in the CSS.
       },
       {
         name: 'Mobile: bottom bar "Shorts" tab',
         onlyIf: youtubeShortsHidden,
+        independent: true,
         selector: 'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
       },
 
