@@ -1,0 +1,16 @@
+name: ShortStop CodeQL config
+
+# security-extended: GitHub's security queries plus lower-precision ones, without
+# the code-quality checks that would mostly add noise here.
+queries:
+  - uses: security-extended
+
+# Scan the extension itself and the workflows. The test pages deliberately contain
+# odd code (planted privacy violations, fake storage), and the userscript is a
+# generated copy of extension/content/, which would only duplicate every finding.
+paths:
+  - extension
+  - .github/workflows
+paths-ignore:
+  - tests
+  - userscript
