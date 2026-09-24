@@ -150,5 +150,13 @@
       ],
       "run_at": "document_start"
     }
-  ]
+  ],
+  "commands": {
+    "start-focus-session": {
+      "suggested_key": {
+        "default": "Alt+Shift+F"
+      },
+      "description": "Start a 1-hour focus session (press twice to confirm)"
+    }
+  }
 }

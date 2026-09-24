@@ -140,6 +140,16 @@ body {
   display: none;
 }
 
+.focus-hint {
+  margin: 6px 0 0;
+  color: var(--slate);
+  font-size: 11px;
+}
+
+.focus-hint[hidden] {
+  display: none;
+}
+
 /* A site's switch is only ever disabled while a focus session locks it. */
 .platform-row .switch:disabled {
   opacity: 0.6;

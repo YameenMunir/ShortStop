@@ -1,7 +1,8 @@
 /*
  * ShortStop background worker
  * ===========================
- * Its only job is keeping the "blocked today" counter. Content scripts in many
+ * It keeps the "blocked today" counter, and handles the focus-session keyboard
+ * shortcut (below). Content scripts in many
  * tabs report blocks at once, so increments go through one promise queue here
  * instead of each tab doing its own read-modify-write (which would lose counts).
  *
@@ -35,6 +36,46 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   };
   for (const platform of PLATFORMS) complete[platform] = settings[platform] !== false;
   await chrome.storage.sync.set({ settings: complete });
+});
+
+/*
+ * Keyboard shortcut (Alt+Shift+F by default; see "commands" in manifest.json).
+ * A focus session can't be stopped early, so one stray key press must not
+ * start one: the first press arms it and shows "1h?" on the toolbar icon, and
+ * a second press within 5 seconds starts a 1-hour session. During a session,
+ * a press just shows the minutes left.
+ */
+const SHORTCUT_FOCUS_MINUTES = 60;
+const SHORTCUT_CONFIRM_MS = 5000;
+const BADGE_ARMED = '#b7791f';
+const BADGE_FOCUS = '#d62839';
+let shortcutArmedUntil = 0;
+let badgeTimer = 0;
+
+function flashBadge(text, color, ms) {
+  clearTimeout(badgeTimer);
+  chrome.action.setBadgeBackgroundColor({ color });
+  chrome.action.setBadgeText({ text });
+  badgeTimer = setTimeout(() => chrome.action.setBadgeText({ text: '' }), ms);
+}
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'start-focus-session') return;
+  const now = Date.now();
+  const { settings = {} } = await chrome.storage.sync.get('settings');
+  const until = Number(settings.focusUntil) || 0;
+  if (until > now) {
+    flashBadge(`${Math.ceil((until - now) / 60000)}m`, BADGE_FOCUS, 3000);
+    return;
+  }
+  if (shortcutArmedUntil < now) {
+    shortcutArmedUntil = now + SHORTCUT_CONFIRM_MS;
+    flashBadge(`${SHORTCUT_FOCUS_MINUTES / 60}h?`, BADGE_ARMED, SHORTCUT_CONFIRM_MS);
+    return;
+  }
+  shortcutArmedUntil = 0;
+  await chrome.storage.sync.set({ settings: { ...settings, focusUntil: now + SHORTCUT_FOCUS_MINUTES * 60 * 1000 } });
+  flashBadge(`${SHORTCUT_FOCUS_MINUTES}m`, BADGE_FOCUS, 3000);
 });
 
 let queue = Promise.resolve();

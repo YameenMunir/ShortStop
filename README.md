@@ -60,7 +60,7 @@
   locked until it ends.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,455
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,469
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -118,6 +118,12 @@ When you want that, start a **focus session** from the top of the popup: pick **
 - The popup shows how long is left and when it ends. It **can't be stopped early**, which is
   the point, so the length is confirmed before it starts.
 - When it ends, every site goes back to its own settings by itself, in open tabs too.
+- **Keyboard shortcut:** press **Alt+Shift+F twice** to start a 1-hour session without opening
+  the popup. The first press shows **1h?** on ShortStop's toolbar icon for 5 seconds, so a
+  stray key press can't lock you out; the second press starts it, and the icon briefly shows
+  **60m**. Pressing it during a session shows the minutes left. Change the shortcut at
+  `chrome://extensions/shortcuts` (the popup shows the one in use). It needs no extra
+  permission.
 - It's saved with your other settings (as the time it ends), so a session covers every
   computer on your browser profile.
 
@@ -404,7 +410,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,455 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,469 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip

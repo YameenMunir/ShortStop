@@ -219,6 +219,11 @@ These selectors haven't been checked on the live site yet, so note anything that
       is greyed out. *Allow notifications* still works.
 - [ ] Without reloading, the YouTube tab shows the panel on Home again and Shorts are gone.
 - [ ] Close and reopen the popup: the session is still running.
+- [ ] **Shortcut:** with no session running, the popup says "Or press Alt+Shift+F twice for
+      1 hour." Close it and press Alt+Shift+F once: the toolbar icon shows **1h?** and nothing is
+      locked. Wait 5 seconds: it clears. Press it twice quickly: the icon shows **60m** and every
+      site is blocked (the popup shows the countdown). Press it again: the icon shows the minutes
+      left. At `chrome://extensions/shortcuts`, change the shortcut: the popup's hint follows.
 - [ ] When it ends (to save time, run
       `chrome.storage.sync.get('settings', ({settings}) => chrome.storage.sync.set({settings: {...settings, focusUntil: Date.now() + 15000}}))`
       in the popup's DevTools console), the switches unlock by themselves, YouTube is off again
