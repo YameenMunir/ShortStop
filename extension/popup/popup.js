@@ -42,6 +42,12 @@ const NAMES = {
 };
 const numberFormat = new Intl.NumberFormat();
 const timeFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+// Chrome focuses a control when the popup opens (and clicking a row's label
+// focuses its switch), which draws a focus ring nobody asked for. Rings show
+// only once the keyboard is in use (see popup.css).
+addEventListener('keydown', () => (document.documentElement.dataset.keyboard = ''), true);
+addEventListener('pointerdown', () => delete document.documentElement.dataset.keyboard, true);
+
 const platformSwitches = Array.from(document.querySelectorAll('.switch[data-platform]'));
 const optionSwitches = Array.from(document.querySelectorAll('.switch[data-setting]'));
 
