@@ -19,6 +19,7 @@
 <p align="center">
   <a href="https://github.com/YameenMunir/ShortStop/actions/workflows/tests.yml"><img src="https://github.com/YameenMunir/ShortStop/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
   <a href="https://github.com/YameenMunir/ShortStop/actions/workflows/privacy.yml"><img src="https://github.com/YameenMunir/ShortStop/actions/workflows/privacy.yml/badge.svg" alt="Privacy guard"></a>
+  <a href="https://github.com/YameenMunir/ShortStop/actions/workflows/codeql.yml"><img src="https://github.com/YameenMunir/ShortStop/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
 </p>
 
 ---
@@ -429,6 +430,13 @@ Ordinary links (`<a href="https://…">`) are fine. Run it locally with
 `python tools/check_privacy.py`; its own tests are in `tests/test_privacy_guard.py`. Adding a
 supported site is deliberate: add its patterns to `ALLOWED_HOSTS` in the guard in the same pull
 request as `manifest.json`.
+
+**Code scanning.** [CodeQL](.github/workflows/codeql.yml), GitHub's free security analysis, checks
+the extension's JavaScript and these workflow files on every pull request, on every push to
+`main` and once a week, using GitHub's `security-extended` rules. It looks for problems such as
+injection or unsafe DOM use, and for risky workflow settings. Findings appear on the pull request
+and in the repository's **Security** tab. It skips `tests/` and the generated userscript
+([config](.github/codeql/codeql-config.yml)).
 
 **Releasing.** Pushing a tag like `v1.1.0` runs the [release workflow](.github/workflows/release.yml).
 It checks the tag matches the version, runs the privacy guard and the full test suite, builds
