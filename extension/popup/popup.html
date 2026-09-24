@@ -21,6 +21,21 @@
       <p class="tally-label" id="tally-label">blocked today</p>
     </section>
 
+    <!-- Focus session: blocks every site and locks the switches until it ends. -->
+    <section class="focus" id="focus" aria-labelledby="focus-title">
+      <h2 class="focus-title" id="focus-title">Focus session</h2>
+      <p class="focus-text" id="focus-text" aria-live="polite">Block every site and lock the switches for a while.</p>
+      <div class="focus-actions" id="focus-choices">
+        <button type="button" class="btn btn-plain" data-focus-minutes="30">30 min</button>
+        <button type="button" class="btn btn-plain" data-focus-minutes="60">1 hour</button>
+        <button type="button" class="btn btn-plain" data-focus-minutes="120">2 hours</button>
+      </div>
+      <div class="focus-actions" id="focus-confirm" hidden>
+        <button type="button" class="btn btn-primary" id="focus-start">Start</button>
+        <button type="button" class="btn btn-quiet" id="focus-cancel">Cancel</button>
+      </div>
+    </section>
+
     <!-- One row per platform. The switch saves instantly; open tabs update live. -->
     <ul class="platforms">
       <li class="platform">
@@ -44,6 +59,7 @@
             id="option-youtube-shorts"
             data-setting="youtubeHideShorts"
             data-default="true"
+            data-during-focus="true"
             aria-describedby="option-youtube-shorts-detail"
           />
         </label>

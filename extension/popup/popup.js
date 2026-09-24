@@ -23,6 +23,11 @@
  *
  * Switching blocking back ON is always instant, including "Block now" during
  * an allowed time.
+ *
+ * A focus session ("Focus session" at the top) blocks every platform for 30
+ * minutes to 2 hours: switches, "Hide YouTube Shorts" and allowed times are
+ * locked until it ends. It is stored as `focusUntil` in the synced settings
+ * and cannot be ended early.
  */
 'use strict';
 
@@ -85,6 +90,7 @@ function savedWindows(platform) {
 
 // 'blocking', 'unlocked' (temporary), 'scheduled' (an allowed time) or 'off' (for good).
 function platformState(platform, now) {
+  if (inFocus(now)) return { kind: 'focus' };
   if (state.settings[platform] === false) return { kind: 'off' };
   const until = Number(state.unlocks[platform]) || 0;
   if (until > now) return { kind: 'unlocked', until };
@@ -522,7 +528,8 @@ function renderPlatform(input, now) {
   const words = request && (REQUEST_TEXT[request.kind] || REQUEST_TEXT.off);
 
   // The switch always shows whether blocking is active right now.
-  input.checked = current.kind === 'blocking';
+  input.checked = current.kind === 'blocking' || current.kind === 'focus';
+  input.disabled = current.kind === 'focus';
 
   let mode = 'closed';
   if (request) mode = request.phase;
@@ -567,16 +574,21 @@ function renderScheduler(platform, now) {
   if (request && request.kind === 'schedule') summary += ' (a change is waiting)';
   setText(controls.summary, summary);
   // Off platforms have nothing to allow; a waiting request has to finish first.
-  const locked = state.settings[platform] === false || Boolean(request);
+  const locked = state.settings[platform] === false || Boolean(request) || inFocus(now);
   controls.edit.disabled = locked && !drafts.has(platform);
   controls.box.classList.toggle('is-disabled', state.settings[platform] === false);
 }
 
-function renderOptions() {
+function renderOptions(now) {
+  const focus = inFocus(now);
   for (const input of optionSwitches) {
     const stored = state.settings[input.dataset.setting];
     input.checked = typeof stored === 'boolean' ? stored : input.dataset.default === 'true';
     input.disabled = state.settings[input.dataset.parent] === false;
+    if (focus && input.dataset.duringFocus) {
+      input.checked = input.dataset.duringFocus === 'true';
+      input.disabled = true;
+    }
   }
 }
 
@@ -596,7 +608,8 @@ function render() {
     renderPlatform(input, now);
     renderScheduler(input.dataset.platform, now);
   }
-  renderOptions();
+  renderOptions(now);
+  renderFocus(now);
 }
 
 // Once a second: refresh the countdowns and tidy up anything that ran out.
@@ -619,6 +632,68 @@ function tick() {
   }
   render();
   if (stale) chrome.storage.local.set(localState()).catch(() => {});
+}
+
+/* ------------------------------------------------------------------ */
+/* Focus session                                                        */
+/* ------------------------------------------------------------------ */
+
+let focusChoice = 0; // Minutes picked and waiting for "Start", or 0.
+
+function inFocus(now) {
+  return (Number(state.settings.focusUntil) || 0) > now;
+}
+
+function describeMinutes(minutes) {
+  if (minutes < 60) return `${minutes} minutes`;
+  return minutes === 60 ? '1 hour' : `${minutes / 60} hours`;
+}
+
+// "58:12", or "1:58:12" from an hour up.
+function formatRemaining(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = String(total % 60).padStart(2, '0');
+  return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`;
+}
+
+function startFocus(minutes) {
+  focusChoice = 0;
+  state.settings = { ...state.settings, focusUntil: Date.now() + minutes * 60 * 1000 };
+  return commit({ sync: true });
+}
+
+function renderFocus(now) {
+  const box = document.getElementById('focus');
+  const until = Number(state.settings.focusUntil) || 0;
+  const active = until > now;
+  let text = 'Block every site and lock the switches for a while.';
+  if (active) {
+    text = `${formatRemaining(until - now)} left. Every site is blocked and the switches are locked until ${timeFormat.format(new Date(until))}.`;
+  } else if (focusChoice) {
+    text = `Block every site for ${describeMinutes(focusChoice)}? The switches stay locked until it ends, and it can't be stopped early.`;
+  }
+  box.classList.toggle('is-active', active);
+  setText(document.getElementById('focus-text'), text);
+  document.getElementById('focus-choices').hidden = active || Boolean(focusChoice);
+  document.getElementById('focus-confirm').hidden = active || !focusChoice;
+}
+
+function initFocus() {
+  for (const choice of document.querySelectorAll('[data-focus-minutes]')) {
+    choice.addEventListener('click', () => {
+      focusChoice = Number(choice.dataset.focusMinutes);
+      render();
+      document.getElementById('focus-start').focus();
+    });
+  }
+  document.getElementById('focus-start').addEventListener('click', () => startFocus(focusChoice));
+  document.getElementById('focus-cancel').addEventListener('click', () => {
+    focusChoice = 0;
+    render();
+    document.querySelector('[data-focus-minutes]').focus();
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -659,6 +734,7 @@ async function init() {
       // The switch never flips by itself: state decides what it shows.
       event.preventDefault();
       const now = Date.now();
+      if (inFocus(now)) return; // Locked until the focus session ends.
       if (platformState(platform, now).kind !== 'blocking') {
         blockAgain(platform); // Turning blocking on is instant.
       } else if (instantOff(platform)) {
@@ -673,6 +749,7 @@ async function init() {
   for (const input of optionSwitches) {
     input.addEventListener('change', () => saveOption(input.dataset.setting, input.checked));
   }
+  initFocus();
 
   await load();
   setInterval(tick, 1000);

@@ -338,6 +338,28 @@
     await wait(1300);
     check('no allowed times: blocking is back', blockingOn());
 
+    // Focus session: every platform blocks until it ends, whatever its switch
+    // or allowed times say, then its own settings apply again by themselves.
+    applySettings({ [platform]: false, focusUntil: Date.now() + 60000 });
+    await wait(300);
+    check('focus session: blocks even while switched off', blockingOn());
+    checkExpectations('data-expect', 'during a focus session');
+    if (plan.cover !== undefined) checkCover(plan.cover, 'during a focus session');
+    applySettings({ [platform]: true, schedules: { [platform]: allDayToday }, focusUntil: Date.now() + 60000 });
+    await wait(300);
+    check('focus session: blocks even inside an allowed time', blockingOn());
+    applySettings({ [platform]: false, focusUntil: Date.now() + 1500 });
+    await wait(300);
+    check('short focus session: blocking', blockingOn());
+    await wait(2300);
+    check('focus session ended: the switch applies again by itself', !blockingOn());
+    applySettings({ [platform]: false, focusUntil: Date.now() - 1000 });
+    await wait(300);
+    check('a focus session that already ended does nothing', !blockingOn());
+    applySettings({ [platform]: true });
+    await wait(300);
+    check('after focus sessions: blocking as normal', blockingOn());
+
     for (const phase of plan.phases || []) {
       const navigationsBefore = state.navigations.length;
       if (phase.settings) applySettings(phase.settings);

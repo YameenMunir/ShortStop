@@ -40,7 +40,8 @@ ShortStop.start({
 
   // Extra switches shown in the popup under YouTube.
   options: {
-    hideShorts: { setting: 'youtubeHideShorts', default: true },
+    // A focus session hides Shorts whatever this switch says.
+    hideShorts: { setting: 'youtubeHideShorts', default: true, duringFocus: true },
   },
 
   redirects: [
