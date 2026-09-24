@@ -29,6 +29,7 @@ This keeps each change reviewable and easy to revert on its own.
 
 - `python tools/build_userscript.py` (the userscript is generated from `extension/content/`).
 - `python tests/run_tests.py` must pass.
+- `python tools/check_privacy.py` must pass (it also runs on every pull request).
 - Check UI changes in a real browser, in light and dark mode, and say what could not be verified.
 - Selectors live in one config object per platform in `extension/content/<platform>.js`.
   Prefer URL patterns, ARIA labels and tag names over generated class names.
@@ -37,4 +38,5 @@ This keeps each change reviewable and easy to revert on its own.
 
 - Zero data collection, zero analytics, zero network requests, no third-party libraries.
 - Permissions stay minimal: `storage`, plus host access to the supported sites (listed in
-  `extension/manifest.json`). Adding a site is a deliberate change to that list.
+  `extension/manifest.json`). Adding a site is a deliberate change to that list, and to
+  `ALLOWED_HOSTS` in `tools/check_privacy.py`.

@@ -18,6 +18,7 @@
 
 <p align="center">
   <a href="https://github.com/YameenMunir/ShortStop/actions/workflows/tests.yml"><img src="https://github.com/YameenMunir/ShortStop/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/YameenMunir/ShortStop/actions/workflows/privacy.yml"><img src="https://github.com/YameenMunir/ShortStop/actions/workflows/privacy.yml/badge.svg" alt="Privacy guard"></a>
 </p>
 
 ---
@@ -165,7 +166,8 @@ at the bottom of the popup. It needs no extra permission and makes no network re
 ## Privacy
 
 - **No data collection, no analytics, no network requests.** The extension never
-  calls `fetch`, loads no remote code and uses no third-party libraries.
+  calls `fetch`, loads no remote code and uses no third-party libraries. A
+  [privacy guard](tools/check_privacy.py) checks this automatically on every change.
 - **Minimum permissions:** `storage`, plus host access to the seven sites it works on
   (YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat). It can't see any other
   website.
@@ -429,6 +431,22 @@ python tools/package.py            # build dist/ShortStop-<version>-{chromium,fi
 if the userscript wasn't rebuilt after a change, if any test fails, or if this README states the
 wrong number of checks (`python tools/check_readme_count.py <test output>` checks that locally).
 
+The **privacy guard** ([workflow](.github/workflows/privacy.yml)) runs alongside it and fails any
+change that breaks the privacy promise:
+
+- a network call anywhere in the extension or the userscript: `fetch`, `XMLHttpRequest`,
+  `WebSocket`, `EventSource`, `sendBeacon`, WebRTC or WebTransport
+- remote code or resources: `importScripts`/`import` from a URL, `eval`, `new Function`, remote
+  `<script>`, `<link>`, `<img>` or `<iframe>` sources, a `.src` set to a URL, and `url(https://…)`
+  or `@import` in CSS
+- `manifest.json` asking for more than `storage` and the supported sites, or adding optional
+  permissions, `externally_connectable`, `update_url` or a custom `content_security_policy`
+
+Ordinary links (`<a href="https://…">`) are fine. Run it locally with
+`python tools/check_privacy.py`; its own tests are in `tests/test_privacy_guard.py`. Adding a
+supported site is deliberate: add its patterns to `ALLOWED_HOSTS` in the guard in the same pull
+request as `manifest.json`.
+
 The test fixtures in `tests/fixtures/` mimic each site's markup. `tests/harness.js`
 runs the real engine against them with a fake URL and in-memory settings. For each
 platform it checks:
@@ -545,7 +563,8 @@ Have an idea for a feature? You don't need to ask first. Build it and send it in
 Every feature idea is welcome, and a pull request is the place to suggest one. I'll test it and
 think it over, and if it fits, I may add it to the main code. The one thing I can't accept is a
 change that breaks ShortStop's privacy promise: no data collection, no analytics, no network
-requests, and no permissions beyond the supported sites.
+requests, and no permissions beyond the supported sites. The **privacy guard** check on your pull
+request tells you straight away if something does (see [Development](#development)).
 
 ## License
 
