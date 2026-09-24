@@ -39,6 +39,9 @@ def find_browser():
 
 
 def run_fixture(browser, fixture):
+    # Chrome's sandbox can fail to start on CI machines (recent Ubuntu restricts the
+    # namespaces it uses). The pages loaded here are this repo's own local fixtures.
+    sandbox = ["--no-sandbox"] if os.environ.get("CI") else []
     with tempfile.TemporaryDirectory() as profile:
         output = subprocess.run(
             [
@@ -46,6 +49,7 @@ def run_fixture(browser, fixture):
                 "--headless=new",
                 "--disable-gpu",
                 "--no-first-run",
+                *sandbox,
                 f"--user-data-dir={profile}",
                 "--allow-file-access-from-files",
                 "--virtual-time-budget=90000",

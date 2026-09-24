@@ -16,6 +16,10 @@
   Chrome · Edge · Brave · Firefox (small tweak) · iPhone Safari (userscript)
 </p>
 
+<p align="center">
+  <a href="https://github.com/YameenMunir/ShortStop/actions/workflows/tests.yml"><img src="https://github.com/YameenMunir/ShortStop/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+</p>
+
 ---
 
 ## Contents
@@ -420,6 +424,11 @@ python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
 ```
 
+**Automatic checks.** [GitHub Actions](.github/workflows/tests.yml) runs on every pull request
+(including from forks), every push to `main`, and on demand from the **Actions** tab. It fails
+if the userscript wasn't rebuilt after a change, if any test fails, or if this README states the
+wrong number of checks (`python tools/check_readme_count.py <test output>` checks that locally).
+
 The test fixtures in `tests/fixtures/` mimic each site's markup. `tests/harness.js`
 runs the real engine against them with a fake URL and in-memory settings. For each
 platform it checks:
@@ -529,7 +538,8 @@ Have an idea for a feature? You don't need to ask first. Build it and send it in
 2. Make your change on a new branch in your fork. If it changes what gets blocked, add the
    new markup to `tests/fixtures/<platform>.html` (see
    [When a site changes](#when-a-site-changes-updating-selectors)).
-3. Run `python tests/run_tests.py` and `python tools/build_userscript.py`.
+3. Run `python tests/run_tests.py` and `python tools/build_userscript.py`. The same checks run
+   automatically on your pull request, and it shows whether they passed.
 4. Open a **pull request** that says what your idea is and why you'd want it.
 
 Every feature idea is welcome, and a pull request is the place to suggest one. I'll test it and
