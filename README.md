@@ -57,7 +57,7 @@
 - **Allowed times.** Let a site through at set times, like YouTube from 8 to 9pm on weekdays
   or Instagram at weekends. Blocking switches off and on by itself.
 - **Focus sessions.** Block every site for 30 minutes, 1 hour or 2 hours, with the switches
-  locked until it ends.
+  locked until it ends. Start one from the popup, or press **Alt+Shift+F twice** for an hour.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
 - **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,469
@@ -140,16 +140,18 @@ blocked page looks like and walks through the two setup steps a browser won't do
   button that opens ShortStop's settings page.
 
 Both steps update by themselves while the page is open, with no refresh. Where a browser can't
-report the state, the step says so and shows the manual instructions instead. The page only opens
-on a fresh install (not on updates), and you can reopen it any time from **How ShortStop works**
-at the bottom of the popup. It needs no extra permission and makes no network requests.
+report the state, the step says so and shows the manual instructions instead. Below the checklist,
+a short **Good to know** list sums up the one-click switches, allowed times, focus sessions and the
+keyboard shortcut. The page only opens on a fresh install (not on updates), and you can reopen it
+any time from **How ShortStop works** at the bottom of the popup. It needs no extra permission and
+makes no network requests.
 
 <p align="center">
   <img src="docs/welcome.png" width="520" alt="The ShortStop welcome page: an illustration of the blocking panel, and a checklist for pinning the icon and allowing private windows">
 </p>
 
 <p align="center">
-  <img src="docs/popup.png" width="300" alt="The ShortStop popup: 17 blocked today, with per-platform switches, options and counts">
+  <img src="docs/popup.png" width="300" alt="The ShortStop popup: 27 blocked today, the focus session buttons, and a switch, blocked-today count and allowed times for each of the seven sites">
 </p>
 
 ## Privacy
@@ -160,9 +162,10 @@ at the bottom of the popup. It needs no extra permission and makes no network re
 - **Minimum permissions:** `storage`, plus host access to the seven sites it works on
   (YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat). It can't see any other
   website.
-- Your platform switches, options and allowed times are saved with `chrome.storage.sync`, so
-  they follow your browser profile. The daily counter, a waiting change to the allowed times
-  and any *Block now* live in `chrome.storage.local`, on your device only.
+- Your platform switches, options, allowed times and a running focus session's end time are
+  saved with `chrome.storage.sync`, so they follow your browser profile. The daily counter, a
+  waiting change to the allowed times and any *Block now* live in `chrome.storage.local`, on
+  your device only.
 
 ## Install
 
@@ -276,16 +279,17 @@ const ALLOW_X_NOTIFICATIONS = false;
 const BLOCK_SNAPCHAT_SPOTLIGHT = true;          // Spotlight, Discover, Explore
 ```
 
-The userscript has no popup, daily counter or allowed times, because Safari userscripts have
-no shared storage. To switch a platform off, set its constant to `false`, and back to `true`
-later.
+The userscript has no popup, daily counter, allowed times, focus sessions or keyboard shortcut,
+because Safari userscripts have no shared storage. To switch a platform off, set its constant to
+`false`, and back to `true` later.
 
 ## How it works
 
 ```
 extension/
-├── manifest.json            MV3 manifest: storage + the seven sites, nothing else
-├── background.js            Service worker: keeps the daily counter (one write queue for all tabs)
+├── manifest.json            MV3 manifest: storage + the seven sites, and the Alt+Shift+F command
+├── background.js            Service worker: the daily counter (one write queue for all tabs), the
+│                            Alt+Shift+F focus-session shortcut, and the welcome page on first install
 ├── shared/stats.js          Counter helpers shared by the background worker and popup
 ├── shared/pause.js          The 30-second wait before loosening allowed times, shared by popup and welcome page
 ├── shared/schedule.js       Allowed times: is a platform allowed now, until when, and is a change looser
@@ -299,13 +303,17 @@ extension/
 │   ├── reddit.js            Reddit focus mode: Home, Popular, All and Explore covered
 │   ├── x.js                 X focus mode: Home timeline and Explore covered, sidebar trends
 │   └── snapchat.js          Snapchat focus mode: Spotlight, Discover and Explore covered
-├── popup/                   Platform switches, options, allowed times and today's counter
+├── popup/                   Focus sessions, platform switches, options, allowed times and today's counter
 ├── welcome/                 First-run page: the panel explained, pin and private-window checklist
 └── icons/                   16, 32, 48 and 128 px PNGs
 userscript/shortstop.user.js Generated from content/*.js for iOS Safari
-tools/                       Icon generator, userscript builder, zip packager (Python, no dependencies)
-tests/                       Fixture pages, a test harness and a headless-Chrome test runner
+tools/                       Python helpers, no dependencies: icons, userscript builder, zip packager,
+                             and the privacy guard, README-count and version checks
+tests/                       Fixture pages, a test harness, a headless-browser runner, privacy-guard tests
+.github/                     Workflows (tests, privacy guard, CodeQL, releases) and Dependabot
 docs/                        Screenshots used in this README
+TESTING.md                   Manual checklist to run on real accounts
+CLAUDE.md                    Notes for Claude Code, including the one-branch-per-change rule
 ```
 
 Each platform file is a single config object, and `core.js` does the work:
@@ -344,7 +352,12 @@ Each platform file is a single config object, and `core.js` does the work:
    platform or option off removes the stylesheet, un-hides everything and removes the panel,
    and switching it on re-applies everything. No reload needed. Allowed times
    (`shared/schedule.js`, loaded before `core.js`) are checked once a second, and the
-   settings are re-applied whenever an allowed time starts or ends.
+   settings are re-applied whenever an allowed time starts or ends. A **focus session** is
+   just an end time (`focusUntil`) in the synced settings, and the engine treats it as the
+   strongest rule: while it runs, every platform blocks whatever its switch, allowed times or
+   options say. The popup starts one and locks its controls, and `background.js` starts one from
+   the keyboard shortcut (first press arms it and shows **1h?** on the icon, second press within
+   5 seconds starts it), so the shortcut works without opening the popup.
    When ShortStop is reloaded or updated, the copy already running in open tabs is cut off
    and can no longer hear the popup, and browsers don't give those tabs the new copy. The
    one-second check notices, and a tab showing only the ShortStop panel refreshes itself, so
@@ -491,13 +504,18 @@ platform it checks:
 - every redirect rule
 - redirects triggered by SPA navigation
 
-Two more pages have no site markup. `schedule.html` unit-tests
+Three more pages have no site markup. `schedule.html` unit-tests
 [shared/schedule.js](extension/shared/schedule.js): weekday, all-day and past-midnight times,
 back-to-back times, bad data, and which edits count as looser. `popup.html` loads the real
 popup with an in-memory `chrome.storage` and clicks through it: leftovers from the retired
 pause flow being tidied away, every switch turning off and back on in one click, *Hide YouTube
 Shorts*, adding a time (waits), shortening and removing one (instant), a time with no days,
 *Block now*, and a focus session starting, locking everything and unlocking by itself.
+`background.html` loads the real [background.js](extension/background.js) with a fake `chrome`
+API and "presses" the keyboard shortcut: the first press only shows **1h?** and clears after 5
+seconds, a second press starts the hour and shows **60m**, a press during a session shows the
+minutes left without extending it, and any other command does nothing. It can't test that a
+real browser assigns the key, which depends on your browser (see the limitations below).
 
 A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 
@@ -513,6 +531,13 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
   still change settings in the browser's developer tools or uninstall the extension, even
   during a focus session.
 - Allowed times follow each device's own clock and time zone.
+- **The Alt+Shift+F shortcut isn't guaranteed.** A browser leaves a suggested shortcut unset when
+  another extension already uses it. The popup only shows its "press … twice" line when a
+  shortcut is assigned, so if that line is missing, set one at `chrome://extensions/shortcuts`
+  (or `edge://` / `brave://`). It only works while the browser window has focus (not another app
+  such as a code editor), and the **1h?** badge appears on ShortStop's toolbar icon, so pin the
+  icon to see it. Alt+Shift may also clash with Windows' keyboard-layout switching if you have
+  several input languages; if it does, choose another combination.
 - **Private windows.** Browsers don't run extensions in private/incognito windows unless you
   allow it under the extension's details, so blocking doesn't apply there by default.
 - The smaller options (*Hide YouTube Shorts*, *Allow notifications*, *Allow Marketplace
@@ -565,8 +590,9 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 Have an idea for a feature? You don't need to ask first. Build it and send it in:
 
 1. **Fork** this repository (the **Fork** button at the top of the page).
-2. Make your change on a new branch in your fork. If it changes what gets blocked, add the
-   new markup to `tests/fixtures/<platform>.html` (see
+2. Make your change on a new branch in your fork, one branch per feature or fix, named for what
+   it does (`feature/…`, `improvement/…`, `fix/…` or `docs/…`). If it changes what gets
+   blocked, add the new markup to `tests/fixtures/<platform>.html` (see
    [When a site changes](#when-a-site-changes-updating-selectors)).
 3. Run `python tests/run_tests.py` and `python tools/build_userscript.py`. The same checks run
    automatically on your pull request, and it shows whether they passed.
