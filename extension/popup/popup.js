@@ -525,6 +525,39 @@ function tick() {
 
 let focusChoice = 0; // Minutes picked and waiting for "Start", or 0.
 let focusShortcut = ''; // The keyboard shortcut for a 1-hour session, if one is set.
+let shortcutKnown = false; // The browser has told us whether a shortcut is set.
+
+// The browser's own page for changing or removing extension shortcuts. Extensions
+// can't clear a shortcut themselves, so the popup links there. Firefox won't
+// open its own pages for an extension, so it gets instructions instead.
+function shortcutSettingsUrl() {
+  const agent = navigator.userAgent;
+  if (agent.includes('Firefox/')) return '';
+  const scheme = agent.includes('Edg/') ? 'edge' : navigator.brave ? 'brave' : 'chrome';
+  return `${scheme}://extensions/shortcuts`;
+}
+
+// What the shortcut line under the focus buttons shows. Pure, so the test page
+// can try every case: unknown, no key set, key set and on, key set and off.
+function describeShortcut({ known, key, enabled, hasSettingsPage }) {
+  if (!known) return { hidden: true };
+  if (!key) {
+    return {
+      hidden: false,
+      text: hasSettingsPage
+        ? 'No keyboard shortcut is set.'
+        : 'No keyboard shortcut is set. In Add-ons, use the gear, then Manage Extension Shortcuts.',
+      showSwitch: false,
+      link: hasSettingsPage ? 'Set a key' : '',
+    };
+  }
+  return {
+    hidden: false,
+    text: enabled ? `Or press ${key} twice for 1 hour.` : `The ${key} shortcut is off.`,
+    showSwitch: true,
+    link: hasSettingsPage ? 'Change or remove the key' : '',
+  };
+}
 
 function inFocus(now) {
   return (Number(state.settings.focusUntil) || 0) > now;
@@ -564,9 +597,32 @@ function renderFocus(now) {
   setText(document.getElementById('focus-text'), text);
   document.getElementById('focus-choices').hidden = active || Boolean(focusChoice);
   document.getElementById('focus-confirm').hidden = active || !focusChoice;
-  const hint = document.getElementById('focus-hint');
-  hint.hidden = active || Boolean(focusChoice) || !focusShortcut;
-  setText(hint, focusShortcut ? `Or press ${focusShortcut} twice for 1 hour.` : '');
+  renderShortcut(active || Boolean(focusChoice));
+}
+
+function renderShortcut(busy) {
+  const line = describeShortcut({
+    known: shortcutKnown,
+    key: focusShortcut,
+    enabled: state.settings.focusShortcut !== false,
+    hasSettingsPage: Boolean(shortcutSettingsUrl()),
+  });
+  // Out of the way while a session runs or a length is being confirmed.
+  document.getElementById('focus-shortcut').hidden = busy || line.hidden;
+  if (line.hidden) return;
+  setText(document.getElementById('focus-hint'), line.text);
+  const toggle = document.getElementById('option-focus-shortcut');
+  toggle.hidden = !line.showSwitch;
+  toggle.setAttribute('aria-label', `Keyboard shortcut ${focusShortcut}`);
+  const link = document.getElementById('focus-shortcut-link');
+  link.hidden = !line.link;
+  setText(link, line.link);
+}
+
+function openShortcutSettings(event) {
+  event.preventDefault();
+  const url = shortcutSettingsUrl();
+  if (url && chrome.tabs && chrome.tabs.create) chrome.tabs.create({ url }).catch(() => {});
 }
 
 function initFocus() {
@@ -578,6 +634,7 @@ function initFocus() {
       .then((commands) => {
         const command = commands.find((entry) => entry.name === 'start-focus-session');
         focusShortcut = (command && command.shortcut) || '';
+        shortcutKnown = true;
         render();
       })
       .catch(() => {});
@@ -589,6 +646,7 @@ function initFocus() {
       document.getElementById('focus-start').focus();
     });
   }
+  document.getElementById('focus-shortcut-link').addEventListener('click', openShortcutSettings);
   document.getElementById('focus-start').addEventListener('click', () => startFocus(focusChoice));
   document.getElementById('focus-cancel').addEventListener('click', () => {
     focusChoice = 0;

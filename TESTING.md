@@ -224,6 +224,15 @@ These selectors haven't been checked on the live site yet, so note anything that
       locked. Wait 5 seconds: it clears. Press it twice quickly: the icon shows **60m** and every
       site is blocked (the popup shows the countdown). Press it again: the icon shows the minutes
       left. At `chrome://extensions/shortcuts`, change the shortcut: the popup's hint follows.
+- [ ] **Turning the shortcut off:** under the focus buttons, the popup shows the key with a
+      switch (on) and **Change or remove the key**. Switch it off: the line says "The Alt+Shift+F
+      shortcut is off.", and pressing the key (twice, with the browser window focused) does nothing:
+      no **1h?**, no session. Switch it on again and it works. Close and reopen the popup: the
+      switch keeps its state.
+- [ ] **Change or remove the key** opens your browser's shortcut settings in a new tab.
+- [ ] At the shortcut settings, remove the key (or set another extension's to Alt+Shift+F). Reopen
+      the popup: it says "No keyboard shortcut is set." and offers **Set a key**, with no switch.
+      In Firefox there's no link, but the popup shows the steps.
 - [ ] When it ends (to save time, run
       `chrome.storage.sync.get('settings', ({settings}) => chrome.storage.sync.set({settings: {...settings, focusUntil: Date.now() + 15000}}))`
       in the popup's DevTools console), the switches unlock by themselves, YouTube is off again

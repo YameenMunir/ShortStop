@@ -141,13 +141,41 @@ body {
 }
 
 .focus-hint {
-  margin: 6px 0 0;
+  margin: 0;
   color: var(--slate);
   font-size: 11px;
 }
 
-.focus-hint[hidden] {
+.focus-shortcut {
+  margin-top: 8px;
+}
+
+.focus-shortcut[hidden] {
   display: none;
+}
+
+.focus-shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.focus-link {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 11px;
+  text-underline-offset: 2px;
+}
+
+.focus-link[hidden] {
+  display: none;
+}
+
+.focus-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* A site's switch is only ever disabled while a focus session locks it. */

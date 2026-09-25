@@ -27,6 +27,7 @@
           },
         };
         const listeners = [];
+        const opened = []; // Pages the popup asked the browser to open.
         const copy = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
         const area = (name) => ({
           get(keys) {
@@ -52,6 +53,7 @@
           storage: { sync: area('sync'), local: area('local'), onChanged: { addListener: (fn) => listeners.push(fn) } },
           runtime: {},
           commands: { getAll: () => Promise.resolve([{ name: 'start-focus-session', shortcut: 'Alt+Shift+F' }]) },
+          tabs: { create: (options) => (opened.push(options.url), Promise.resolve({})) },
         };
 
         try {
@@ -259,6 +261,54 @@
             shown($('#focus-hint')) && $('#focus-hint').textContent === 'Or press Alt+Shift+F twice for 1 hour.',
             $('#focus-hint').textContent
           );
+
+          /* ---- The keyboard shortcut: switch it off, or change the key in the browser ---- */
+          const shortcutSwitch = $('#option-focus-shortcut');
+          const shortcutLink = $('#focus-shortcut-link');
+          check('shortcut: the switch is shown, on by default', shown(shortcutSwitch) && shortcutSwitch.checked);
+          check('shortcut: the switch is named after the key', shortcutSwitch.getAttribute('aria-label') === 'Keyboard shortcut Alt+Shift+F');
+          check(
+            'shortcut: offers to change or remove the key in the browser',
+            shown(shortcutLink) && shortcutLink.textContent === 'Change or remove the key',
+            shortcutLink.textContent
+          );
+          shortcutSwitch.click();
+          await step();
+          check('shortcut: switching it off is saved', stores.sync.settings.focusShortcut === false, JSON.stringify(stores.sync.settings.focusShortcut));
+          check(
+            'shortcut: the line says it is off',
+            !shortcutSwitch.checked && $('#focus-hint').textContent === 'The Alt+Shift+F shortcut is off.',
+            $('#focus-hint').textContent
+          );
+          check('shortcut: the focus buttons still work while it is off', shown($('#focus-choices')));
+          shortcutSwitch.click();
+          await step();
+          check(
+            'shortcut: switching it back on is saved',
+            stores.sync.settings.focusShortcut === true && shortcutSwitch.checked && $('#focus-hint').textContent === 'Or press Alt+Shift+F twice for 1 hour.',
+            $('#focus-hint').textContent
+          );
+          shortcutLink.click();
+          await step();
+          check(
+            'shortcut: the link opens the browser shortcut settings',
+            opened.length === 1 && /^(chrome|edge|brave):\/\/extensions\/shortcuts$/.test(opened[0]),
+            JSON.stringify(opened)
+          );
+          const line = (extra) => globalThis.describeShortcut({ known: true, key: 'Alt+Shift+F', enabled: true, hasSettingsPage: true, ...extra });
+          check('shortcut: nothing shows until the browser has answered', globalThis.describeShortcut({ known: false, key: '', enabled: true, hasSettingsPage: true }).hidden === true);
+          check(
+            'shortcut: no key set says so and offers to set one',
+            line({ key: '' }).text === 'No keyboard shortcut is set.' && !line({ key: '' }).showSwitch && line({ key: '' }).link === 'Set a key',
+            JSON.stringify(line({ key: '' }))
+          );
+          check(
+            'shortcut: Firefox gets instructions instead of a link',
+            /Manage Extension Shortcuts/.test(line({ key: '', hasSettingsPage: false }).text) && line({ key: '', hasSettingsPage: false }).link === '' && line({ hasSettingsPage: false }).link === '',
+            JSON.stringify(line({ key: '', hasSettingsPage: false }))
+          );
+          check('shortcut: a custom key is named as the browser reports it', line({ key: 'Ctrl+Shift+K' }).text === 'Or press Ctrl+Shift+K twice for 1 hour.');
+
           $('[data-focus-minutes="60"]').click();
           await step();
           check('focus: picking a length asks first', shown($('#focus-confirm')) && !shown($('#focus-choices')) && focusText().includes('for 1 hour'), focusText());

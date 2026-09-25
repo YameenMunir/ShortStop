@@ -34,7 +34,21 @@
         <button type="button" class="btn btn-primary" id="focus-start">Start</button>
         <button type="button" class="btn btn-quiet" id="focus-cancel">Cancel</button>
       </div>
-      <p class="focus-hint" id="focus-hint" hidden></p>
+      <!-- The keyboard shortcut: what it does, a switch to turn it off, and a way to change or remove the key. -->
+      <div class="focus-shortcut" id="focus-shortcut" hidden>
+        <div class="focus-shortcut-row">
+          <p class="focus-hint" id="focus-hint"></p>
+          <input
+            class="switch switch-small"
+            type="checkbox"
+            role="switch"
+            id="option-focus-shortcut"
+            data-setting="focusShortcut"
+            data-default="true"
+          />
+        </div>
+        <a class="focus-link" id="focus-shortcut-link" href="#" hidden></a>
+      </div>
     </section>
 
     <!-- One row per platform. The switch saves instantly; open tabs update live. -->

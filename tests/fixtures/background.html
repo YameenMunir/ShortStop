@@ -88,6 +88,32 @@
           await wait(3300);
           await press('some-other-command');
           check('another command does nothing', !focusUntil() && badge.text === '', badge.text);
+
+          /* ---- Switched off in the popup (the focusShortcut setting) ---- */
+          await press('start-focus-session'); // Arms it: "1h?".
+          check('before switching off: the first press asks "1h?"', badge.text === '1h?' && !focusUntil(), badge.text);
+          stores.sync.settings.focusShortcut = false;
+          await press('start-focus-session');
+          check('switched off: the second press starts nothing', !focusUntil(), String(focusUntil()));
+          await wait(5300); // The "1h?" clears by itself.
+          await press('start-focus-session');
+          await press('start-focus-session');
+          check('switched off: presses show nothing and start nothing', badge.text === '' && !focusUntil(), badge.text);
+          stores.sync.settings.focusUntil = Date.now() + 42 * 60 * 1000;
+          await press('start-focus-session');
+          check('switched off: a press during a session shows nothing either', badge.text === '', badge.text);
+          stores.sync.settings.focusUntil = 0;
+
+          stores.sync.settings.focusShortcut = true;
+          await press('start-focus-session');
+          check(
+            'switched back on: it asks again, and the old "1h?" cannot start a session',
+            badge.text === '1h?' && !focusUntil(),
+            badge.text
+          );
+          await press('start-focus-session');
+          check('switched back on: a second press starts the hour', focusUntil() > Date.now() && badge.text === '60m', badge.text);
+          stores.sync.settings.focusUntil = 0;
         } catch (error) {
           check('background test crashed', false, String(error && error.stack));
         }

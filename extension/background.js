@@ -32,6 +32,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     facebookMarketplaceSearch: true,
     xNotifications: false,
     youtubeHideShorts: true,
+    focusShortcut: true,
     ...settings,
   };
   for (const platform of PLATFORMS) complete[platform] = settings[platform] !== false;
@@ -44,6 +45,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
  * start one: the first press arms it and shows "1h?" on the toolbar icon, and
  * a second press within 5 seconds starts a 1-hour session. During a session,
  * a press just shows the minutes left.
+ *
+ * The shortcut can be switched off in the popup (the `focusShortcut` setting,
+ * on by default). While it is off, a press does nothing at all.
  */
 const SHORTCUT_FOCUS_MINUTES = 60;
 const SHORTCUT_CONFIRM_MS = 5000;
@@ -63,6 +67,10 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command !== 'start-focus-session') return;
   const now = Date.now();
   const { settings = {} } = await chrome.storage.sync.get('settings');
+  if (settings.focusShortcut === false) {
+    shortcutArmedUntil = 0; // A "1h?" left over from before it was switched off can't start anything.
+    return;
+  }
   const until = Number(settings.focusUntil) || 0;
   if (until > now) {
     flashBadge(`${Math.ceil((until - now) / 60000)}m`, BADGE_FOCUS, 3000);
