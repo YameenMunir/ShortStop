@@ -210,9 +210,9 @@
       `counted ${state.counted}, expected ${expectedCount}; marked now: ${marked}`
     );
 
-    // Elements marked data-independent belong to rules with their own option
-    // switch (e.g. "Hide YouTube Shorts"): they stay hidden while the
-    // platform's other blocking is off or in an allowed time.
+    // Elements marked data-independent belong to `independent` rules, which have
+    // their own option switch: they stay hidden while the platform's other
+    // blocking is off or in an allowed time. (No platform uses this today.)
     const independent = Array.from(document.querySelectorAll('[data-independent]'));
     const notVisible = () =>
       Array.from(document.querySelectorAll('[data-expect]:not([data-independent])')).filter(
@@ -361,6 +361,9 @@
       if (phase.cover !== undefined) checkCover(phase.cover, `on ${phase.name} (${phase.url})`);
       if (phase.pauses !== undefined) {
         check(`on ${phase.name}: media pauses`, pauses - pausesBefore === phase.pauses, `${pauses - pausesBefore} pauses`);
+      }
+      if (phase.pausesAtLeast !== undefined) {
+        check(`on ${phase.name}: media is paused`, pauses - pausesBefore >= phase.pausesAtLeast, `${pauses - pausesBefore} pauses`);
       }
       for (const [from, to] of phase.redirects || []) {
         const got = engine.resolveRedirect(from);

@@ -52,17 +52,20 @@ are on. Note today's counter number.
       shows and the miniplayer keeps playing. Its play/pause and keyboard controls work.
 - [ ] **Direct link:** paste `https://www.youtube.com/shorts/aqz-KE-bpKQ` into the address bar.
       It opens as `/watch?v=aqz-KE-bpKQ` in the normal player, and Back skips the Short.
-- [ ] **Hide YouTube Shorts off:** in the popup, switch off *Hide YouTube Shorts* under YouTube.
-      Without a reload, search results show their Shorts shelf and the sidebar shows Shorts, and a
-      `/shorts/…` link plays in the Shorts player. Home still shows the panel, a watch page still
-      has no Up next, and autoplay is still off.
-- [ ] **Hide YouTube Shorts on again:** switch it back on while a Short is playing. It moves to
-      `/watch?v=…` at once, and Shorts disappear from search and the sidebar without a reload.
-- [ ] **Independent of the YouTube switch:** turn YouTube blocking off.
-      *Hide YouTube Shorts* stays usable, not greyed out. Home shows its normal feed and watch
-      pages show Up next, but Shorts are still gone and `/shorts/…` still opens in the normal
-      player. Switch *Hide YouTube Shorts* off too: Shorts come back without a reload.
-- [ ] Close and reopen the browser: *Hide YouTube Shorts* keeps its setting.
+- [ ] **Choices:** under YouTube the popup says "While YouTube is on, choose what to block:" with
+      *Block all of YouTube*, *Block feeds and Shorts* (selected) and *Block YouTube Shorts only*.
+      The YouTube row's description follows the choice.
+- [ ] **Block all of YouTube:** without a reload, every YouTube page (Home, a video, search,
+      Subscriptions, a channel) shows "YouTube is blocked." over the whole window, a playing video
+      stops, and the page can't be scrolled. A `/shorts/…` link opens as `/watch?v=…` and is blocked
+      too.
+- [ ] **Block YouTube Shorts only:** Home shows its normal feed, a video shows Up next, and
+      autoplay works as YouTube sets it. Search results have no Shorts shelf, the sidebar has no
+      Shorts, a channel has no Shorts tab, and a `/shorts/…` link opens in the normal player.
+- [ ] **YouTube switched off**, with any choice: YouTube is completely normal, including Shorts
+      and the Shorts player. The choices are greyed out. Switch it on: the choice applies again at
+      once.
+- [ ] Close and reopen the browser: the choice is kept.
 
 ## YouTube (mobile, m.youtube.com)
 
@@ -203,7 +206,7 @@ These selectors haven't been checked on the live site yet, so note anything that
 
 - [ ] **Every switch turns off in one click:** with the YouTube home page showing the panel, click
       YouTube's switch. It turns off at once, with no choice, countdown or Cancel, and the tab
-      shows YouTube's feed **without reloading**. *Hide YouTube Shorts* stays as it was. Click
+      shows YouTube's feed **without reloading**. YouTube's choice stays as it was. Click
       again: blocking is back at once. Do the same for Instagram, Facebook, TikTok, Reddit, X and
       Snapchat.
 - [ ] Nowhere in the popup is there an *Allow 10 minutes* or *Turn off…* button, or a
@@ -213,9 +216,9 @@ These selectors haven't been checked on the live site yet, so note anything that
 
 - [ ] At the top of the popup, **Focus session** offers **30 min**, **1 hour** and **2 hours**. Pick
       one: it asks first ("Block every site for 1 hour?"), and **Cancel** goes back.
-- [ ] Switch YouTube and *Hide YouTube Shorts* off first, then start a 30-minute session. The popup
-      counts down ("29:59 left…") and says when it ends. Every switch shows on and can't be
-      clicked, *Hide YouTube Shorts* shows on and is greyed out, and **Edit** under allowed times
+- [ ] Choose *Block YouTube Shorts only* and switch YouTube off, then start a 30-minute session. The
+      popup counts down ("29:59 left…") and says when it ends. Every switch shows on and can't be
+      clicked, YouTube's choices show *Block feeds and Shorts* and are greyed out, and **Edit** under allowed times
       is greyed out. *Allow notifications* still works.
 - [ ] Without reloading, the YouTube tab shows the panel on Home again and Shorts are gone.
 - [ ] Close and reopen the popup: the session is still running.

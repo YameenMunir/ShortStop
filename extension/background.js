@@ -31,7 +31,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     facebookNotifications: false,
     facebookMarketplaceSearch: true,
     xNotifications: false,
-    youtubeHideShorts: true,
+    youtubeMode: 'feeds',
     focusShortcut: true,
     ...settings,
   };

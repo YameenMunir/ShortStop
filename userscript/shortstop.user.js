@@ -34,13 +34,13 @@
 /* ===================== SETTINGS: edit these ===================== */
 /* true = block, false = allow. Save the file, then reload the site. */
 
-// YouTube: Shorts open in the normal player; the home feed, Up next,
-// end screens and autoplay are switched off.
+// YouTube: true = blocking on, false = YouTube is left completely alone.
 const BLOCK_YOUTUBE_SHORTS = true;
-// Hide YouTube Shorts: Shorts shelves, cards, the Shorts tab and /shorts/
-// links. Independent of BLOCK_YOUTUBE_SHORTS above: true keeps Shorts hidden
-// even when that is false. false = Shorts are left alone.
-const HIDE_YOUTUBE_SHORTS = true;
+// What YouTube's blocking covers:
+//   'all'    every YouTube page, including videos, search and subscriptions
+//   'feeds'  the home feed, Trending, Up next, autoplay and Shorts (default)
+//   'shorts' only Shorts; the rest of YouTube works normally
+const YOUTUBE_MODE = 'feeds';
 
 // Instagram: the Home feed, Explore, Reels and Stories are blocked.
 const BLOCK_INSTAGRAM_REELS = true;
@@ -74,7 +74,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
   const SETTINGS = {
     youtube: BLOCK_YOUTUBE_SHORTS,
-    youtubeHideShorts: HIDE_YOUTUBE_SHORTS,
+    youtubeMode: YOUTUBE_MODE,
     instagram: BLOCK_INSTAGRAM_REELS,
     facebook: BLOCK_FACEBOOK_FEEDS,
     facebookNotifications: ALLOW_FACEBOOK_NOTIFICATIONS,
@@ -239,15 +239,20 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    *     pages: { explore: /^\/explore\//, feed: (url) => bool }, // pathname RegExp or URL test; first match wins
    *     options: {                            // extra switches stored in settings
    *       notifications: { setting: 'instagramNotifications', default: false },
-   *       // duringFocus: the value it takes while a focus session runs
-   *       hideShorts: { setting: 'youtubeHideShorts', default: true, duringFocus: true },
+   *       // A choice rather than on/off: `values` lists what it can be. duringFocus
+   *       // is its value (or a function of it) while a focus session runs.
+   *       mode: { setting: 'youtubeMode', default: 'feeds', values: ['all', 'feeds', 'shorts'],
+   *               duringFocus: (mode) => mode },
    *     },
    *     redirects: [{ name, match: /regex on pathname/, when?(url), onlyIf?(options), independent?, to(match, url) }],
    *     cover: {                              // replace whole pages with a ShortStop panel
    *       target: 'main' | ['#feed', 'main'], // the content area; first selector that exists wins
    *       title: 'Shown on every covered page',
    *       message: 'Shown on every covered page',
-   *       pages: { home: { title?, message?, onlyIf?(options), search?, links? } }, // per-page overrides
+   *       pages: { home: { title?, message?, onlyIf?(options), search?, links? } }, // per-page overrides;
+   *                                           // a page can also be (options) => spec or null, and
+   *                                           // set its own target, pauseMedia and blockKeys
+   *                                           // (target: [] covers the whole window)
    *       links: (options, url) => [{ label, href }],
    *       search: { label, placeholder, url: (query) => '/search?q=...' }, // optional search box;
    *                                           // a page's `search` may be null or (options) => config
@@ -268,8 +273,8 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    *       text: /regex/,                      // only if the target's text matches (JS only)
    *       count: true,                        // counts toward "blocked today"
    *       independent: true,                  // keeps working while the platform's blocking is
-   *                                           // off or in an allowed time (its own option
-   *                                           // switch, e.g. "Hide YouTube Shorts", decides)
+   *                                           // off or in an allowed time (only its own
+   *                                           // onlyIf option decides)
    *     }],
    *   }
    *
@@ -631,15 +636,20 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         const options = {};
         for (const [name, spec] of Object.entries(this.config.options || {})) {
           const value = settings[spec.setting];
-          if (focus && spec.duringFocus !== undefined) options[name] = spec.duringFocus;
-          else options[name] = typeof value === 'boolean' ? value : spec.default;
+          let resolved;
+          if (spec.values) resolved = spec.values.includes(value) ? value : spec.default;
+          else resolved = typeof value === 'boolean' ? value : spec.default;
+          if (focus && spec.duringFocus !== undefined) {
+            resolved = typeof spec.duringFocus === 'function' ? spec.duringFocus(resolved) : spec.duringFocus;
+          }
+          options[name] = resolved;
         }
         return options;
       }
 
       // A focus session (started from the popup, stored as `focusUntil`) blocks
-      // every platform until it ends, whatever its switch, allowed times or
-      // options such as "Hide YouTube Shorts" say. It cannot be ended early.
+      // every platform until it ends, whatever its switch or allowed times say
+      // (options can adjust themselves with duringFocus). It cannot be ended early.
       focusActive(settings) {
         return (Number(settings.focusUntil) || 0) > Date.now();
       }
@@ -747,14 +757,17 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         // stop the page scrolling if the panel had to cover the whole viewport.
         const cover = this.config.cover;
         if (cover && this.enabled) {
-          // With several candidate content areas, a later one is only hidden when
-          // it does not contain an earlier one (which is where the panel goes).
-          const targets = asList(cover.target);
-          const hide = targets
-            .map((target, i) => (i === 0 ? target : `${target}${targets.slice(0, i).map((t) => `:not(:has(${t}))`).join('')}`))
-            .join(', ');
           for (const page of Object.keys(cover.pages)) {
-            if (!this.coverSpec(page)) continue;
+            const spec = this.coverSpec(page);
+            if (!spec) continue;
+            // With several candidate content areas, a later one is only hidden when
+            // it does not contain an earlier one (which is where the panel goes).
+            // A page with no content area is covered by the full-window panel.
+            const targets = this.coverTargets(spec);
+            if (!targets.length) continue;
+            const hide = targets
+              .map((target, i) => (i === 0 ? target : `${target}${targets.slice(0, i).map((t) => `:not(:has(${t}))`).join('')}`))
+              .join(', ');
             blocks.push(
               `/* Covered page: ${page} */\nhtml[${ATTR_PAGE}="${page}"] :is(${hide}) { display: none !important; }`
             );
@@ -832,9 +845,23 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       // (or an option such as "allow notifications" currently uncovers it).
       coverSpec(page) {
         const cover = this.config.cover;
-        const spec = cover && Object.prototype.hasOwnProperty.call(cover.pages, page) ? cover.pages[page] : null;
+        let spec = cover && Object.prototype.hasOwnProperty.call(cover.pages, page) ? cover.pages[page] : null;
+        if (typeof spec === 'function') spec = spec(this.options);
         if (!spec || (spec.onlyIf && !spec.onlyIf(this.options))) return null;
         return spec;
+      }
+
+      // The content areas a covered page hides (its own, or the platform's).
+      coverTargets(spec) {
+        return asList(spec && spec.target !== undefined ? spec.target : this.config.cover.target);
+      }
+
+      // pauseMedia and blockKeys: the page's own setting, then the platform's, then on.
+      coverFlag(name) {
+        const spec = this.isCovered() ? this.coverSpec(this.page) : null;
+        if (!spec) return false;
+        if (spec[name] !== undefined) return spec[name];
+        return this.config.cover[name] !== false;
       }
 
       // Puts the panel in place of the content area on covered pages, and takes
@@ -861,8 +888,8 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         this.renderCoverLinks(spec);
 
         // A covered feed must not keep playing video or audio behind the panel
-        // (unless the platform opts out, e.g. YouTube's miniplayer keeps going).
-        if (this.config.cover.pauseMedia !== false) pauseMedia();
+        // (unless the page opts out, e.g. YouTube's miniplayer keeps going).
+        if (this.coverFlag('pauseMedia')) pauseMedia();
 
         const target = this.coverTarget();
         if (target && target.parentElement) {
@@ -890,7 +917,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
       // The first configured content area that exists on the page.
       coverTarget() {
-        for (const selector of asList(this.config.cover.target)) {
+        for (const selector of this.coverTargets(this.coverSpec(this.page))) {
           const element = document.querySelector(selector);
           if (element) return element;
         }
@@ -1025,14 +1052,14 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         window.addEventListener('click', (event) => this.onClick(event), true);
 
         const cover = this.config.cover;
-        if (cover && cover.blockKeys !== false) {
+        if (cover) {
           // A hidden feed can still react to the keyboard (TikTok skips to the
           // next video on arrow keys). Swallow those keys on covered pages,
           // except while typing in a field (including the panel's search box).
           window.addEventListener(
             'keydown',
             (event) => {
-              if (!this.isCovered() || !FEED_KEYS.has(event.key)) return;
+              if (!FEED_KEYS.has(event.key) || !this.coverFlag('blockKeys')) return;
               const origin = event.composedPath()[0];
               const typing =
                 origin instanceof Element &&
@@ -1044,13 +1071,13 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
             true
           );
         }
-        if (cover && cover.pauseMedia !== false) {
+        if (cover) {
           // Media events do not bubble, but they do go through the capture phase:
           // anything that starts playing behind the panel is stopped at once.
           document.addEventListener(
             'play',
             (event) => {
-              if (this.isCovered() && event.target instanceof HTMLMediaElement) {
+              if (event.target instanceof HTMLMediaElement && this.coverFlag('pauseMedia')) {
                 event.target.muted = true;
                 event.target.pause();
               }
@@ -1174,7 +1201,12 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         let blocked = 0;
         // Things inside a covered feed are hidden with it and already counted
         // as one blocked visit, so they do not count again.
-        const coveredArea = this.isCovered() ? this.coverTarget() : null;
+        const coveredSpec = this.isCovered() ? this.coverSpec(this.page) : null;
+        const coveredArea = !coveredSpec
+          ? null
+          : this.coverTargets(coveredSpec).length
+            ? this.coverTarget()
+            : document.documentElement;
         for (const rule of this.rules) {
           if (!this.applies(rule)) continue;
           const attribute = rule.action === 'blur' ? ATTR_BLURRED : ATTR_HIDDEN;
@@ -1270,37 +1302,51 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
   /* ======== youtube.js ======== */
   /*
-   * ShortStop: YouTube (focus mode)
-   * ===============================
-   * Shorts (while "Hide YouTube Shorts" is on in the popup, the default):
-   * - /shorts/VIDEO_ID opens in the normal player (/watch?v=VIDEO_ID).
-   * - Shorts shelves are hidden on search, subscriptions, channel and watch pages.
-   * - The Shorts entries in the sidebar, mini sidebar, channel tabs, search filter
-   *   chips and the mobile (m.youtube.com) bottom bar are removed.
+   * ShortStop: YouTube
+   * ==================
+   * While YouTube's switch is on, the popup offers three choices (`mode`):
    *
-   * Recommendations, the same way as the other platforms' feeds:
-   * - The home page's recommended grid, Trending/Explore and Gaming are covered
-   *   by the ShortStop panel (with a YouTube search box).
-   * - On the watch page the "Up next" list, end-screen video walls, end cards
-   *   and the autoplay countdown are hidden, and autoplay is switched off.
-   * - Search results lose their "For you" / "People also watched" shelves.
+   *   'all'     Block all of YouTube: every page shows the ShortStop panel over
+   *             the whole window, media is paused and feed keys are swallowed.
+   *   'feeds'   Block feeds and Shorts (the default):
+   *             - the home page's recommended grid, Trending/Explore and Gaming
+   *               are covered by the panel (with a YouTube search box);
+   *             - on the watch page "Up next", end screens, end cards and the
+   *               autoplay countdown are hidden, and autoplay is switched off;
+   *             - search results lose their "For you" / "People also watched"
+   *               shelves;
+   *             - and Shorts are removed, as below.
+   *             Search, subscriptions, playlists, channels, history and any video
+   *             you open keep working, and the miniplayer keeps playing.
+   *   'shorts'  Block YouTube Shorts only: YouTube works normally, minus Shorts.
    *
-   * Still available on purpose: search, subscriptions, playlists (including
-   * playing through them), channels, history, Watch later and any video you
-   * open. The miniplayer keeps playing when you go back to the home page.
+   * Shorts are removed in every choice: /shorts/VIDEO_ID opens in the normal
+   * player (/watch?v=VIDEO_ID), and Shorts shelves, cards, the sidebar and
+   * mobile Shorts tabs, the channel Shorts tab and the search chip are hidden.
+   * Switched off, YouTube is left completely alone, Shorts included.
    *
-   * "Hide YouTube Shorts" is its own switch. Off, Shorts are left alone and
-   * everything else in this file (the covered home page, Up next, autoplay)
-   * carries on. On, Shorts stay hidden even while that other blocking is
-   * switched off or in an allowed time.
+   * A focus session raises 'shorts' to 'feeds' (it never leaves the home feed
+   * open); 'all' stays 'all'.
    *
    * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
    * that slipped through, and add or adjust a rule below. See README.md.
    */
-  // Every Shorts rule and redirect depends on the "Hide YouTube Shorts" option,
-  // and only on it: they are `independent`, so they keep working while YouTube's
-  // other blocking is switched off or in an allowed time.
-  const youtubeShortsHidden = (options) => options.hideShorts;
+  // Rules and covered pages for the feeds: on in 'feeds' and 'all', off in 'shorts'.
+  const youtubeBlocksFeeds = (options) => options.mode !== 'shorts';
+
+  // 'all': the panel covers the whole window on every YouTube page.
+  const youtubeBlockedPage = (options) =>
+    options.mode === 'all'
+      ? {
+          title: 'YouTube is blocked.',
+          message: 'Switch YouTube off in ShortStop, or choose a lighter setting under it, to use YouTube.',
+          target: [], // No content area: the full-window panel covers everything.
+          pauseMedia: true,
+          blockKeys: true,
+          search: null,
+          links: () => [],
+        }
+      : null;
 
   ShortStop.start({
     id: 'youtube',
@@ -1309,25 +1355,25 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     // YouTube's own SPA events (desktop, then m.youtube.com).
     navigationEvents: ['yt-navigate-finish', 'yt-page-data-updated', 'state-navigateend'],
 
-    // Extra switches shown in the popup under YouTube.
+    // What YouTube's switch blocks, chosen in the popup under YouTube.
     options: {
-      // A focus session hides Shorts whatever this switch says.
-      hideShorts: { setting: 'youtubeHideShorts', default: true, duringFocus: true },
+      mode: {
+        setting: 'youtubeMode',
+        default: 'feeds',
+        values: ['all', 'feeds', 'shorts'],
+        duringFocus: (mode) => (mode === 'shorts' ? 'feeds' : mode),
+      },
     },
 
     redirects: [
       {
         name: 'Shorts player to the regular player',
         match: /^\/shorts\/([\w-]{5,})/,
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         to: (match) => `/watch?v=${match[1]}`,
       },
       {
         name: 'Bare Shorts feed to the home page',
         match: /^\/shorts\/?$/,
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         to: () => '/',
       },
     ],
@@ -1349,9 +1395,17 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       // controls must keep working, so do not pause media or swallow keys here.
       pauseMedia: false,
       blockKeys: false,
+      // A page's panel depends on the choice under YouTube's switch.
       pages: {
-        home: { message: "YouTube's recommended videos are switched off." },
-        explore: { message: 'Trending, Explore and Gaming are switched off.' },
+        home: (options) =>
+          youtubeBlockedPage(options) ||
+          (youtubeBlocksFeeds(options) ? { message: "YouTube's recommended videos are switched off." } : null),
+        explore: (options) =>
+          youtubeBlockedPage(options) ||
+          (youtubeBlocksFeeds(options) ? { message: 'Trending, Explore and Gaming are switched off.' } : null),
+        watch: youtubeBlockedPage,
+        search: youtubeBlockedPage,
+        other: youtubeBlockedPage, // Every page no pattern above names: channels, feeds, playlists...
       },
       search: {
         label: 'Search YouTube',
@@ -1372,6 +1426,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       {
         name: 'Switch autoplay off',
         page: 'watch',
+        onlyIf: youtubeBlocksFeeds,
         run: () => {
           const toggle = document.querySelector('.ytp-autonav-toggle-button[aria-checked="true"]');
           if (toggle) (toggle.closest('button') || toggle).click();
@@ -1379,6 +1434,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       },
       {
         name: 'Cancel the autoplay countdown',
+        onlyIf: youtubeBlocksFeeds,
         run: () => {
           // YouTube keeps the overlay in the page and shows it with an inline
           // style only while counting down (our CSS hides it either way).
@@ -1394,45 +1450,33 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       /* ---- Shelves and sections (containers first) ---- */
       {
         name: 'Shorts shelf on search, watch and channel pages',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytd-reel-shelf-renderer',
         count: true,
       },
       {
         name: 'Shorts section on the home page',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])',
         count: true,
       },
       {
         name: 'Shorts rich shelf (outside a section)',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytd-rich-shelf-renderer[is-shorts]',
         count: true,
       },
       {
         name: 'Shorts grid shelf in search (2025 layout)',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector:
           'grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Mobile: Shorts section on the home page',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector:
           'ytm-rich-section-renderer:has(ytm-reel-shelf-renderer, ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2)',
         count: true,
       },
       {
         name: 'Mobile: Shorts shelf (outside a section)',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytm-reel-shelf-renderer',
         count: true,
       },
@@ -1440,51 +1484,37 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       /* ---- Individual Shorts mixed into normal video lists ---- */
       {
         name: 'Short in the home / subscriptions grid',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytd-rich-item-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in search results',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytd-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in a channel or legacy grid',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytd-grid-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in watch-page suggestions',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytd-compact-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Mobile: Short in a video list',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector:
           'ytm-video-with-context-renderer:has(a[href^="/shorts/"]), ytm-rich-item-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short as a new-style lockup card',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'yt-lockup-view-model:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short marked by the SHORTS badge on its thumbnail',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         // Some lists link a Short as /watch?v=; the thumbnail badge still says SHORTS.
         selector:
           ':is(ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer):has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"])',
@@ -1492,8 +1522,6 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       },
       {
         name: 'Any leftover Shorts tile',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-reel-item-renderer',
         count: true,
       },
@@ -1501,41 +1529,32 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       /* ---- Navigation entry points ---- */
       {
         name: 'Sidebar "Shorts" entry',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector:
           'ytd-guide-entry-renderer:has(a[title="Shorts"]), ytd-guide-entry-renderer:has(a[href^="/shorts"])',
       },
       {
         name: 'Mini sidebar "Shorts" entry',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector:
           'ytd-mini-guide-entry-renderer[aria-label="Shorts"], ytd-mini-guide-entry-renderer:has(a[title="Shorts"])',
       },
       {
         name: 'Channel page "Shorts" tab',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'yt-tab-shape[tab-title="Shorts"], tp-yt-paper-tab:has(a[href$="/shorts"])',
       },
       {
         name: 'Search filter chip "Shorts"',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'yt-chip-cloud-chip-renderer, chip-shape',
         text: /^Shorts$/i, // Text match needs JS, so this rule is not in the CSS.
       },
       {
         name: 'Mobile: bottom bar "Shorts" tab',
-        onlyIf: youtubeShortsHidden,
-        independent: true,
         selector: 'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
       },
 
-      /* ---- Recommendations (focus mode) ---- */
+      /* ---- Recommendations ('feeds' and 'all'; left alone in 'shorts') ---- */
       {
         name: '"Up next" recommendations beside or below the video',
+        onlyIf: youtubeBlocksFeeds,
         // Only the recommendations list: the playlist panel and live chat share
         // the same column and stay.
         selector: 'ytd-watch-next-secondary-results-renderer',
@@ -1543,20 +1562,24 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       },
       {
         name: 'Mobile: related videos under the video',
+        onlyIf: youtubeBlocksFeeds,
         selector:
           'ytm-item-section-renderer[section-identifier="related-items"], ytm-watch-next-secondary-results-renderer',
         count: true,
       },
       {
         name: 'End screen: video wall, end cards and autoplay countdown',
+        onlyIf: youtubeBlocksFeeds,
         selector: '.html5-endscreen, .ytp-ce-element, .ytp-autonav-endscreen-countdown-overlay',
       },
       {
         name: 'Paused-video "More videos" overlay',
+        onlyIf: youtubeBlocksFeeds,
         selector: '.ytp-pause-overlay, .ytp-pause-overlay-container',
       },
       {
         name: 'Recommendation shelves in search results (English titles)',
+        onlyIf: youtubeBlocksFeeds,
         selector: 'ytd-shelf-renderer #title, ytd-horizontal-card-list-renderer #title',
         text: /^(For you|People also watched|Channels new to you|From related searches|Explore more)$/i,
         closest: 'ytd-shelf-renderer, ytd-horizontal-card-list-renderer',
@@ -1565,6 +1588,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       },
       {
         name: 'Sidebar links to Trending, Explore and Gaming',
+        onlyIf: youtubeBlocksFeeds,
         selector:
           'ytd-guide-entry-renderer:has(a[href^="/feed/trending"], a[href^="/feed/explore"], a[href^="/gaming"])',
       },

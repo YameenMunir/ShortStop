@@ -6,179 +6,349 @@
     <script src="../../extension/shared/schedule.js"></script>
     <script src="../../extension/content/core.js"></script>
     <script type="application/json" id="plan">
-      {
-        "platform": "youtube",
-        "url": "https://www.youtube.com/results?search_query=cats",
-        "phases": [
-          {
-            "name": "home",
-            "url": "https://www.youtube.com/",
-            "cover": {
-              "title": "Scrolling is blocked by your focus settings.",
-              "message": "YouTube's recommended videos are switched off.",
-              "links": ["Subscriptions", "Watch later", "Your playlists", "History"],
-              "search": "Search for a video or channel"
-            },
-            "pauses": 0
-          },
-          { "name": "trending", "url": "https://www.youtube.com/feed/trending", "cover": { "message": "Trending, Explore and Gaming are switched off." } },
-          { "name": "explore", "url": "https://www.youtube.com/feed/explore", "cover": { "message": "Trending, Explore and Gaming are switched off." } },
-          { "name": "gaming", "url": "https://www.youtube.com/gaming", "cover": { "message": "Trending, Explore and Gaming are switched off." } },
-          { "name": "subscriptions", "url": "https://www.youtube.com/feed/subscriptions", "cover": false },
-          { "name": "playlist", "url": "https://www.youtube.com/playlist?list=WL", "cover": false },
-          { "name": "channel", "url": "https://www.youtube.com/@natgeo", "cover": false },
-          { "name": "history", "url": "https://www.youtube.com/feed/history", "cover": false },
-          { "name": "watch", "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123", "cover": false },
-          {
-            "name": "shortsallowed",
-            "settings": { "youtube": true, "youtubeHideShorts": false },
-            "url": "https://www.youtube.com/results?search_query=cats",
-            "cover": false,
-            "redirects": [
-              ["https://www.youtube.com/shorts/abc123DEF45", null],
-              ["https://www.youtube.com/shorts/", null]
-            ],
-            "passClicks": ["https://www.youtube.com/shorts/abc123DEF45"],
-            "navigation": null
-          },
-          {
-            "name": "shortsallowedhome",
-            "url": "https://www.youtube.com/",
-            "cover": { "message": "YouTube's recommended videos are switched off." },
-            "navigation": null
-          },
-          { "name": "shortsallowedwatch", "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123", "cover": false },
-          { "name": "shortsallowedplayer", "url": "https://www.youtube.com/shorts/abc123DEF45", "cover": false, "navigation": null },
-          {
-            "name": "shortshiddenagain",
-            "settings": { "youtube": true, "youtubeHideShorts": true },
-            "url": "https://www.youtube.com/shorts/abc123DEF45",
-            "navigation": "https://www.youtube.com/watch?v=abc123DEF45"
-          },
-          {
-            "name": "shortshiddensearch",
-            "url": "https://www.youtube.com/results?search_query=cats",
-            "redirects": [["https://www.youtube.com/shorts/abc123DEF45", "https://www.youtube.com/watch?v=abc123DEF45"]]
-          },
-          {
-            "name": "mainoff",
-            "settings": { "youtube": false },
-            "url": "https://www.youtube.com/results?search_query=cats",
-            "cover": false,
-            "redirects": [["https://www.youtube.com/shorts/abc123DEF45", "https://www.youtube.com/watch?v=abc123DEF45"]],
-            "navigation": null
-          },
-          { "name": "mainoffhome", "url": "https://www.youtube.com/", "cover": false, "navigation": null },
-          {
-            "name": "mainoffshorts",
-            "url": "https://www.youtube.com/shorts/abc123DEF45",
-            "navigation": "https://www.youtube.com/watch?v=abc123DEF45"
-          },
-          {
-            "name": "mainoffshortsallowed",
-            "settings": { "youtube": false, "youtubeHideShorts": false },
-            "url": "https://www.youtube.com/results?search_query=cats",
-            "cover": false,
-            "redirects": [["https://www.youtube.com/shorts/abc123DEF45", null]],
-            "passClicks": ["https://www.youtube.com/shorts/abc123DEF45"],
-            "navigation": null
-          },
-          {
-            "name": "homecovered",
-            "settings": { "youtube": true },
-            "url": "https://www.youtube.com/",
-            "cover": { "message": "YouTube's recommended videos are switched off." }
-          },
-          {
-            "name": "switchedoffinplace",
-            "settings": { "youtube": false },
-            "stay": true,
-            "wait": 50,
-            "url": "https://www.youtube.com/",
-            "cover": false,
-            "navigation": null
-          },
-          {
-            "name": "backoninplace",
-            "settings": { "youtube": true },
-            "stay": true,
-            "wait": 50,
-            "url": "https://www.youtube.com/",
-            "cover": { "message": "YouTube's recommended videos are switched off." }
-          },
-          {
-            "name": "mainbackon",
-            "settings": { "youtube": true },
-            "url": "https://www.youtube.com/",
-            "cover": { "message": "YouTube's recommended videos are switched off." },
-            "redirects": [["https://www.youtube.com/shorts/abc123DEF45", "https://www.youtube.com/watch?v=abc123DEF45"]]
-          },
-          {
-            "name": "focusoverrides",
-            "settings": { "youtube": false, "youtubeHideShorts": false, "focusUntil": 4102444800000 },
-            "url": "https://www.youtube.com/results?search_query=cats",
-            "cover": false,
-            "redirects": [["https://www.youtube.com/shorts/abc123DEF45", "https://www.youtube.com/watch?v=abc123DEF45"]]
-          },
-          {
-            "name": "focushome",
-            "url": "https://www.youtube.com/",
-            "cover": { "message": "YouTube's recommended videos are switched off." }
-          },
-          {
-            "name": "afterfocus",
-            "settings": { "youtube": true },
-            "url": "https://www.youtube.com/",
-            "cover": { "message": "YouTube's recommended videos are switched off." }
-          },
-          {
-            "name": "orphanedwatch",
-            "orphaned": true,
-            "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123",
-            "wait": 2300,
-            "reloads": 0
-          },
-          {
-            "name": "orphanedtyping",
-            "url": "https://www.youtube.com/",
-            "focusPanelSearch": true,
-            "wait": 2300,
-            "reloads": 0
-          },
-          {
-            "name": "orphanedhome",
-            "stay": true,
-            "url": "https://www.youtube.com/",
-            "focusPanelSearch": false,
-            "wait": 1300,
-            "reloads": 1
-          },
-          { "name": "orphanedonce", "stay": true, "url": "https://www.youtube.com/", "wait": 2300, "reloads": 0 }
+{
+  "platform": "youtube",
+  "url": "https://www.youtube.com/results?search_query=cats",
+  "phases": [
+    {
+      "name": "home",
+      "url": "https://www.youtube.com/",
+      "cover": {
+        "title": "Scrolling is blocked by your focus settings.",
+        "message": "YouTube's recommended videos are switched off.",
+        "links": [
+          "Subscriptions",
+          "Watch later",
+          "Your playlists",
+          "History"
         ],
-        "redirects": [
-          ["https://www.youtube.com/shorts/abc123DEF45", "https://www.youtube.com/watch?v=abc123DEF45"],
-          ["https://www.youtube.com/shorts/abc123DEF45?feature=share", "https://www.youtube.com/watch?v=abc123DEF45"],
-          ["https://m.youtube.com/shorts/Zz_-9yyyyyy", "https://m.youtube.com/watch?v=Zz_-9yyyyyy"],
-          ["https://www.youtube.com/shorts/", "https://www.youtube.com/"],
-          ["https://www.youtube.com/watch?v=abc123DEF45", null],
-          ["https://www.youtube.com/@creator/shorts", null],
-          ["https://www.youtube.com/results?search_query=shorts", null]
-        ],
-        "spaRedirect": ["https://www.youtube.com/shorts/spaSPA12345", "https://www.youtube.com/watch?v=spaSPA12345"]
+        "search": "Search for a video or channel"
+      },
+      "pauses": 0
+    },
+    {
+      "name": "trending",
+      "url": "https://www.youtube.com/feed/trending",
+      "cover": {
+        "message": "Trending, Explore and Gaming are switched off."
       }
+    },
+    {
+      "name": "explore",
+      "url": "https://www.youtube.com/feed/explore",
+      "cover": {
+        "message": "Trending, Explore and Gaming are switched off."
+      }
+    },
+    {
+      "name": "gaming",
+      "url": "https://www.youtube.com/gaming",
+      "cover": {
+        "message": "Trending, Explore and Gaming are switched off."
+      }
+    },
+    {
+      "name": "subscriptions",
+      "url": "https://www.youtube.com/feed/subscriptions",
+      "cover": false
+    },
+    {
+      "name": "playlist",
+      "url": "https://www.youtube.com/playlist?list=WL",
+      "cover": false
+    },
+    {
+      "name": "channel",
+      "url": "https://www.youtube.com/@natgeo",
+      "cover": false
+    },
+    {
+      "name": "history",
+      "url": "https://www.youtube.com/feed/history",
+      "cover": false
+    },
+    {
+      "name": "watch",
+      "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123",
+      "cover": false
+    },
+    {
+      "name": "homecovered",
+      "settings": {
+        "youtube": true
+      },
+      "url": "https://www.youtube.com/",
+      "cover": {
+        "message": "YouTube's recommended videos are switched off."
+      }
+    },
+    {
+      "name": "switchedoffinplace",
+      "settings": {
+        "youtube": false
+      },
+      "stay": true,
+      "wait": 50,
+      "url": "https://www.youtube.com/",
+      "cover": false,
+      "navigation": null
+    },
+    {
+      "name": "backoninplace",
+      "settings": {
+        "youtube": true
+      },
+      "stay": true,
+      "wait": 50,
+      "url": "https://www.youtube.com/",
+      "cover": {
+        "message": "YouTube's recommended videos are switched off."
+      }
+    },
+    {
+      "name": "modeall",
+      "settings": {
+        "youtube": true,
+        "youtubeMode": "all"
+      },
+      "url": "https://www.youtube.com/results?search_query=cats",
+      "cover": {
+        "title": "YouTube is blocked.",
+        "message": "Switch YouTube off in ShortStop, or choose a lighter setting under it, to use YouTube.",
+        "links": [],
+        "search": false,
+        "mode": "fixed"
+      },
+      "navigation": null
+    },
+    {
+      "name": "modeallhome",
+      "url": "https://www.youtube.com/",
+      "cover": {
+        "title": "YouTube is blocked.",
+        "message": "Switch YouTube off in ShortStop, or choose a lighter setting under it, to use YouTube.",
+        "links": [],
+        "search": false,
+        "mode": "fixed"
+      }
+    },
+    {
+      "name": "modeallwatch",
+      "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123",
+      "cover": {
+        "title": "YouTube is blocked.",
+        "message": "Switch YouTube off in ShortStop, or choose a lighter setting under it, to use YouTube.",
+        "links": [],
+        "search": false,
+        "mode": "fixed"
+      },
+      "pausesAtLeast": 1
+    },
+    {
+      "name": "modeallchannel",
+      "url": "https://www.youtube.com/@natgeo",
+      "cover": {
+        "title": "YouTube is blocked.",
+        "message": "Switch YouTube off in ShortStop, or choose a lighter setting under it, to use YouTube.",
+        "links": [],
+        "search": false,
+        "mode": "fixed"
+      }
+    },
+    {
+      "name": "modeallsubscriptions",
+      "url": "https://www.youtube.com/feed/subscriptions",
+      "cover": {
+        "title": "YouTube is blocked.",
+        "message": "Switch YouTube off in ShortStop, or choose a lighter setting under it, to use YouTube.",
+        "links": [],
+        "search": false,
+        "mode": "fixed"
+      }
+    },
+    {
+      "name": "modeallshorts",
+      "url": "https://www.youtube.com/shorts/abc123DEF45",
+      "navigation": "https://www.youtube.com/watch?v=abc123DEF45"
+    },
+    {
+      "name": "modeshorts",
+      "settings": {
+        "youtube": true,
+        "youtubeMode": "shorts"
+      },
+      "url": "https://www.youtube.com/results?search_query=cats",
+      "cover": false,
+      "redirects": [
+        [
+          "https://www.youtube.com/shorts/abc123DEF45",
+          "https://www.youtube.com/watch?v=abc123DEF45"
+        ]
+      ],
+      "navigation": null
+    },
+    {
+      "name": "modeshortshome",
+      "url": "https://www.youtube.com/",
+      "cover": false,
+      "navigation": null
+    },
+    {
+      "name": "modeshortswatch",
+      "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123",
+      "cover": false,
+      "pauses": 0
+    },
+    {
+      "name": "modeshortsplayer",
+      "url": "https://www.youtube.com/shorts/abc123DEF45",
+      "navigation": "https://www.youtube.com/watch?v=abc123DEF45"
+    },
+    {
+      "name": "modeshortsoff",
+      "settings": {
+        "youtube": false,
+        "youtubeMode": "shorts"
+      },
+      "url": "https://www.youtube.com/results?search_query=cats",
+      "cover": false,
+      "redirects": [
+        [
+          "https://www.youtube.com/shorts/abc123DEF45",
+          null
+        ]
+      ],
+      "passClicks": [
+        "https://www.youtube.com/shorts/abc123DEF45"
+      ],
+      "navigation": null
+    },
+    {
+      "name": "modealloff",
+      "settings": {
+        "youtube": false,
+        "youtubeMode": "all"
+      },
+      "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123",
+      "cover": false,
+      "navigation": null
+    },
+    {
+      "name": "focusfromshorts",
+      "settings": {
+        "youtube": false,
+        "youtubeMode": "shorts",
+        "focusUntil": 4102444800000
+      },
+      "url": "https://www.youtube.com/",
+      "cover": {
+        "message": "YouTube's recommended videos are switched off."
+      }
+    },
+    {
+      "name": "focusfromall",
+      "settings": {
+        "youtube": false,
+        "youtubeMode": "all",
+        "focusUntil": 4102444800000
+      },
+      "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123",
+      "cover": {
+        "title": "YouTube is blocked.",
+        "message": "Switch YouTube off in ShortStop, or choose a lighter setting under it, to use YouTube.",
+        "links": [],
+        "search": false,
+        "mode": "fixed"
+      }
+    },
+    {
+      "name": "backtofeeds",
+      "settings": {
+        "youtube": true
+      },
+      "url": "https://www.youtube.com/",
+      "cover": {
+        "message": "YouTube's recommended videos are switched off."
+      }
+    },
+    {
+      "name": "orphanedwatch",
+      "orphaned": true,
+      "url": "https://www.youtube.com/watch?v=abc123DEF45&list=PL123",
+      "wait": 2300,
+      "reloads": 0
+    },
+    {
+      "name": "orphanedtyping",
+      "url": "https://www.youtube.com/",
+      "focusPanelSearch": true,
+      "wait": 2300,
+      "reloads": 0
+    },
+    {
+      "name": "orphanedhome",
+      "stay": true,
+      "url": "https://www.youtube.com/",
+      "focusPanelSearch": false,
+      "wait": 1300,
+      "reloads": 1
+    },
+    {
+      "name": "orphanedonce",
+      "stay": true,
+      "url": "https://www.youtube.com/",
+      "wait": 2300,
+      "reloads": 0
+    }
+  ],
+  "redirects": [
+    [
+      "https://www.youtube.com/shorts/abc123DEF45",
+      "https://www.youtube.com/watch?v=abc123DEF45"
+    ],
+    [
+      "https://www.youtube.com/shorts/abc123DEF45?feature=share",
+      "https://www.youtube.com/watch?v=abc123DEF45"
+    ],
+    [
+      "https://m.youtube.com/shorts/Zz_-9yyyyyy",
+      "https://m.youtube.com/watch?v=Zz_-9yyyyyy"
+    ],
+    [
+      "https://www.youtube.com/shorts/",
+      "https://www.youtube.com/"
+    ],
+    [
+      "https://www.youtube.com/watch?v=abc123DEF45",
+      null
+    ],
+    [
+      "https://www.youtube.com/@creator/shorts",
+      null
+    ],
+    [
+      "https://www.youtube.com/results?search_query=shorts",
+      null
+    ]
+  ],
+  "spaRedirect": [
+    "https://www.youtube.com/shorts/spaSPA12345",
+    "https://www.youtube.com/watch?v=spaSPA12345"
+  ]
+}
     </script>
     <script src="../harness.js"></script>
     <script src="../../extension/content/youtube.js"></script>
   </head>
   <body>
     <!-- Desktop sidebar -->
-    <ytd-guide-entry-renderer data-name="sidebar Shorts" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden"><a id="endpoint" title="Shorts">Shorts</a></ytd-guide-entry-renderer>
-    <ytd-guide-entry-renderer data-name="sidebar Subscriptions" data-expect-shortsallowed="visible" data-expect="visible"><a id="endpoint" href="/feed/subscriptions" title="Subscriptions">Subscriptions</a></ytd-guide-entry-renderer>
-    <ytd-mini-guide-entry-renderer data-name="mini sidebar Shorts" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" aria-label="Shorts" data-expect="hidden">Shorts</ytd-mini-guide-entry-renderer>
+    <ytd-guide-entry-renderer data-name="sidebar Shorts" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden"><a id="endpoint" title="Shorts">Shorts</a></ytd-guide-entry-renderer>
+    <ytd-guide-entry-renderer data-name="sidebar Subscriptions" data-expect-modeshorts="visible" data-expect="visible"><a id="endpoint" href="/feed/subscriptions" title="Subscriptions">Subscriptions</a></ytd-guide-entry-renderer>
+    <ytd-mini-guide-entry-renderer data-name="mini sidebar Shorts" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" aria-label="Shorts" data-expect="hidden">Shorts</ytd-mini-guide-entry-renderer>
     <ytd-mini-guide-entry-renderer data-name="mini sidebar Home" aria-label="Home" data-expect="visible">Home</ytd-mini-guide-entry-renderer>
 
     <!-- Home feed -->
-    <ytd-rich-section-renderer data-name="home Shorts section" data-expect-switchedoffinplace="hidden" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count>
+    <ytd-rich-section-renderer data-name="home Shorts section" data-expect-modeshortshome="hidden" data-expect-focusfromshorts="hidden" data-expect-switchedoffinplace="visible" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden" data-count>
       <ytd-rich-shelf-renderer is-shorts>
         <ytm-shorts-lockup-view-model><a href="/shorts/aaaaaaaaaaa">Short A</a></ytm-shorts-lockup-view-model>
         <ytm-shorts-lockup-view-model><a href="/shorts/bbbbbbbbbbb">Short B</a></ytm-shorts-lockup-view-model>
@@ -188,66 +358,66 @@
       <ytd-rich-shelf-renderer>Breaking news</ytd-rich-shelf-renderer>
     </ytd-rich-section-renderer>
     <ytd-rich-item-renderer data-name="home normal video" data-expect="visible"><a href="/watch?v=normal12345">Normal video</a></ytd-rich-item-renderer>
-    <ytd-rich-item-renderer data-name="subscriptions Short" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count><a href="/shorts/subshort123">A Short</a></ytd-rich-item-renderer>
+    <ytd-rich-item-renderer data-name="subscriptions Short" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><a href="/shorts/subshort123">A Short</a></ytd-rich-item-renderer>
     <ytd-rich-item-renderer data-name="recycled item" data-count data-recycle-href="/watch?v=recycled123"><a href="/shorts/recycle1234">Recycled</a></ytd-rich-item-renderer>
 
     <!-- Search -->
-    <ytd-reel-shelf-renderer data-name="search Shorts shelf" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count>
+    <ytd-reel-shelf-renderer data-name="search Shorts shelf" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden" data-count>
       <ytd-reel-item-renderer><a href="/shorts/ccccccccccc">Short C</a></ytd-reel-item-renderer>
     </ytd-reel-shelf-renderer>
-    <grid-shelf-view-model data-name="search grid shelf (2025)" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count>
+    <grid-shelf-view-model data-name="search grid shelf (2025)" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden" data-count>
       <ytm-shorts-lockup-view-model-v2><a href="/shorts/ddddddddddd">Short D</a></ytm-shorts-lockup-view-model-v2>
     </grid-shelf-view-model>
     <grid-shelf-view-model data-name="non-Shorts grid shelf" data-expect="visible"><a href="/watch?v=grid1234567">Grid video</a></grid-shelf-view-model>
-    <ytd-video-renderer data-name="search result Short" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count><a id="thumbnail" href="/shorts/eeeeeeeeeee">Short E</a></ytd-video-renderer>
-    <ytd-video-renderer data-name="search result video" data-expect-shortsallowed="visible" data-expect="visible"><a id="thumbnail" href="/watch?v=fffffffffff">Video F</a></ytd-video-renderer>
-    <yt-lockup-view-model data-name="new-style lockup Short" data-expect="hidden" data-count data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible"><a href="/shorts/lockup12345">Lockup Short</a></yt-lockup-view-model>
-    <yt-lockup-view-model data-name="new-style lockup video" data-expect="visible" data-expect-shortsallowed="visible"><a href="/watch?v=lockup67890">Lockup video</a></yt-lockup-view-model>
-    <ytd-video-renderer data-name="Short linked as /watch, with a SHORTS badge" data-expect="hidden" data-count data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible"><a href="/watch?v=badge123456">Badged Short</a><ytd-thumbnail-overlay-time-status-renderer overlay-style="SHORTS"></ytd-thumbnail-overlay-time-status-renderer></ytd-video-renderer>
+    <ytd-video-renderer data-name="search result Short" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><a id="thumbnail" href="/shorts/eeeeeeeeeee">Short E</a></ytd-video-renderer>
+    <ytd-video-renderer data-name="search result video" data-expect-modeshorts="visible" data-expect="visible"><a id="thumbnail" href="/watch?v=fffffffffff">Video F</a></ytd-video-renderer>
+    <yt-lockup-view-model data-name="new-style lockup Short" data-expect="hidden" data-count data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible"><a href="/shorts/lockup12345">Lockup Short</a></yt-lockup-view-model>
+    <yt-lockup-view-model data-name="new-style lockup video" data-expect="visible"><a href="/watch?v=lockup67890">Lockup video</a></yt-lockup-view-model>
+    <ytd-video-renderer data-name="Short linked as /watch, with a SHORTS badge" data-expect="hidden" data-count data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible"><a href="/watch?v=badge123456">Badged Short</a><ytd-thumbnail-overlay-time-status-renderer overlay-style="SHORTS"></ytd-thumbnail-overlay-time-status-renderer></ytd-video-renderer>
     <ytd-video-renderer data-name="video with a normal time badge" data-expect="visible"><a href="/watch?v=timed123456">Timed video</a><ytd-thumbnail-overlay-time-status-renderer overlay-style="DEFAULT"></ytd-thumbnail-overlay-time-status-renderer></ytd-video-renderer>
     <ytd-playlist-video-renderer data-name="Short saved in a playlist" data-expect="visible"><a href="/watch?v=inlist12345&amp;list=PL123">Saved Short</a><ytd-thumbnail-overlay-time-status-renderer overlay-style="SHORTS"></ytd-thumbnail-overlay-time-status-renderer></ytd-playlist-video-renderer>
-    <yt-chip-cloud-chip-renderer data-name="Shorts filter chip" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden"><chip-shape> Shorts </chip-shape></yt-chip-cloud-chip-renderer>
-    <yt-chip-cloud-chip-renderer data-name="Videos filter chip" data-expect-shortsallowed="visible" data-expect="visible"><chip-shape>Videos</chip-shape></yt-chip-cloud-chip-renderer>
+    <yt-chip-cloud-chip-renderer data-name="Shorts filter chip" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden"><chip-shape> Shorts </chip-shape></yt-chip-cloud-chip-renderer>
+    <yt-chip-cloud-chip-renderer data-name="Videos filter chip" data-expect="visible"><chip-shape>Videos</chip-shape></yt-chip-cloud-chip-renderer>
     <yt-chip-cloud-chip-renderer data-name="chip mentioning shorts in a longer label" data-expect="visible"><chip-shape>Shorts tutorials</chip-shape></yt-chip-cloud-chip-renderer>
 
     <!-- Channel page -->
-    <yt-tab-shape data-name="channel Shorts tab" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" tab-title="Shorts" data-expect="hidden">Shorts</yt-tab-shape>
+    <yt-tab-shape data-name="channel Shorts tab" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" tab-title="Shorts" data-expect="hidden">Shorts</yt-tab-shape>
     <yt-tab-shape data-name="channel Videos tab" tab-title="Videos" data-expect="visible">Videos</yt-tab-shape>
-    <ytd-grid-video-renderer data-name="channel grid Short" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count><a href="/shorts/ggggggggggg">Short G</a></ytd-grid-video-renderer>
+    <ytd-grid-video-renderer data-name="channel grid Short" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><a href="/shorts/ggggggggggg">Short G</a></ytd-grid-video-renderer>
 
     <!-- Watch page sidebar -->
-    <ytd-compact-video-renderer data-name="watch sidebar Short" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count><a href="/shorts/hhhhhhhhhhh">Short H</a></ytd-compact-video-renderer>
+    <ytd-compact-video-renderer data-name="watch sidebar Short" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><a href="/shorts/hhhhhhhhhhh">Short H</a></ytd-compact-video-renderer>
     <ytd-compact-video-renderer data-name="watch sidebar video" data-expect="visible"><a href="/watch?v=iiiiiiiiiii">Video I</a></ytd-compact-video-renderer>
 
     <!-- m.youtube.com -->
-    <ytm-pivot-bar-item-renderer data-name="mobile Shorts tab" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden"><div class="pivot-bar-item-tab pivot-shorts">Shorts</div></ytm-pivot-bar-item-renderer>
-    <ytm-pivot-bar-item-renderer data-name="mobile Home tab" data-expect-shortsallowed="visible" data-expect="visible"><div class="pivot-bar-item-tab pivot-w2w">Home</div></ytm-pivot-bar-item-renderer>
-    <ytm-rich-section-renderer data-name="mobile Shorts section" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count><ytm-reel-shelf-renderer><a href="/shorts/jjjjjjjjjjj">Short J</a></ytm-reel-shelf-renderer></ytm-rich-section-renderer>
-    <ytm-video-with-context-renderer data-name="mobile Short in list" data-expect-shortsallowed="visible" data-expect-shortshiddensearch="hidden" data-independent data-expect-focusoverrides="hidden" data-expect-mainoff="hidden" data-expect-mainoffshortsallowed="visible" data-expect="hidden" data-count><a href="/shorts/kkkkkkkkkkk">Short K</a></ytm-video-with-context-renderer>
+    <ytm-pivot-bar-item-renderer data-name="mobile Shorts tab" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden"><div class="pivot-bar-item-tab pivot-shorts">Shorts</div></ytm-pivot-bar-item-renderer>
+    <ytm-pivot-bar-item-renderer data-name="mobile Home tab" data-expect="visible"><div class="pivot-bar-item-tab pivot-w2w">Home</div></ytm-pivot-bar-item-renderer>
+    <ytm-rich-section-renderer data-name="mobile Shorts section" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><ytm-reel-shelf-renderer><a href="/shorts/jjjjjjjjjjj">Short J</a></ytm-reel-shelf-renderer></ytm-rich-section-renderer>
+    <ytm-video-with-context-renderer data-name="mobile Short in list" data-expect-modeshorts="hidden" data-expect-modeall="hidden" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><a href="/shorts/kkkkkkkkkkk">Short K</a></ytm-video-with-context-renderer>
     <ytm-video-with-context-renderer data-name="mobile video in list" data-expect="visible"><a href="/watch?v=lllllllllll">Video L</a></ytm-video-with-context-renderer>
 
     <!-- Focus mode: the home page's recommended grid (YouTube keeps browse pages in memory) -->
     <ytd-page-manager>
-      <ytd-browse page-subtype="home" data-name="home recommendations grid" data-expect-focushome="hidden" data-expect-homecovered="hidden" data-expect-switchedoffinplace="visible" data-expect-backoninplace="hidden" data-expect-mainoffhome="visible" data-expect-shortsallowedhome="hidden" data-expect-home="hidden" data-expect-subscriptions="visible">
+      <ytd-browse page-subtype="home" data-name="home recommendations grid" data-expect-modeshortshome="visible" data-expect-focusfromshorts="hidden" data-expect-homecovered="hidden" data-expect-switchedoffinplace="visible" data-expect-backoninplace="hidden" data-expect-home="hidden" data-expect-subscriptions="visible">
         <ytd-rich-item-renderer><a href="/watch?v=recommended1">Recommended video</a></ytd-rich-item-renderer>
       </ytd-browse>
     </ytd-page-manager>
     <ytd-miniplayer><video muted data-name="miniplayer video"></video></ytd-miniplayer>
 
     <!-- Sidebar entries into algorithmic feeds -->
-    <ytd-guide-entry-renderer data-name="sidebar Trending" data-expect-focusoverrides="hidden" data-expect-mainoff="visible" data-expect-mainoffshortsallowed="visible" data-expect-shortsallowed="hidden" data-expect="hidden"><a href="/feed/trending">Trending</a></ytd-guide-entry-renderer>
-    <ytd-guide-entry-renderer data-name="sidebar Gaming" data-expect-mainoff="visible" data-expect-mainoffshortsallowed="visible" data-expect-shortsallowed="hidden" data-expect="hidden"><a href="/gaming">Gaming</a></ytd-guide-entry-renderer>
+    <ytd-guide-entry-renderer data-name="sidebar Trending" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden"><a href="/feed/trending">Trending</a></ytd-guide-entry-renderer>
+    <ytd-guide-entry-renderer data-name="sidebar Gaming" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden"><a href="/gaming">Gaming</a></ytd-guide-entry-renderer>
     <ytd-guide-entry-renderer data-name="sidebar History" data-expect="visible"><a href="/feed/history">History</a></ytd-guide-entry-renderer>
 
     <!-- Watch page: the right-hand column holds Up next, the playlist and live chat -->
     <div id="secondary">
-      <ytd-playlist-panel-renderer data-name="playlist panel" data-expect-shortsallowedwatch="visible" data-expect="visible" data-expect-watch="visible">Playlist</ytd-playlist-panel-renderer>
+      <ytd-playlist-panel-renderer data-name="playlist panel" data-expect="visible" data-expect-watch="visible">Playlist</ytd-playlist-panel-renderer>
       <ytd-live-chat-frame data-name="live chat" data-expect="visible" data-expect-watch="visible">Chat</ytd-live-chat-frame>
-      <ytd-watch-next-secondary-results-renderer data-name="Up next list" data-expect-focusoverrides="hidden" data-expect-mainoff="visible" data-expect-mainoffshortsallowed="visible" data-expect-shortsallowedwatch="hidden" data-expect="hidden" data-expect-watch="hidden" data-count>
+      <ytd-watch-next-secondary-results-renderer data-name="Up next list" data-expect-modeshortswatch="visible" data-expect="hidden" data-expect-watch="hidden" data-count>
         <ytd-compact-video-renderer><a href="/watch?v=upnext12345">Next video</a></ytd-compact-video-renderer>
       </ytd-watch-next-secondary-results-renderer>
     </div>
-    <ytm-item-section-renderer section-identifier="related-items" data-name="mobile related videos" data-expect-mainoff="visible" data-expect-mainoffshortsallowed="visible" data-expect-shortsallowed="hidden" data-expect="hidden" data-count>
+    <ytm-item-section-renderer section-identifier="related-items" data-name="mobile related videos" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden" data-count>
       <a href="/watch?v=related1234">Related</a>
     </ytm-item-section-renderer>
     <ytm-item-section-renderer section-identifier="comments-entry-point" data-name="mobile comments" data-expect="visible">Comments</ytm-item-section-renderer>
@@ -263,9 +433,9 @@
       >
         <div class="ytp-autonav-toggle-button" aria-checked="true" data-name="autoplay toggle" data-expect-attr-watch="aria-checked=false"></div>
       </button>
-      <div class="html5-endscreen" data-name="end screen video wall" data-expect-focusoverrides="hidden" data-expect-mainoff="visible" data-expect-mainoffshortsallowed="visible" data-expect-shortsallowed="hidden" data-expect="hidden">Video wall</div>
-      <div class="ytp-ce-element" data-name="end card" data-expect-mainoff="visible" data-expect-mainoffshortsallowed="visible" data-expect-shortsallowed="hidden" data-expect="hidden">End card</div>
-      <div class="ytp-autonav-endscreen-countdown-overlay" data-name="autoplay countdown" data-expect="hidden">
+      <div class="html5-endscreen" data-name="end screen video wall" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden">Video wall</div>
+      <div class="ytp-ce-element" data-name="end card" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden">End card</div>
+      <div class="ytp-autonav-endscreen-countdown-overlay" data-name="autoplay countdown" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden">
         <button
           class="ytp-autonav-endscreen-upnext-cancel-button"
           data-name="countdown cancel button"
@@ -273,13 +443,13 @@
           onclick="this.dataset.clicked = 'yes'"
         >Cancel</button>
       </div>
-      <div class="ytp-pause-overlay" data-name="pause overlay" data-expect-mainoff="visible" data-expect-mainoffshortsallowed="visible" data-expect-shortsallowed="hidden" data-expect="hidden">More videos</div>
+      <div class="ytp-pause-overlay" data-name="pause overlay" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden">More videos</div>
     </div>
 
     <!-- Search results: recommendation shelves go, channel shelves stay -->
-    <ytd-shelf-renderer data-name="For you shelf" data-expect-focusoverrides="hidden" data-expect-mainoff="visible" data-expect-mainoffshortsallowed="visible" data-expect-shortsallowed="hidden" data-expect="hidden" data-count><h2 id="title">For you</h2><a href="/watch?v=foryou12345">x</a></ytd-shelf-renderer>
-    <ytd-shelf-renderer data-name="People also watched shelf" data-expect-mainoff="visible" data-expect-mainoffshortsallowed="visible" data-expect-shortsallowed="hidden" data-expect="hidden" data-count><h2 id="title">People also watched</h2><a href="/watch?v=also1234567">x</a></ytd-shelf-renderer>
-    <ytd-horizontal-card-list-renderer data-name="Channels new to you" data-expect-shortsallowed="hidden" data-expect="hidden" data-count><span id="title">Channels new to you</span></ytd-horizontal-card-list-renderer>
+    <ytd-shelf-renderer data-name="For you shelf" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><h2 id="title">For you</h2><a href="/watch?v=foryou12345">x</a></ytd-shelf-renderer>
+    <ytd-shelf-renderer data-name="People also watched shelf" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><h2 id="title">People also watched</h2><a href="/watch?v=also1234567">x</a></ytd-shelf-renderer>
+    <ytd-horizontal-card-list-renderer data-name="Channels new to you" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><span id="title">Channels new to you</span></ytd-horizontal-card-list-renderer>
     <ytd-shelf-renderer data-name="Latest from a channel shelf" data-expect="visible"><h2 id="title">Latest from National Geographic</h2><a href="/watch?v=latest12345">x</a></ytd-shelf-renderer>
 
     <template id="dynamic">

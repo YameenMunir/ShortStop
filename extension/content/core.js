@@ -32,15 +32,20 @@
  *     pages: { explore: /^\/explore\//, feed: (url) => bool }, // pathname RegExp or URL test; first match wins
  *     options: {                            // extra switches stored in settings
  *       notifications: { setting: 'instagramNotifications', default: false },
- *       // duringFocus: the value it takes while a focus session runs
- *       hideShorts: { setting: 'youtubeHideShorts', default: true, duringFocus: true },
+ *       // A choice rather than on/off: `values` lists what it can be. duringFocus
+ *       // is its value (or a function of it) while a focus session runs.
+ *       mode: { setting: 'youtubeMode', default: 'feeds', values: ['all', 'feeds', 'shorts'],
+ *               duringFocus: (mode) => mode },
  *     },
  *     redirects: [{ name, match: /regex on pathname/, when?(url), onlyIf?(options), independent?, to(match, url) }],
  *     cover: {                              // replace whole pages with a ShortStop panel
  *       target: 'main' | ['#feed', 'main'], // the content area; first selector that exists wins
  *       title: 'Shown on every covered page',
  *       message: 'Shown on every covered page',
- *       pages: { home: { title?, message?, onlyIf?(options), search?, links? } }, // per-page overrides
+ *       pages: { home: { title?, message?, onlyIf?(options), search?, links? } }, // per-page overrides;
+ *                                           // a page can also be (options) => spec or null, and
+ *                                           // set its own target, pauseMedia and blockKeys
+ *                                           // (target: [] covers the whole window)
  *       links: (options, url) => [{ label, href }],
  *       search: { label, placeholder, url: (query) => '/search?q=...' }, // optional search box;
  *                                           // a page's `search` may be null or (options) => config
@@ -61,8 +66,8 @@
  *       text: /regex/,                      // only if the target's text matches (JS only)
  *       count: true,                        // counts toward "blocked today"
  *       independent: true,                  // keeps working while the platform's blocking is
- *                                           // off or in an allowed time (its own option
- *                                           // switch, e.g. "Hide YouTube Shorts", decides)
+ *                                           // off or in an allowed time (only its own
+ *                                           // onlyIf option decides)
  *     }],
  *   }
  *
@@ -424,15 +429,20 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       const options = {};
       for (const [name, spec] of Object.entries(this.config.options || {})) {
         const value = settings[spec.setting];
-        if (focus && spec.duringFocus !== undefined) options[name] = spec.duringFocus;
-        else options[name] = typeof value === 'boolean' ? value : spec.default;
+        let resolved;
+        if (spec.values) resolved = spec.values.includes(value) ? value : spec.default;
+        else resolved = typeof value === 'boolean' ? value : spec.default;
+        if (focus && spec.duringFocus !== undefined) {
+          resolved = typeof spec.duringFocus === 'function' ? spec.duringFocus(resolved) : spec.duringFocus;
+        }
+        options[name] = resolved;
       }
       return options;
     }
 
     // A focus session (started from the popup, stored as `focusUntil`) blocks
-    // every platform until it ends, whatever its switch, allowed times or
-    // options such as "Hide YouTube Shorts" say. It cannot be ended early.
+    // every platform until it ends, whatever its switch or allowed times say
+    // (options can adjust themselves with duringFocus). It cannot be ended early.
     focusActive(settings) {
       return (Number(settings.focusUntil) || 0) > Date.now();
     }
@@ -540,14 +550,17 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       // stop the page scrolling if the panel had to cover the whole viewport.
       const cover = this.config.cover;
       if (cover && this.enabled) {
-        // With several candidate content areas, a later one is only hidden when
-        // it does not contain an earlier one (which is where the panel goes).
-        const targets = asList(cover.target);
-        const hide = targets
-          .map((target, i) => (i === 0 ? target : `${target}${targets.slice(0, i).map((t) => `:not(:has(${t}))`).join('')}`))
-          .join(', ');
         for (const page of Object.keys(cover.pages)) {
-          if (!this.coverSpec(page)) continue;
+          const spec = this.coverSpec(page);
+          if (!spec) continue;
+          // With several candidate content areas, a later one is only hidden when
+          // it does not contain an earlier one (which is where the panel goes).
+          // A page with no content area is covered by the full-window panel.
+          const targets = this.coverTargets(spec);
+          if (!targets.length) continue;
+          const hide = targets
+            .map((target, i) => (i === 0 ? target : `${target}${targets.slice(0, i).map((t) => `:not(:has(${t}))`).join('')}`))
+            .join(', ');
           blocks.push(
             `/* Covered page: ${page} */\nhtml[${ATTR_PAGE}="${page}"] :is(${hide}) { display: none !important; }`
           );
@@ -625,9 +638,23 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
     // (or an option such as "allow notifications" currently uncovers it).
     coverSpec(page) {
       const cover = this.config.cover;
-      const spec = cover && Object.prototype.hasOwnProperty.call(cover.pages, page) ? cover.pages[page] : null;
+      let spec = cover && Object.prototype.hasOwnProperty.call(cover.pages, page) ? cover.pages[page] : null;
+      if (typeof spec === 'function') spec = spec(this.options);
       if (!spec || (spec.onlyIf && !spec.onlyIf(this.options))) return null;
       return spec;
+    }
+
+    // The content areas a covered page hides (its own, or the platform's).
+    coverTargets(spec) {
+      return asList(spec && spec.target !== undefined ? spec.target : this.config.cover.target);
+    }
+
+    // pauseMedia and blockKeys: the page's own setting, then the platform's, then on.
+    coverFlag(name) {
+      const spec = this.isCovered() ? this.coverSpec(this.page) : null;
+      if (!spec) return false;
+      if (spec[name] !== undefined) return spec[name];
+      return this.config.cover[name] !== false;
     }
 
     // Puts the panel in place of the content area on covered pages, and takes
@@ -654,8 +681,8 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.renderCoverLinks(spec);
 
       // A covered feed must not keep playing video or audio behind the panel
-      // (unless the platform opts out, e.g. YouTube's miniplayer keeps going).
-      if (this.config.cover.pauseMedia !== false) pauseMedia();
+      // (unless the page opts out, e.g. YouTube's miniplayer keeps going).
+      if (this.coverFlag('pauseMedia')) pauseMedia();
 
       const target = this.coverTarget();
       if (target && target.parentElement) {
@@ -683,7 +710,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
 
     // The first configured content area that exists on the page.
     coverTarget() {
-      for (const selector of asList(this.config.cover.target)) {
+      for (const selector of this.coverTargets(this.coverSpec(this.page))) {
         const element = document.querySelector(selector);
         if (element) return element;
       }
@@ -818,14 +845,14 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       window.addEventListener('click', (event) => this.onClick(event), true);
 
       const cover = this.config.cover;
-      if (cover && cover.blockKeys !== false) {
+      if (cover) {
         // A hidden feed can still react to the keyboard (TikTok skips to the
         // next video on arrow keys). Swallow those keys on covered pages,
         // except while typing in a field (including the panel's search box).
         window.addEventListener(
           'keydown',
           (event) => {
-            if (!this.isCovered() || !FEED_KEYS.has(event.key)) return;
+            if (!FEED_KEYS.has(event.key) || !this.coverFlag('blockKeys')) return;
             const origin = event.composedPath()[0];
             const typing =
               origin instanceof Element &&
@@ -837,13 +864,13 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
           true
         );
       }
-      if (cover && cover.pauseMedia !== false) {
+      if (cover) {
         // Media events do not bubble, but they do go through the capture phase:
         // anything that starts playing behind the panel is stopped at once.
         document.addEventListener(
           'play',
           (event) => {
-            if (this.isCovered() && event.target instanceof HTMLMediaElement) {
+            if (event.target instanceof HTMLMediaElement && this.coverFlag('pauseMedia')) {
               event.target.muted = true;
               event.target.pause();
             }
@@ -967,7 +994,12 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       let blocked = 0;
       // Things inside a covered feed are hidden with it and already counted
       // as one blocked visit, so they do not count again.
-      const coveredArea = this.isCovered() ? this.coverTarget() : null;
+      const coveredSpec = this.isCovered() ? this.coverSpec(this.page) : null;
+      const coveredArea = !coveredSpec
+        ? null
+        : this.coverTargets(coveredSpec).length
+          ? this.coverTarget()
+          : document.documentElement;
       for (const rule of this.rules) {
         if (!this.applies(rule)) continue;
         const attribute = rule.action === 'blur' ? ATTR_BLURRED : ATTR_HIDDEN;

@@ -57,13 +57,13 @@ HEADER = """// ==UserScript==
 /* ===================== SETTINGS: edit these ===================== */
 /* true = block, false = allow. Save the file, then reload the site. */
 
-// YouTube: Shorts open in the normal player; the home feed, Up next,
-// end screens and autoplay are switched off.
+// YouTube: true = blocking on, false = YouTube is left completely alone.
 const BLOCK_YOUTUBE_SHORTS = true;
-// Hide YouTube Shorts: Shorts shelves, cards, the Shorts tab and /shorts/
-// links. Independent of BLOCK_YOUTUBE_SHORTS above: true keeps Shorts hidden
-// even when that is false. false = Shorts are left alone.
-const HIDE_YOUTUBE_SHORTS = true;
+// What YouTube's blocking covers:
+//   'all'    every YouTube page, including videos, search and subscriptions
+//   'feeds'  the home feed, Trending, Up next, autoplay and Shorts (default)
+//   'shorts' only Shorts; the rest of YouTube works normally
+const YOUTUBE_MODE = 'feeds';
 
 // Instagram: the Home feed, Explore, Reels and Stories are blocked.
 const BLOCK_INSTAGRAM_REELS = true;
@@ -97,7 +97,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
   const SETTINGS = {
     youtube: BLOCK_YOUTUBE_SHORTS,
-    youtubeHideShorts: HIDE_YOUTUBE_SHORTS,
+    youtubeMode: YOUTUBE_MODE,
     instagram: BLOCK_INSTAGRAM_REELS,
     facebook: BLOCK_FACEBOOK_FEEDS,
     facebookNotifications: ALLOW_FACEBOOK_NOTIFICATIONS,
