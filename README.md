@@ -182,19 +182,23 @@ makes no network requests.
 ShortStop isn't on the Chrome Web Store, so you add it to Chrome yourself with **Load unpacked**.
 It takes about a minute.
 
-1. **Get the files.** Either:
-   - download `ShortStop-<version>-chromium.zip` from the
-     [latest release](../../releases/latest) and unzip it. You get a folder called
-     `ShortStop`. Or:
-   - on this page, click **Code → Download ZIP**, unzip it, and use the `extension` folder
-     inside. (If you cloned the repo, use its `extension` folder.)
+1. **Download ShortStop:** [ShortStop-main.zip](https://github.com/YameenMunir/ShortStop/archive/refs/heads/main.zip) (the same file as **Code →
+   Download ZIP** at the top of this page). Unzip it. You get a folder called `ShortStop-main`,
+   and ShortStop itself is the **`extension`** folder inside it:
 
-   Put the folder somewhere it can stay, such as `Documents`. Chrome loads ShortStop from it
-   every time it starts, so don't delete or move it afterwards.
+   ```
+   ShortStop-main
+   └── extension      ← this is the folder you'll choose in step 4
+   ```
+
+   Put the `ShortStop-main` folder somewhere it can stay, such as `Documents`. Chrome loads
+   ShortStop from it every time it starts, so don't delete or move it afterwards. (If you
+   cloned the repo instead, use its `extension` folder.)
 2. In Chrome, open `chrome://extensions` (or **⋮ menu → Extensions → Manage Extensions**).
 3. Turn on **Developer mode** (the switch in the top right corner).
-4. Click **Load unpacked** and select the folder from step 1: the one with `manifest.json`
-   directly inside it.
+4. Click **Load unpacked**. Chrome asks you to choose a **folder**, not a file: open
+   `ShortStop-main`, click the **`extension`** folder once to select it, and click **Select
+   Folder**. (You won't see or pick any file inside it, and that's expected.)
 5. ShortStop appears in your list of extensions, and its welcome page opens in a new tab.
    Follow it to **pin** ShortStop to the toolbar (the puzzle-piece icon, then the pin next to
    ShortStop), so its switches are one click away.
@@ -203,13 +207,16 @@ It takes about a minute.
 
 That's it: open YouTube, Instagram or any of the other sites to see it working.
 
-**Updating:** replace the folder's contents with the new version (or `git pull` in your clone),
-then click the ↻ reload icon on ShortStop's card in `chrome://extensions`. Your settings are
+**Updating:** download [ShortStop-main.zip](https://github.com/YameenMunir/ShortStop/archive/refs/heads/main.zip) again and replace the old
+`ShortStop-main` folder's contents with the new ones (or `git pull` in your clone), then click
+the ↻ reload icon on ShortStop's card in `chrome://extensions`. Your settings are
 kept. Tabs showing the ShortStop panel refresh themselves; refresh any other open tabs on the
 blocked sites.
 
-**If it doesn't load:** "Manifest file is missing or unreadable" means the folder you picked is
-one level too high or too low. Choose the folder that has `manifest.json` directly inside it.
+**If it doesn't load:** "Manifest file is missing or unreadable" means you picked the wrong
+folder, usually `ShortStop-main` itself or a folder inside `extension`. Click **Load unpacked**
+again and choose the `extension` folder. Chrome can't load the zip file directly, so unzip it
+first.
 
 **Removing:** click **Remove** on ShortStop's card in `chrome://extensions`.
 
@@ -225,10 +232,12 @@ Brave 111 or newer.
 
 Firefox runs Manifest V3 slightly differently, so there is a separate build:
 
-1. Download `ShortStop-<version>-firefox.zip` from the [latest release](../../releases/latest)
-   (or build it with `python tools/package.py`).
-2. Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…**
-   and pick the Firefox zip (or `manifest.json` inside the unzipped folder).
+1. Download [ShortStop-main.zip](https://github.com/YameenMunir/ShortStop/archive/refs/heads/main.zip) and unzip it. Inside the `ShortStop-main`
+   folder, build the Firefox version (it needs [Python 3](https://www.python.org/downloads/)):
+   `python tools/package.py`. That writes `dist/ShortStop-<version>-firefox.zip`.
+2. Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…**, and pick
+   that **file**, `ShortStop-<version>-firefox.zip` (Firefox asks for a file here, unlike
+   Chrome).
 3. Open `about:addons` → ShortStop → **Permissions** and allow access to the sites.
    Firefox treats MV3 host permissions as opt-in.
 
