@@ -62,7 +62,7 @@
   locked until it ends. Start one from the popup, or press **Alt+Shift+F twice** for an hour.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,439
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,447
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -80,8 +80,11 @@
 
 The popup has a switch per platform, plus a choice of what to block under YouTube, *Allow notifications* under Instagram,
 Facebook, TikTok and X, *Allow Marketplace search* under Facebook, and *Allowed times* under each.
-Changes apply to open tabs straight away, without a reload. It also shows how many
-Shorts, Reels and feeds were blocked today (visiting a blocked feed page counts once).
+To keep it on one screen, each site's options stay folded away: click a site's name to unfold
+them, and the popup remembers which sites you left open. The switch next to the name works
+without unfolding. Changes apply to open tabs straight away, without a reload. It also shows how many
+Shorts, Reels and feeds were blocked today (visiting a blocked feed page counts once), and how many
+since install.
 
 ### Switching a site off
 
@@ -151,7 +154,7 @@ Both steps update by themselves while the page is open, with no refresh. Where a
 report the state, the step says so and shows the manual instructions instead. Below the checklist,
 a short **Good to know** list sums up the one-click switches, allowed times, focus sessions and the
 keyboard shortcut. The page only opens on a fresh install (not on updates), and you can reopen it
-any time from **How ShortStop works** at the bottom of the popup. It needs no extra permission and
+any time from **How ShortStop works** at the top of the popup. It needs no extra permission and
 makes no network requests.
 
 <p align="center">
@@ -159,7 +162,7 @@ makes no network requests.
 </p>
 
 <p align="center">
-  <img src="docs/popup.png" width="300" alt="The ShortStop popup: 27 blocked today, the focus session buttons and shortcut, YouTube's three choices of what to block, and a switch, blocked-today count and allowed times for each of the seven sites">
+  <img src="docs/popup.png" width="300" alt="The ShortStop popup on one screen: 27 blocked today, the focus session buttons and shortcut, and a folded row for each of the seven sites with its blocked-today count and switch">
 </p>
 
 ## Privacy
@@ -448,7 +451,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,439 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,447 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -536,7 +539,8 @@ Three more pages have no site markup. `schedule.html` unit-tests
 [shared/schedule.js](extension/shared/schedule.js): weekday, all-day and past-midnight times,
 back-to-back times, bad data, and which edits count as looser. `popup.html` loads the real
 popup with an in-memory `chrome.storage` and clicks through it: leftovers from the retired
-pause flow being tidied away, every switch turning off and back on in one click, YouTube's three
+pause flow being tidied away, every switch turning off and back on in one click, each site's
+options folding and unfolding from its name (remembered, and without touching the switch), YouTube's three
 choices (saved, greyed out while YouTube is off, and the row's description following them),
 adding a time (waits), shortening and removing one (instant), a time with no days,
 *Block now*, a focus session starting, locking everything and unlocking by itself, and the
