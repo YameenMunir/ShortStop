@@ -52,6 +52,8 @@
   there's nothing to scroll.
 - **Still useful.** Search, messages, profiles, groups, uploading and a video you open on
   purpose keep working, so the sites stay usable as communication tools.
+- **Your choice on YouTube.** Block all of YouTube, just its feeds and Shorts, or only Shorts
+  while the rest of YouTube works normally.
 - **One-click switches.** Each site's blocking turns off and back on in one click, and open
   tabs follow at once, with no reload.
 - **Allowed times.** Let a site through at set times, like YouTube from 8 to 9pm on weekdays
@@ -111,10 +113,11 @@ The switches turn off in one click, so nothing stops you switching a site off on
 When you want that, start a **focus session** from the top of the popup: pick **30 min**,
 **1 hour** or **2 hours**, then **Start**.
 
-- Until it ends, **every site is blocked**: its switch, its allowed times and *Hide YouTube
-  Shorts* are overridden, and they're locked in the popup (the switches show on and can't be
-  clicked, and allowed times can't be edited). The smaller options such as *Allow
-  notifications* still work.
+- Until it ends, **every site is blocked**: its switch and its allowed times are overridden,
+  and they're locked in the popup (the switches show on and can't be clicked, and allowed times
+  can't be edited). YouTube's choice is locked too, and *Block YouTube Shorts only* counts as
+  *Block feeds and Shorts*, so a session never leaves the home feed open. The smaller options
+  such as *Allow notifications* still work.
 - The popup shows how long is left and when it ends. It **can't be stopped early**, which is
   the point, so the length is confirmed before it starts.
 - When it ends, every site goes back to its own settings by itself, in open tabs too.
@@ -156,7 +159,7 @@ makes no network requests.
 </p>
 
 <p align="center">
-  <img src="docs/popup.png" width="300" alt="The ShortStop popup: 27 blocked today, the focus session buttons, and a switch, blocked-today count and allowed times for each of the seven sites">
+  <img src="docs/popup.png" width="300" alt="The ShortStop popup: 27 blocked today, the focus session buttons and shortcut, YouTube's three choices of what to block, and a switch, blocked-today count and allowed times for each of the seven sites">
 </p>
 
 ## Privacy
@@ -301,7 +304,8 @@ extension/
 ├── content/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
-│   ├── youtube.js           YouTube focus mode: Shorts redirects, covered home feed, autoplay effects
+│   ├── youtube.js           YouTube: the three choices (all, feeds and Shorts, Shorts only), Shorts
+│   │                        redirects, the covered home feed and autoplay effects
 │   ├── instagram.js         Instagram focus mode: covered routes, selectors, redirects
 │   ├── facebook.js          Facebook focus mode: covered feeds, Marketplace rules, selectors
 │   ├── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
@@ -345,8 +349,12 @@ Each platform file is a single config object, and `core.js` does the work:
    - The panel is built in a shadow root, so the site's CSS can't touch it. It can carry a
      search box and links that differ per page (Marketplace search, "Open this video only").
    - While a feed is covered, feed keys are swallowed (except when typing) and any media that
-     starts playing is paused. A platform can opt out of either: YouTube does, so its
-     miniplayer keeps playing and working.
+     starts playing is paused. A platform or a single page can opt out of either: YouTube's
+     feed pages do, so its miniplayer keeps playing and working, while *Block all of YouTube*
+     pauses everything.
+   - A covered page can also be a function of the popup's options, and can say it has no
+     content area: that's how *Block all of YouTube* covers every page with the full-window
+     panel, while the other choices cover only the feeds or nothing.
    - The route is re-checked on every navigation and DOM change, so the panel comes back if
      the site re-renders it away. If there is no content area (still loading, or after a
      redesign), the panel covers the whole viewport and locks scrolling instead.
@@ -409,7 +417,10 @@ usually one line in one file.
    function of the URL) and list that name under `cover.pages` with a message. A page can
    override the panel's `search` and `links`. If the site stops using the same content area,
    update `cover.target` (a list of selectors, first match wins). `cover.pauseMedia` and
-   `cover.blockKeys` can be set to `false` where a site needs its own playback and keys.
+   `cover.blockKeys` can be set to `false` where a site needs its own playback and keys. A
+   page's entry under `cover.pages` can set its own `target`, `pauseMedia` and `blockKeys`
+   (`target: []` covers the whole window), or be a function of the options that returns the
+   page's panel or `null` (see YouTube's three choices in `youtube.js`).
    For something that has to be *done* rather than hidden, add an entry to `effects`.
    Put container rules (shelves, sections) **above** item rules so items inside them aren't
    counted twice.
@@ -516,8 +527,9 @@ Three more pages have no site markup. `schedule.html` unit-tests
 [shared/schedule.js](extension/shared/schedule.js): weekday, all-day and past-midnight times,
 back-to-back times, bad data, and which edits count as looser. `popup.html` loads the real
 popup with an in-memory `chrome.storage` and clicks through it: leftovers from the retired
-pause flow being tidied away, every switch turning off and back on in one click, *Hide YouTube
-Shorts*, adding a time (waits), shortening and removing one (instant), a time with no days,
+pause flow being tidied away, every switch turning off and back on in one click, YouTube's three
+choices (saved, greyed out while YouTube is off, and the row's description following them),
+adding a time (waits), shortening and removing one (instant), a time with no days,
 *Block now*, a focus session starting, locking everything and unlocking by itself, and the
 shortcut line under it: the switch turning the shortcut off and on, the link to the browser's
 shortcut settings, and the no-key and Firefox cases.
