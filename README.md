@@ -60,7 +60,7 @@
   locked until it ends. Start one from the popup, or press **Alt+Shift+F twice** for an hour.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,469
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,487
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -121,9 +121,14 @@ When you want that, start a **focus session** from the top of the popup: pick **
 - **Keyboard shortcut:** press **Alt+Shift+F twice** to start a 1-hour session without opening
   the popup. The first press shows **1h?** on ShortStop's toolbar icon for 5 seconds, so a
   stray key press can't lock you out; the second press starts it, and the icon briefly shows
-  **60m**. Pressing it during a session shows the minutes left. Change the shortcut at
-  `chrome://extensions/shortcuts` (the popup shows the one in use). It needs no extra
-  permission.
+  **60m**. Pressing it during a session shows the minutes left. It needs no extra permission.
+- **Turning the shortcut off:** under the focus buttons, the popup shows the key in use with a
+  **switch**. Switch it off and a press does nothing at all (no badge, no session), until you
+  switch it back on. The **Change or remove the key** link beneath opens your browser's own
+  shortcut settings, where you can pick another key or clear it. If your browser has no key set,
+  the popup says so and offers **Set a key**; in Firefox, which won't open its settings page for
+  an extension, it gives the steps instead. The switch is saved with your other settings, so it
+  follows your browser profile.
 - It's saved with your other settings (as the time it ends), so a session covers every
   computer on your browser profile.
 
@@ -423,7 +428,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,469 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,487 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -510,12 +515,16 @@ back-to-back times, bad data, and which edits count as looser. `popup.html` load
 popup with an in-memory `chrome.storage` and clicks through it: leftovers from the retired
 pause flow being tidied away, every switch turning off and back on in one click, *Hide YouTube
 Shorts*, adding a time (waits), shortening and removing one (instant), a time with no days,
-*Block now*, and a focus session starting, locking everything and unlocking by itself.
+*Block now*, a focus session starting, locking everything and unlocking by itself, and the
+shortcut line under it: the switch turning the shortcut off and on, the link to the browser's
+shortcut settings, and the no-key and Firefox cases.
 `background.html` loads the real [background.js](extension/background.js) with a fake `chrome`
 API and "presses" the keyboard shortcut: the first press only shows **1h?** and clears after 5
 seconds, a second press starts the hour and shows **60m**, a press during a session shows the
-minutes left without extending it, and any other command does nothing. It can't test that a
-real browser assigns the key, which depends on your browser (see the limitations below).
+minutes left without extending it, any other command does nothing, and with the shortcut
+switched off a press does nothing at all (even a "1h?" left over from before), until it's
+switched back on. It can't test that a real browser assigns the key, which depends on your
+browser (see the limitations below).
 
 A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 
@@ -532,12 +541,14 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
   during a focus session.
 - Allowed times follow each device's own clock and time zone.
 - **The Alt+Shift+F shortcut isn't guaranteed.** A browser leaves a suggested shortcut unset when
-  another extension already uses it. The popup only shows its "press … twice" line when a
-  shortcut is assigned, so if that line is missing, set one at `chrome://extensions/shortcuts`
-  (or `edge://` / `brave://`). It only works while the browser window has focus (not another app
+  another extension already uses it. If so, the popup says "No keyboard shortcut is set" and
+  offers **Set a key**, which opens the browser's shortcut settings (`chrome://extensions/shortcuts`,
+  or `edge://` / `brave://`). It only works while the browser window has focus (not another app
   such as a code editor), and the **1h?** badge appears on ShortStop's toolbar icon, so pin the
   icon to see it. Alt+Shift may also clash with Windows' keyboard-layout switching if you have
-  several input languages; if it does, choose another combination.
+  several input languages; if it does, choose another combination, or switch the shortcut off in
+  the popup. Switching it off in ShortStop stops it doing anything, but ShortStop can't clear the
+  key itself: to free the key for other programs, remove it in the browser's shortcut settings.
 - **Private windows.** Browsers don't run extensions in private/incognito windows unless you
   allow it under the extension's details, so blocking doesn't apply there by default.
 - The smaller options (*Hide YouTube Shorts*, *Allow notifications*, *Allow Marketplace
