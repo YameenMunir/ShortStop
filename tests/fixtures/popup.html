@@ -126,40 +126,41 @@
           check('switching off stores no pause', !('unlocks' in stores.local) && !('pauseLog' in stores.local));
           check('the old pause buttons are gone', !document.querySelector('[data-action="allow"], [data-action="request"]'));
 
-          /* ---- Hide YouTube Shorts ---- */
-          const shortsOption = $('#option-youtube-shorts');
-          check('Hide YouTube Shorts is on by default', shortsOption && shortsOption.checked);
+          /* ---- YouTube: what to block ---- */
+          const choice = (value) => $(`input[name="youtube-mode"][value="${value}"]`);
+          const youtubeDetail = () => $('#detail-youtube').textContent;
+          check('YouTube offers three choices', ['all', 'feeds', 'shorts'].every((value) => choice(value)));
+          check('YouTube blocks feeds and Shorts by default', choice('feeds').checked && !choice('all').checked && !choice('shorts').checked);
+          check('the YouTube row says what is blocked', youtubeDetail() === 'Home feed, Up next and Shorts off', youtubeDetail());
           check(
-            'Hide YouTube Shorts has its description',
-            $('#option-youtube-shorts-detail').textContent === 'Remove Shorts and short-form video feeds from YouTube.'
+            'the choices are labelled for screen readers',
+            $('[role="radiogroup"]').getAttribute('aria-labelledby') === 'youtube-mode-label' &&
+              $('#youtube-mode-label').textContent === 'While YouTube is on, choose what to block:'
           );
-          shortsOption.click();
+          choice('all').click();
           await step();
           check(
-            'switching Hide YouTube Shorts off saves only that setting',
-            stores.sync.settings.youtubeHideShorts === false && stores.sync.settings.youtube === true && toggle('youtube').checked,
+            'choosing "Block all of YouTube" saves only that choice',
+            stores.sync.settings.youtubeMode === 'all' && stores.sync.settings.youtube === true && toggle('youtube').checked,
             JSON.stringify(stores.sync.settings)
           );
-          shortsOption.click();
+          check('the YouTube row follows the choice', youtubeDetail() === 'All of YouTube blocked', youtubeDetail());
+          choice('shorts').click();
           await step();
-          check('switching Hide YouTube Shorts back on saves it', stores.sync.settings.youtubeHideShorts === true);
+          check('choosing "Block YouTube Shorts only" saves it', stores.sync.settings.youtubeMode === 'shorts');
+          check('the YouTube row says only Shorts are off', youtubeDetail() === 'Shorts off', youtubeDetail());
           await chrome.storage.sync.set({ settings: { ...stores.sync.settings, youtube: false } });
           await step();
-          check('Hide YouTube Shorts stays usable while YouTube blocking is off', !shortsOption.disabled && shortsOption.checked);
-          shortsOption.click();
+          check('the choices are greyed out while YouTube is off', ['all', 'feeds', 'shorts'].every((value) => choice(value).disabled));
+          check('the choice is kept while YouTube is off', choice('shorts').checked && stores.sync.settings.youtubeMode === 'shorts');
+          await chrome.storage.sync.set({ settings: { ...stores.sync.settings, youtube: true, youtubeMode: 'feeds' } });
           await step();
-          check(
-            'Hide YouTube Shorts can be switched while YouTube blocking is off',
-            stores.sync.settings.youtubeHideShorts === false && stores.sync.settings.youtube === false
-          );
-          shortsOption.click();
-          await chrome.storage.sync.set({ settings: { ...stores.sync.settings, youtube: true, youtubeHideShorts: true } });
-          await step();
+          check('the choices come back with YouTube', !choice('feeds').disabled && choice('feeds').checked);
 
           /* ---- Switching off leaves the other settings alone ---- */
           toggle('youtube').click();
           await step();
-          check('YouTube off: Hide YouTube Shorts is untouched', stores.sync.settings.youtubeHideShorts === true);
+          check('YouTube off: its choice is untouched', stores.sync.settings.youtubeMode === 'feeds');
           toggle('youtube').click();
           await step();
           toggle('tiktok').click();
@@ -250,7 +251,7 @@
           check('"Block now" turns the switch back on', toggle('youtube').checked && !shown(panel('youtube')));
           /* ---- Focus session ---- */
           await chrome.storage.sync.set({
-            settings: { ...stores.sync.settings, schedules: {}, youtube: false, youtubeHideShorts: false },
+            settings: { ...stores.sync.settings, schedules: {}, youtube: false, youtubeMode: 'shorts' },
           });
           await wait(1100);
           const focusText = () => $('#focus-text').textContent;
@@ -331,8 +332,9 @@
           await step();
           check('focus: clicking a locked switch changes nothing', stores.sync.settings.instagram === true && toggle('instagram').checked);
           check(
-            'focus: Hide YouTube Shorts shows on and is locked',
-            $('#option-youtube-shorts').checked && $('#option-youtube-shorts').disabled && stores.sync.settings.youtubeHideShorts === false
+            'focus: YouTube shows "feeds and Shorts" (raised from Shorts only) and is locked',
+            choice('feeds').checked && ['all', 'feeds', 'shorts'].every((value) => choice(value).disabled) &&
+              stores.sync.settings.youtubeMode === 'shorts'
           );
           check('focus: allowed times cannot be edited', ALL.every((platform) => inScheduler(platform, '.schedule-edit').disabled));
           check('focus: other options still work', !$('#option-instagram-notifications').disabled);
@@ -342,7 +344,7 @@
           await wait(2600);
           check('focus: when it ends, the switches unlock by themselves', ALL.every((platform) => !toggle(platform).disabled));
           check('focus: YouTube is back to its own setting (off)', !toggle('youtube').checked);
-          check('focus: Hide YouTube Shorts is back to its own setting (off)', !$('#option-youtube-shorts').checked && !$('#option-youtube-shorts').disabled);
+          check('focus: YouTube is back to its own choice (Shorts only), greyed out as YouTube is off', choice('shorts').checked && choice('shorts').disabled);
           check('focus: the choices come back', shown($('#focus-choices')) && !focusBox.classList.contains('is-active'));
         } catch (error) {
           check('popup test crashed', false, String(error && error.stack));

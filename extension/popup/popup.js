@@ -14,8 +14,8 @@
  * during an allowed time.
  *
  * A focus session ("Focus session" at the top) blocks every platform for 30
- * minutes to 2 hours: switches, "Hide YouTube Shorts" and allowed times are
- * locked until it ends. It is stored as `focusUntil` in the synced settings
+ * minutes to 2 hours: switches, YouTube's choice of what to block and allowed
+ * times are locked until it ends. It is stored as `focusUntil` in the synced settings
  * and cannot be ended early.
  */
 'use strict';
@@ -46,6 +46,15 @@ addEventListener('pointerdown', () => delete document.documentElement.dataset.ke
 
 const platformSwitches = Array.from(document.querySelectorAll('.switch[data-platform]'));
 const optionSwitches = Array.from(document.querySelectorAll('.switch[data-setting]'));
+// Choices under a platform's switch (YouTube: 'all', 'feeds' or 'shorts').
+const choiceInputs = Array.from(document.querySelectorAll('input[type="radio"][data-setting]'));
+const YOUTUBE_DETAIL = {
+  all: 'All of YouTube blocked',
+  feeds: 'Home feed, Up next and Shorts off',
+  shorts: 'Shorts off',
+};
+// A focus session raises 'shorts' to 'feeds' (duringFocus in content/youtube.js).
+const FOCUS_RAISES = { shorts: 'feeds' };
 
 // Monday first. 5 January 2026 is a Monday.
 const WEEK = [1, 2, 3, 4, 5, 6, 0].map((day) => {
@@ -474,11 +483,22 @@ function renderOptions(now) {
     const stored = state.settings[input.dataset.setting];
     input.checked = typeof stored === 'boolean' ? stored : input.dataset.default === 'true';
     input.disabled = state.settings[input.dataset.parent] === false;
-    if (focus && input.dataset.duringFocus) {
-      input.checked = input.dataset.duringFocus === 'true';
-      input.disabled = true;
-    }
   }
+  for (const input of choiceInputs) {
+    let chosen = choiceValue(input);
+    if (focus) chosen = FOCUS_RAISES[chosen] || chosen; // Shows what the session actually blocks.
+    input.checked = input.value === chosen;
+    input.disabled = state.settings[input.dataset.parent] === false || focus;
+  }
+  const youtubeMode = choiceValue(choiceInputs[0]);
+  setText(document.getElementById('detail-youtube'), YOUTUBE_DETAIL[focus ? FOCUS_RAISES[youtubeMode] || youtubeMode : youtubeMode]);
+}
+
+// The stored choice for a group of radio buttons, or the group's default.
+function choiceValue(input) {
+  const stored = state.settings[input.dataset.setting];
+  const values = choiceInputs.filter((other) => other.name === input.name).map((other) => other.value);
+  return values.includes(stored) ? stored : input.closest('[data-default]').dataset.default;
 }
 
 function renderStats(rawStats) {
@@ -695,6 +715,9 @@ async function init() {
   }
   for (const input of optionSwitches) {
     input.addEventListener('change', () => saveOption(input.dataset.setting, input.checked));
+  }
+  for (const input of choiceInputs) {
+    input.addEventListener('change', () => input.checked && saveOption(input.dataset.setting, input.value));
   }
   initFocus();
 

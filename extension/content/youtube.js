@@ -1,35 +1,49 @@
 /*
- * ShortStop: YouTube (focus mode)
- * ===============================
- * Shorts (while "Hide YouTube Shorts" is on in the popup, the default):
- * - /shorts/VIDEO_ID opens in the normal player (/watch?v=VIDEO_ID).
- * - Shorts shelves are hidden on search, subscriptions, channel and watch pages.
- * - The Shorts entries in the sidebar, mini sidebar, channel tabs, search filter
- *   chips and the mobile (m.youtube.com) bottom bar are removed.
+ * ShortStop: YouTube
+ * ==================
+ * While YouTube's switch is on, the popup offers three choices (`mode`):
  *
- * Recommendations, the same way as the other platforms' feeds:
- * - The home page's recommended grid, Trending/Explore and Gaming are covered
- *   by the ShortStop panel (with a YouTube search box).
- * - On the watch page the "Up next" list, end-screen video walls, end cards
- *   and the autoplay countdown are hidden, and autoplay is switched off.
- * - Search results lose their "For you" / "People also watched" shelves.
+ *   'all'     Block all of YouTube: every page shows the ShortStop panel over
+ *             the whole window, media is paused and feed keys are swallowed.
+ *   'feeds'   Block feeds and Shorts (the default):
+ *             - the home page's recommended grid, Trending/Explore and Gaming
+ *               are covered by the panel (with a YouTube search box);
+ *             - on the watch page "Up next", end screens, end cards and the
+ *               autoplay countdown are hidden, and autoplay is switched off;
+ *             - search results lose their "For you" / "People also watched"
+ *               shelves;
+ *             - and Shorts are removed, as below.
+ *             Search, subscriptions, playlists, channels, history and any video
+ *             you open keep working, and the miniplayer keeps playing.
+ *   'shorts'  Block YouTube Shorts only: YouTube works normally, minus Shorts.
  *
- * Still available on purpose: search, subscriptions, playlists (including
- * playing through them), channels, history, Watch later and any video you
- * open. The miniplayer keeps playing when you go back to the home page.
+ * Shorts are removed in every choice: /shorts/VIDEO_ID opens in the normal
+ * player (/watch?v=VIDEO_ID), and Shorts shelves, cards, the sidebar and
+ * mobile Shorts tabs, the channel Shorts tab and the search chip are hidden.
+ * Switched off, YouTube is left completely alone, Shorts included.
  *
- * "Hide YouTube Shorts" is its own switch. Off, Shorts are left alone and
- * everything else in this file (the covered home page, Up next, autoplay)
- * carries on. On, Shorts stay hidden even while that other blocking is
- * switched off or in an allowed time.
+ * A focus session raises 'shorts' to 'feeds' (it never leaves the home feed
+ * open); 'all' stays 'all'.
  *
  * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
  * that slipped through, and add or adjust a rule below. See README.md.
  */
-// Every Shorts rule and redirect depends on the "Hide YouTube Shorts" option,
-// and only on it: they are `independent`, so they keep working while YouTube's
-// other blocking is switched off or in an allowed time.
-const youtubeShortsHidden = (options) => options.hideShorts;
+// Rules and covered pages for the feeds: on in 'feeds' and 'all', off in 'shorts'.
+const youtubeBlocksFeeds = (options) => options.mode !== 'shorts';
+
+// 'all': the panel covers the whole window on every YouTube page.
+const youtubeBlockedPage = (options) =>
+  options.mode === 'all'
+    ? {
+        title: 'YouTube is blocked.',
+        message: 'Switch YouTube off in ShortStop, or choose a lighter setting under it, to use YouTube.',
+        target: [], // No content area: the full-window panel covers everything.
+        pauseMedia: true,
+        blockKeys: true,
+        search: null,
+        links: () => [],
+      }
+    : null;
 
 ShortStop.start({
   id: 'youtube',
@@ -38,25 +52,25 @@ ShortStop.start({
   // YouTube's own SPA events (desktop, then m.youtube.com).
   navigationEvents: ['yt-navigate-finish', 'yt-page-data-updated', 'state-navigateend'],
 
-  // Extra switches shown in the popup under YouTube.
+  // What YouTube's switch blocks, chosen in the popup under YouTube.
   options: {
-    // A focus session hides Shorts whatever this switch says.
-    hideShorts: { setting: 'youtubeHideShorts', default: true, duringFocus: true },
+    mode: {
+      setting: 'youtubeMode',
+      default: 'feeds',
+      values: ['all', 'feeds', 'shorts'],
+      duringFocus: (mode) => (mode === 'shorts' ? 'feeds' : mode),
+    },
   },
 
   redirects: [
     {
       name: 'Shorts player to the regular player',
       match: /^\/shorts\/([\w-]{5,})/,
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       to: (match) => `/watch?v=${match[1]}`,
     },
     {
       name: 'Bare Shorts feed to the home page',
       match: /^\/shorts\/?$/,
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       to: () => '/',
     },
   ],
@@ -78,9 +92,17 @@ ShortStop.start({
     // controls must keep working, so do not pause media or swallow keys here.
     pauseMedia: false,
     blockKeys: false,
+    // A page's panel depends on the choice under YouTube's switch.
     pages: {
-      home: { message: "YouTube's recommended videos are switched off." },
-      explore: { message: 'Trending, Explore and Gaming are switched off.' },
+      home: (options) =>
+        youtubeBlockedPage(options) ||
+        (youtubeBlocksFeeds(options) ? { message: "YouTube's recommended videos are switched off." } : null),
+      explore: (options) =>
+        youtubeBlockedPage(options) ||
+        (youtubeBlocksFeeds(options) ? { message: 'Trending, Explore and Gaming are switched off.' } : null),
+      watch: youtubeBlockedPage,
+      search: youtubeBlockedPage,
+      other: youtubeBlockedPage, // Every page no pattern above names: channels, feeds, playlists...
     },
     search: {
       label: 'Search YouTube',
@@ -101,6 +123,7 @@ ShortStop.start({
     {
       name: 'Switch autoplay off',
       page: 'watch',
+      onlyIf: youtubeBlocksFeeds,
       run: () => {
         const toggle = document.querySelector('.ytp-autonav-toggle-button[aria-checked="true"]');
         if (toggle) (toggle.closest('button') || toggle).click();
@@ -108,6 +131,7 @@ ShortStop.start({
     },
     {
       name: 'Cancel the autoplay countdown',
+      onlyIf: youtubeBlocksFeeds,
       run: () => {
         // YouTube keeps the overlay in the page and shows it with an inline
         // style only while counting down (our CSS hides it either way).
@@ -123,45 +147,33 @@ ShortStop.start({
     /* ---- Shelves and sections (containers first) ---- */
     {
       name: 'Shorts shelf on search, watch and channel pages',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytd-reel-shelf-renderer',
       count: true,
     },
     {
       name: 'Shorts section on the home page',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])',
       count: true,
     },
     {
       name: 'Shorts rich shelf (outside a section)',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytd-rich-shelf-renderer[is-shorts]',
       count: true,
     },
     {
       name: 'Shorts grid shelf in search (2025 layout)',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector:
         'grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Mobile: Shorts section on the home page',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector:
         'ytm-rich-section-renderer:has(ytm-reel-shelf-renderer, ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2)',
       count: true,
     },
     {
       name: 'Mobile: Shorts shelf (outside a section)',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytm-reel-shelf-renderer',
       count: true,
     },
@@ -169,51 +181,37 @@ ShortStop.start({
     /* ---- Individual Shorts mixed into normal video lists ---- */
     {
       name: 'Short in the home / subscriptions grid',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytd-rich-item-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short in search results',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytd-video-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short in a channel or legacy grid',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytd-grid-video-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short in watch-page suggestions',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytd-compact-video-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Mobile: Short in a video list',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector:
         'ytm-video-with-context-renderer:has(a[href^="/shorts/"]), ytm-rich-item-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short as a new-style lockup card',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'yt-lockup-view-model:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short marked by the SHORTS badge on its thumbnail',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       // Some lists link a Short as /watch?v=; the thumbnail badge still says SHORTS.
       selector:
         ':is(ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer):has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"])',
@@ -221,8 +219,6 @@ ShortStop.start({
     },
     {
       name: 'Any leftover Shorts tile',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-reel-item-renderer',
       count: true,
     },
@@ -230,41 +226,32 @@ ShortStop.start({
     /* ---- Navigation entry points ---- */
     {
       name: 'Sidebar "Shorts" entry',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector:
         'ytd-guide-entry-renderer:has(a[title="Shorts"]), ytd-guide-entry-renderer:has(a[href^="/shorts"])',
     },
     {
       name: 'Mini sidebar "Shorts" entry',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector:
         'ytd-mini-guide-entry-renderer[aria-label="Shorts"], ytd-mini-guide-entry-renderer:has(a[title="Shorts"])',
     },
     {
       name: 'Channel page "Shorts" tab',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'yt-tab-shape[tab-title="Shorts"], tp-yt-paper-tab:has(a[href$="/shorts"])',
     },
     {
       name: 'Search filter chip "Shorts"',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'yt-chip-cloud-chip-renderer, chip-shape',
       text: /^Shorts$/i, // Text match needs JS, so this rule is not in the CSS.
     },
     {
       name: 'Mobile: bottom bar "Shorts" tab',
-      onlyIf: youtubeShortsHidden,
-      independent: true,
       selector: 'ytm-pivot-bar-item-renderer:has(.pivot-shorts)',
     },
 
-    /* ---- Recommendations (focus mode) ---- */
+    /* ---- Recommendations ('feeds' and 'all'; left alone in 'shorts') ---- */
     {
       name: '"Up next" recommendations beside or below the video',
+      onlyIf: youtubeBlocksFeeds,
       // Only the recommendations list: the playlist panel and live chat share
       // the same column and stay.
       selector: 'ytd-watch-next-secondary-results-renderer',
@@ -272,20 +259,24 @@ ShortStop.start({
     },
     {
       name: 'Mobile: related videos under the video',
+      onlyIf: youtubeBlocksFeeds,
       selector:
         'ytm-item-section-renderer[section-identifier="related-items"], ytm-watch-next-secondary-results-renderer',
       count: true,
     },
     {
       name: 'End screen: video wall, end cards and autoplay countdown',
+      onlyIf: youtubeBlocksFeeds,
       selector: '.html5-endscreen, .ytp-ce-element, .ytp-autonav-endscreen-countdown-overlay',
     },
     {
       name: 'Paused-video "More videos" overlay',
+      onlyIf: youtubeBlocksFeeds,
       selector: '.ytp-pause-overlay, .ytp-pause-overlay-container',
     },
     {
       name: 'Recommendation shelves in search results (English titles)',
+      onlyIf: youtubeBlocksFeeds,
       selector: 'ytd-shelf-renderer #title, ytd-horizontal-card-list-renderer #title',
       text: /^(For you|People also watched|Channels new to you|From related searches|Explore more)$/i,
       closest: 'ytd-shelf-renderer, ytd-horizontal-card-list-renderer',
@@ -294,6 +285,7 @@ ShortStop.start({
     },
     {
       name: 'Sidebar links to Trending, Explore and Gaming',
+      onlyIf: youtubeBlocksFeeds,
       selector:
         'ytd-guide-entry-renderer:has(a[href^="/feed/trending"], a[href^="/feed/explore"], a[href^="/gaming"])',
     },

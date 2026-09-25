@@ -57,27 +57,35 @@
         <label class="platform-row" for="toggle-youtube">
           <span class="platform-text">
             <span class="platform-name">YouTube</span>
-            <span class="platform-detail">Shorts, home feed and Up next off</span>
+            <span class="platform-detail" id="detail-youtube">Home feed, Up next and Shorts off</span>
           </span>
           <span class="platform-count" id="count-youtube" title="Blocked today">0</span>
           <input class="switch" type="checkbox" role="switch" id="toggle-youtube" data-platform="youtube" checked />
         </label>
-        <label class="option-row" for="option-youtube-shorts">
+        <div class="choices" role="radiogroup" aria-labelledby="youtube-mode-label" data-default="feeds">
+          <p class="choices-legend" id="youtube-mode-label">While YouTube is on, choose what to block:</p>
+        <label class="choice">
+          <input type="radio" name="youtube-mode" value="all" data-setting="youtubeMode" data-parent="youtube" />
           <span class="option-text">
-            <span class="option-title">Hide YouTube Shorts</span>
-            <span class="option-detail" id="option-youtube-shorts-detail">Remove Shorts and <span class="nowrap">short-form</span> video feeds from YouTube.</span>
+            <span class="option-title">Block all of YouTube</span>
+            <span class="option-detail">Every YouTube page, including videos, search, subscriptions and Shorts.</span>
           </span>
-          <input
-            class="switch switch-small"
-            type="checkbox"
-            role="switch"
-            id="option-youtube-shorts"
-            data-setting="youtubeHideShorts"
-            data-default="true"
-            data-during-focus="true"
-            aria-describedby="option-youtube-shorts-detail"
-          />
         </label>
+        <label class="choice">
+          <input type="radio" name="youtube-mode" value="feeds" data-setting="youtubeMode" data-parent="youtube" />
+          <span class="option-text">
+            <span class="option-title">Block feeds and Shorts</span>
+            <span class="option-detail">The home feed, Trending, Up next, autoplay and Shorts. Search, subscriptions and videos you open still work.</span>
+          </span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="youtube-mode" value="shorts" data-setting="youtubeMode" data-parent="youtube" />
+          <span class="option-text">
+            <span class="option-title">Block YouTube Shorts only</span>
+            <span class="option-detail">Keep normal YouTube fully usable, but remove Shorts and other <span class="nowrap">short-form</span> content throughout YouTube.</span>
+          </span>
+        </label>
+        </div>
       </li>
       <li class="platform">
         <label class="platform-row" for="toggle-instagram">

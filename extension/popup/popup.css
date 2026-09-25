@@ -320,7 +320,6 @@ body {
   min-width: 0;
 }
 
-/* A setting of its own (not dependent on the platform switch above it). */
 .option-title {
   color: var(--ink);
   font-weight: 600;
@@ -348,6 +347,50 @@ body {
 .option-row:has(.switch:disabled) {
   opacity: 0.55;
   cursor: default;
+}
+
+/* A choice under a platform's switch (YouTube: what to block), indented like
+   the options and drawn with native radio buttons. */
+.choices {
+  margin: -2px 0 0;
+  padding: 0 0 10px 12px;
+  border-left: 2px solid var(--rule);
+  color: var(--slate);
+  font-size: 12px;
+}
+
+.choices-legend {
+  margin: 0 0 4px;
+  color: var(--slate);
+}
+
+.choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+
+.choice input {
+  margin: 2px 0 0;
+  accent-color: var(--stop);
+  cursor: pointer;
+}
+
+.choice:has(input:disabled),
+.choice input:disabled {
+  cursor: default;
+}
+
+.choices:has(input:disabled) .choice {
+  opacity: 0.55;
+}
+
+.choice input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* Off rows fade back so it is obvious at a glance what is not being blocked. */
