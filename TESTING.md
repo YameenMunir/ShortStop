@@ -21,7 +21,7 @@ Do this on a browser profile that has never had ShortStop, or remove ShortStop a
 - [ ] The notes say a site's switch turns off **in one click**, and that adding an allowed time
       takes **30 seconds**, matching the popup.
 - [ ] Reloading the extension, or updating it, does **not** open the page again.
-- [ ] In the popup, **How ShortStop works** (bottom) reopens the welcome page in a new tab.
+- [ ] In the popup, **How ShortStop works** (top right) reopens the welcome page in a new tab.
 - [ ] In Firefox, the steps show manual instructions where the browser can't report the state.
 - [ ] Brave: the private-window setting is named "Allow in Private". Check that this matches
       what Brave shows.
@@ -52,7 +52,7 @@ are on. Note today's counter number.
       shows and the miniplayer keeps playing. Its play/pause and keyboard controls work.
 - [ ] **Direct link:** paste `https://www.youtube.com/shorts/aqz-KE-bpKQ` into the address bar.
       It opens as `/watch?v=aqz-KE-bpKQ` in the normal player, and Back skips the Short.
-- [ ] **Choices:** under YouTube the popup says "While YouTube is on, choose what to block:" with
+- [ ] **Choices:** click YouTube's name in the popup to unfold it. It says "While YouTube is on, choose what to block:" with
       *Block all of YouTube*, *Block feeds and Shorts* (selected) and *Block YouTube Shorts only*.
       The YouTube row's description follows the choice.
 - [ ] **Block all of YouTube:** without a reload, every YouTube page (Home, a video, search,
@@ -204,6 +204,14 @@ These selectors haven't been checked on the live site yet, so note anything that
 
 ## Popup and switches
 
+- [ ] **Fits on one screen:** open the popup from the toolbar. With every site folded, it shows
+      everything down to "Nothing is collected or sent anywhere." with no scroll bar.
+- [ ] **Folding:** click **YouTube** (the name, not the switch). Its choices and *Allowed times*
+      unfold, the arrow points down, and the switch doesn't change. Click the name again: they
+      fold away. With the keyboard, Tab to the name and press Enter or Space.
+- [ ] Unfold YouTube and Facebook, close the popup and reopen it: those two are still open, the
+      rest folded.
+
 - [ ] **Every switch turns off in one click:** with the YouTube home page showing the panel, click
       YouTube's switch. It turns off at once, with no choice, countdown or Cancel, and the tab
       shows YouTube's feed **without reloading**. YouTube's choice stays as it was. Click
@@ -243,7 +251,7 @@ These selectors haven't been checked on the live site yet, so note anything that
 
 ## Allowed times (popup)
 
-- [ ] Under YouTube, **Allowed times** says "None". **Edit**, **Add a time**: a new time is every
+- [ ] Unfold YouTube (click its name). **Allowed times** says "None". **Edit**, **Add a time**: a new time is every
       day, 20:00 to 21:00. Days are round chips you can tick with the mouse or keyboard (Tab, Space).
 - [ ] Set a time that includes **now** (e.g. today, from a few minutes ago to an hour from now) and
       **Save**. It doesn't apply yet: "Saving the new allowed times in 29s.", with only Cancel.

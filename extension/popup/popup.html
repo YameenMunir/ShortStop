@@ -14,11 +14,12 @@
         <path d="M11.5 6.2v7.6L18 10z" fill="#fff" />
       </svg>
       <span class="brand-name">ShortStop</span>
+      <a class="brand-link" href="../welcome/welcome.html" target="_blank" rel="noopener">How ShortStop works</a>
     </header>
 
     <section class="tally" aria-labelledby="tally-label">
       <p class="tally-number" id="today-total" aria-live="polite">0</p>
-      <p class="tally-label" id="tally-label">blocked today</p>
+      <p class="tally-label" id="tally-label">blocked today <span class="tally-total" id="all-time">· 0 since install</span></p>
     </section>
 
     <!-- Focus session: blocks every site and locks the switches until it ends. -->
@@ -54,14 +55,18 @@
     <!-- One row per platform. The switch saves instantly; open tabs update live. -->
     <ul class="platforms">
       <li class="platform">
-        <label class="platform-row" for="toggle-youtube">
-          <span class="platform-text">
+        <div class="platform-row">
+          <button type="button" class="platform-expand" aria-expanded="false" aria-controls="details-youtube">
+            <span class="chevron" aria-hidden="true"></span>
+            <span class="platform-text">
             <span class="platform-name">YouTube</span>
             <span class="platform-detail" id="detail-youtube">Home feed, Up next and Shorts off</span>
           </span>
+          </button>
           <span class="platform-count" id="count-youtube" title="Blocked today">0</span>
-          <input class="switch" type="checkbox" role="switch" id="toggle-youtube" data-platform="youtube" checked />
-        </label>
+          <input class="switch" type="checkbox" role="switch" id="toggle-youtube" data-platform="youtube" aria-label="Block YouTube" checked />
+        </div>
+        <div class="platform-details" id="details-youtube" hidden>
         <div class="choices" role="radiogroup" aria-labelledby="youtube-mode-label" data-default="feeds">
           <p class="choices-legend" id="youtube-mode-label">While YouTube is on, choose what to block:</p>
         <label class="choice">
@@ -86,16 +91,21 @@
           </span>
         </label>
         </div>
+        </div>
       </li>
       <li class="platform">
-        <label class="platform-row" for="toggle-instagram">
-          <span class="platform-text">
+        <div class="platform-row">
+          <button type="button" class="platform-expand" aria-expanded="false" aria-controls="details-instagram">
+            <span class="chevron" aria-hidden="true"></span>
+            <span class="platform-text">
             <span class="platform-name">Instagram</span>
             <span class="platform-detail">Feed, Explore, Reels and Stories off</span>
           </span>
+          </button>
           <span class="platform-count" id="count-instagram" title="Blocked today">0</span>
-          <input class="switch" type="checkbox" role="switch" id="toggle-instagram" data-platform="instagram" checked />
-        </label>
+          <input class="switch" type="checkbox" role="switch" id="toggle-instagram" data-platform="instagram" aria-label="Block Instagram" checked />
+        </div>
+        <div class="platform-details" id="details-instagram" hidden>
         <label class="option-row" for="option-instagram-notifications">
           <span>Allow notifications</span>
           <input
@@ -107,16 +117,21 @@
             data-parent="instagram"
           />
         </label>
+        </div>
       </li>
       <li class="platform">
-        <label class="platform-row" for="toggle-facebook">
-          <span class="platform-text">
+        <div class="platform-row">
+          <button type="button" class="platform-expand" aria-expanded="false" aria-controls="details-facebook">
+            <span class="chevron" aria-hidden="true"></span>
+            <span class="platform-text">
             <span class="platform-name">Facebook</span>
             <span class="platform-detail">News Feed, Reels and Watch off</span>
           </span>
+          </button>
           <span class="platform-count" id="count-facebook" title="Blocked today">0</span>
-          <input class="switch" type="checkbox" role="switch" id="toggle-facebook" data-platform="facebook" checked />
-        </label>
+          <input class="switch" type="checkbox" role="switch" id="toggle-facebook" data-platform="facebook" aria-label="Block Facebook" checked />
+        </div>
+        <div class="platform-details" id="details-facebook" hidden>
         <label class="option-row" for="option-facebook-marketplace">
           <span>Allow Marketplace search</span>
           <input
@@ -140,16 +155,21 @@
             data-parent="facebook"
           />
         </label>
+        </div>
       </li>
       <li class="platform">
-        <label class="platform-row" for="toggle-tiktok">
-          <span class="platform-text">
+        <div class="platform-row">
+          <button type="button" class="platform-expand" aria-expanded="false" aria-controls="details-tiktok">
+            <span class="chevron" aria-hidden="true"></span>
+            <span class="platform-text">
             <span class="platform-name">TikTok</span>
             <span class="platform-detail">All feeds and LIVE off</span>
           </span>
+          </button>
           <span class="platform-count" id="count-tiktok" title="Blocked today">0</span>
-          <input class="switch" type="checkbox" role="switch" id="toggle-tiktok" data-platform="tiktok" checked />
-        </label>
+          <input class="switch" type="checkbox" role="switch" id="toggle-tiktok" data-platform="tiktok" aria-label="Block TikTok" checked />
+        </div>
+        <div class="platform-details" id="details-tiktok" hidden>
         <label class="option-row" for="option-tiktok-notifications">
           <span>Allow notifications</span>
           <input
@@ -161,26 +181,36 @@
             data-parent="tiktok"
           />
         </label>
+        </div>
       </li>
       <li class="platform">
-        <label class="platform-row" for="toggle-reddit">
-          <span class="platform-text">
+        <div class="platform-row">
+          <button type="button" class="platform-expand" aria-expanded="false" aria-controls="details-reddit">
+            <span class="chevron" aria-hidden="true"></span>
+            <span class="platform-text">
             <span class="platform-name">Reddit</span>
             <span class="platform-detail">Home, Popular and All off</span>
           </span>
+          </button>
           <span class="platform-count" id="count-reddit" title="Blocked today">0</span>
-          <input class="switch" type="checkbox" role="switch" id="toggle-reddit" data-platform="reddit" checked />
-        </label>
+          <input class="switch" type="checkbox" role="switch" id="toggle-reddit" data-platform="reddit" aria-label="Block Reddit" checked />
+        </div>
+        <div class="platform-details" id="details-reddit" hidden>
+        </div>
       </li>
       <li class="platform">
-        <label class="platform-row" for="toggle-x">
-          <span class="platform-text">
+        <div class="platform-row">
+          <button type="button" class="platform-expand" aria-expanded="false" aria-controls="details-x">
+            <span class="chevron" aria-hidden="true"></span>
+            <span class="platform-text">
             <span class="platform-name">X</span>
             <span class="platform-detail">Home timeline and Explore off</span>
           </span>
+          </button>
           <span class="platform-count" id="count-x" title="Blocked today">0</span>
-          <input class="switch" type="checkbox" role="switch" id="toggle-x" data-platform="x" checked />
-        </label>
+          <input class="switch" type="checkbox" role="switch" id="toggle-x" data-platform="x" aria-label="Block X" checked />
+        </div>
+        <div class="platform-details" id="details-x" hidden>
         <label class="option-row" for="option-x-notifications">
           <span>Allow notifications</span>
           <input
@@ -192,24 +222,28 @@
             data-parent="x"
           />
         </label>
+        </div>
       </li>
       <li class="platform">
-        <label class="platform-row" for="toggle-snapchat">
-          <span class="platform-text">
+        <div class="platform-row">
+          <button type="button" class="platform-expand" aria-expanded="false" aria-controls="details-snapchat">
+            <span class="chevron" aria-hidden="true"></span>
+            <span class="platform-text">
             <span class="platform-name">Snapchat</span>
             <span class="platform-detail">Spotlight and Discover off</span>
           </span>
+          </button>
           <span class="platform-count" id="count-snapchat" title="Blocked today">0</span>
-          <input class="switch" type="checkbox" role="switch" id="toggle-snapchat" data-platform="snapchat" checked />
-        </label>
+          <input class="switch" type="checkbox" role="switch" id="toggle-snapchat" data-platform="snapchat" aria-label="Block Snapchat" checked />
+        </div>
+        <div class="platform-details" id="details-snapchat" hidden>
+        </div>
       </li>
     </ul>
 
     <footer class="footer">
       <p id="status" class="status" role="status"></p>
-      <p id="all-time">0 blocked since you installed ShortStop</p>
       <p>Nothing is collected or sent anywhere.</p>
-      <p><a href="../welcome/welcome.html" target="_blank" rel="noopener">How ShortStop works</a></p>
     </footer>
 
     <script src="../shared/stats.js"></script>

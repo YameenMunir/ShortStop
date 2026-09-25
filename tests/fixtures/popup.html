@@ -75,6 +75,7 @@
           await load('../../extension/shared/stats.js');
           await load('../../extension/shared/pause.js');
           await load('../../extension/shared/schedule.js');
+          try { localStorage.removeItem('shortstop.openSites'); } catch (error) {}
           globalThis.ShortStopPause.OFF_WAIT_SECONDS = 2;
           globalThis.ShortStopPause.OFF_WINDOW_SECONDS = 5;
           await load('../../extension/popup/popup.js');
@@ -125,6 +126,36 @@
           }
           check('switching off stores no pause', !('unlocks' in stores.local) && !('pauseLog' in stores.local));
           check('the old pause buttons are gone', !document.querySelector('[data-action="allow"], [data-action="request"]'));
+
+          /* ---- Each site's options fold away ---- */
+          const expand = (platform) => $(`[aria-controls="details-${platform}"]`);
+          const details = (platform) => $(`#details-${platform}`);
+          const openSites = () => JSON.parse(localStorage.getItem('shortstop.openSites') || '[]');
+          check(
+            'every site starts folded',
+            ALL.every((platform) => expand(platform).getAttribute('aria-expanded') === 'false' && !shown(details(platform)))
+          );
+          check('the switches stay visible while folded', ALL.every((platform) => shown(toggle(platform))));
+          expand('youtube').click();
+          await step();
+          check(
+            "clicking a site's name unfolds its options",
+            expand('youtube').getAttribute('aria-expanded') === 'true' && shown(details('youtube')) && shown($('[role="radiogroup"]'))
+          );
+          check("clicking a site's name leaves its switch alone", toggle('youtube').checked && stores.sync.settings.youtube === true);
+          check('only that site unfolds', ALL.filter((platform) => platform !== 'youtube').every((platform) => !shown(details(platform))));
+          check('the popup remembers which sites are open', JSON.stringify(openSites()) === '["youtube"]', JSON.stringify(openSites()));
+          expand('tiktok').click();
+          await step();
+          expand('tiktok').click();
+          await step();
+          check(
+            'clicking again folds it back',
+            expand('tiktok').getAttribute('aria-expanded') === 'false' && !shown(details('tiktok')) &&
+              JSON.stringify(openSites()) === '["youtube"]',
+            JSON.stringify(openSites())
+          );
+          check('the switches name their site for screen readers', toggle('x').getAttribute('aria-label') === 'Block X');
 
           /* ---- YouTube: what to block ---- */
           const choice = (value) => $(`input[name="youtube-mode"][value="${value}"]`);

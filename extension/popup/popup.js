@@ -508,7 +508,7 @@ function renderStats(rawStats) {
     document.getElementById(`count-${platform}`).textContent = numberFormat.format(stats.today[platform]);
   }
   const allTime = numberFormat.format(stats.allTime);
-  document.getElementById('all-time').textContent = `${allTime} blocked since you installed ShortStop`;
+  document.getElementById('all-time').textContent = `· ${allTime} since install`;
 }
 
 function render() {
@@ -615,6 +615,8 @@ function renderFocus(now) {
   }
   box.classList.toggle('is-active', active);
   setText(document.getElementById('focus-text'), text);
+  // Folded away until a length is picked: the buttons say enough, and the popup stays short.
+  document.getElementById('focus-text').hidden = !active && !focusChoice;
   document.getElementById('focus-choices').hidden = active || Boolean(focusChoice);
   document.getElementById('focus-confirm').hidden = active || !focusChoice;
   renderShortcut(active || Boolean(focusChoice));
@@ -676,6 +678,46 @@ function initFocus() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Folding each site's options away                                     */
+/* ------------------------------------------------------------------ */
+
+// Each site is one line until its name is clicked; which sites are open is
+// remembered on this device (a convenience only, so failures are ignored).
+const OPEN_KEY = 'shortstop.openSites';
+
+function readOpenSites() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]'));
+  } catch (error) {
+    return new Set();
+  }
+}
+
+function setOpen(button, open) {
+  button.setAttribute('aria-expanded', String(open));
+  document.getElementById(button.getAttribute('aria-controls')).hidden = !open;
+}
+
+function initFolds() {
+  const open = readOpenSites();
+  for (const button of document.querySelectorAll('.platform-expand')) {
+    const platform = button.getAttribute('aria-controls').replace('details-', '');
+    setOpen(button, open.has(platform));
+    button.addEventListener('click', () => {
+      const opening = button.getAttribute('aria-expanded') !== 'true';
+      setOpen(button, opening);
+      if (opening) open.add(platform);
+      else open.delete(platform);
+      try {
+        localStorage.setItem(OPEN_KEY, JSON.stringify([...open]));
+      } catch (error) {
+        /* Not remembered this time. */
+      }
+    });
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Start-up                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -703,7 +745,7 @@ async function init() {
   for (const input of platformSwitches) {
     const platform = input.dataset.platform;
     buildPanel(platform, input);
-    buildScheduler(platform, input.closest('.platform'));
+    buildScheduler(platform, document.getElementById(`details-${platform}`));
     input.addEventListener('click', (event) => {
       // The switch never flips by itself: state decides what it shows.
       event.preventDefault();
@@ -720,6 +762,7 @@ async function init() {
     input.addEventListener('change', () => input.checked && saveOption(input.dataset.setting, input.value));
   }
   initFocus();
+  initFolds();
 
   await load();
   setInterval(tick, 1000);
