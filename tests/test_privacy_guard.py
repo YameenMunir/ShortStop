@@ -87,6 +87,10 @@ class PrivacyGuard(unittest.TestCase):
         self.append("content/core.js", "import('https://cdn.example/lib.js');")
         self.assertCaught("import from a URL")
 
+    def test_remote_static_import(self):
+        self.append("content/core.js", "import { thing } from 'https://cdn.example/lib.js';")
+        self.assertCaught("import from a URL")
+
     def test_eval(self):
         self.append("content/core.js", "eval(code);")
         self.assertCaught("(eval)")
@@ -140,6 +144,10 @@ class PrivacyGuard(unittest.TestCase):
     def test_optional_permissions(self):
         self.edit_manifest(lambda m: m.update(optional_permissions=["history"]))
         self.assertCaught('"optional_permissions"')
+
+    def test_optional_host_permissions(self):
+        self.edit_manifest(lambda m: m.update(optional_host_permissions=["*://example.com/*"]))
+        self.assertCaught('"optional_host_permissions"')
 
     def test_externally_connectable(self):
         self.edit_manifest(lambda m: m.update(externally_connectable={"matches": ["*://*.example.com/*"]}))
