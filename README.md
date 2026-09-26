@@ -29,6 +29,7 @@
 - [At a glance](#at-a-glance)
 - [What it does](#what-it-does)
   - [Switching a site off](#switching-a-site-off)
+  - [Allowed accounts](#allowed-accounts)
   - [Allowed times](#allowed-times)
   - [Focus sessions](#focus-sessions)
   - [First-run welcome page](#first-run-welcome-page)
@@ -57,13 +58,16 @@
   block all of it or just its feeds.
 - **One-click switches.** Each site's blocking turns off and back on in one click, and open
   tabs follow at once, with no reload.
+- **Allowed accounts.** Let one YouTube channel, or an Instagram, TikTok or Snapchat account,
+  through on purpose: its own page, videos, LIVE, Stories and Shorts get through, while the
+  feeds stay blocked.
 - **Allowed times.** Let a site through at set times, like YouTube from 8 to 9pm on weekdays
   or Instagram at weekends. Blocking switches off and on by itself.
 - **Focus sessions.** Block every site for 30 minutes, 1 hour or 2 hours, with the switches
   locked until it ends. Start one from the popup, or press **Alt+Shift+F twice** for an hour.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,576
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,705
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -92,6 +96,30 @@ since install.
 Each site's switch turns off **in one click**: blocking stops in every open tab straight away,
 with no choice, countdown or confirmation, and clicking it again turns blocking back on at
 once. The site's choice of what to block is kept either way.
+
+### Allowed accounts
+
+Maybe you follow one creator on purpose. Under YouTube, Instagram, TikTok and Snapchat,
+**Allowed channels** / **Allowed accounts** lets up to 10 of them through. Type a name
+(`@veritasium`, `natgeo`) or paste a link to the channel or profile.
+
+| Site | What an allowed account gets through |
+| --- | --- |
+| **YouTube** | Its channel page and tabs, including its Shorts tab, and its Shorts cards in search results, subscriptions and other lists. With *Block all of YouTube*, its channel and its videos open too. Its Shorts still play in the normal player, because the Shorts player scrolls straight on into other channels. |
+| **Instagram** | Its profile and Reels tab, its Reels at `instagram.com/<name>/reel/…` links, and its Stories. With *Reels only*, its Reels in your feed. With *Block all of Instagram*, its profile and posts open too. |
+| **TikTok** | Its LIVE. With *Block all of TikTok*, its profile and videos open too. |
+| **Snapchat** | Its own Spotlight (`snapchat.com/@<name>/spotlight`). |
+
+- **Feeds stay blocked.** Home, For You, Explore, Up next and the Spotlight feed are recommendations
+  with no single owner, so an allowed account never opens them. A blocked page lists your
+  allowed accounts as links (**Open @veritasium**), so they're one click away.
+- **Adding** one takes the same 30-second wait and confirmation as allowed times, so you can't
+  open up a site on impulse. **Removing** one is instant.
+- **During a focus session** the list is ignored, and new accounts can't be added.
+- Reddit, X and Facebook have no list: their communities, profiles and Pages are never blocked in
+  the first place, only their feeds.
+
+The list is saved with your other settings, so it follows your browser profile.
 
 ### Allowed times
 
@@ -175,10 +203,10 @@ makes no network requests.
 - **Minimum permissions:** `storage`, plus host access to the seven sites it works on
   (YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat). It can't see any other
   website.
-- Your platform switches, options, allowed times and a running focus session's end time are
-  saved with `chrome.storage.sync`, so they follow your browser profile. The daily counter, a
-  waiting change to the allowed times and any *Block now* live in `chrome.storage.local`, on
-  your device only.
+- Your platform switches, options, allowed accounts, allowed times and a running focus session's
+  end time are saved with `chrome.storage.sync`, so they follow your browser profile. The daily
+  counter, a waiting change (an allowed time or account) and any *Block now* live in
+  `chrome.storage.local`, on your device only.
 
 ## Install
 
@@ -301,6 +329,12 @@ const BLOCK_X_FEEDS = true;                     // Home timeline, Explore
 const ALLOW_X_NOTIFICATIONS = false;
 
 const BLOCK_SNAPCHAT_SPOTLIGHT = true;          // Spotlight, Discover, Explore
+
+// Allowed accounts, e.g. ['@veritasium', '@3blue1brown']. Up to 10 each.
+const YOUTUBE_ALLOWED_CHANNELS = [];
+const INSTAGRAM_ALLOWED_ACCOUNTS = [];
+const TIKTOK_ALLOWED_ACCOUNTS = [];
+const SNAPCHAT_ALLOWED_ACCOUNTS = [];
 ```
 
 The userscript has no popup, daily counter, allowed times, focus sessions or keyboard shortcut,
@@ -317,6 +351,7 @@ extension/
 ├── shared/stats.js          Counter helpers shared by the background worker and popup
 ├── shared/pause.js          The 30-second wait before loosening allowed times, shared by popup and welcome page
 ├── shared/schedule.js       Allowed times: is a platform allowed now, until when, and is a change looser
+├── shared/allowlist.js      Allowed accounts: reading a typed name or link, and spotting an account's pages and links
 ├── content/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
@@ -375,10 +410,22 @@ Each platform file is a single config object, and `core.js` does the work:
    - The route is re-checked on every navigation and DOM change, so the panel comes back if
      the site re-renders it away. If there is no content area (still loading, or after a
      redesign), the panel covers the whole viewport and locks scrolling instead.
-5. **Effects.** Some things can't be hidden, only changed: YouTube's autoplay is switched off
+5. **Allowed accounts.** A config can name an `allowlist` (from `shared/allowlist.js`): how to
+   find the account whose own page this is from the URL (`/@handle`, `/<name>/`,
+   `/stories/<name>/`), and for single videos whose URL doesn't say, from the page itself
+   (YouTube reads the owner link only from the player whose `video-id` matches the URL, so a
+   previous video's owner can never leak through). On an allowed account's page, `<html>` gets an
+   attribute that the generated CSS checks, so the cover and the account's own items are never
+   hidden, not even for a first paint. Rules marked `allowOwner` let items through: `'page'` only
+   on the account's own page (whole shelves mix channels), `true` also wherever the item's own
+   owner links name it (a single Short card, an Instagram post's header, never its comments).
+   Items inside an allowed item follow it. YouTube reuses cards, so the marks are re-checked on
+   every scan. If a covered page turns out to belong to an allowed account, the panel goes, the
+   blocked-today count is taken back and the sound ShortStop muted is given back.
+6. **Effects.** Some things can't be hidden, only changed: YouTube's autoplay is switched off
    through its own toggle, and a running autoplay countdown is cancelled. Effects run after
    every scan and are safe to repeat.
-6. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
+7. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
    platform or option off removes the stylesheet, un-hides everything and removes the panel,
    and switching it on re-applies everything. No reload needed. Allowed times
    (`shared/schedule.js`, loaded before `core.js`) are checked once a second, and the
@@ -456,7 +503,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,576 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,705 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -524,6 +571,13 @@ platform it checks:
 - feed keys being swallowed (but not while typing), media being paused, and the panel's
   search box going to the right results page
 - switching off and on at once, and ignoring a pause left behind by the retired pause flow
+- Allowed accounts: an allowed channel's Short card and the tiles inside it shown while other
+  channels' stay hidden, mixed shelves kept hidden except on the channel's own page, its
+  channel page and Shorts tab, *Block all* opening its channel and videos but not another's
+  (nor a stale player's), the panel's **Open @…** links, Instagram's profile, Reels tab and
+  redirect, Stories and `/<name>/reel/` links, a post's header counting but not its comments,
+  TikTok's profile, videos and LIVE, Snapchat's profile Spotlight, a focus session ignoring
+  the list, and removing an account blocking again
 - Allowed times on every platform: blocking is lifted inside one, ignores another day's,
   another platform's or a malformed one, respects *Block now*, and (with a fake clock)
   switches off and back on by itself when an allowed time starts and ends
@@ -570,6 +624,15 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
 
 ## Known limitations
 
+- **Allowed accounts** are recognised from URLs, with two exceptions that read the page:
+  YouTube videos (with *Block all of YouTube*) and Instagram photo posts (with *Block all of
+  Instagram*). So a Reel opened at a plain `instagram.com/reel/…` link, or a Snapchat Spotlight
+  at `snapchat.com/spotlight/…`, stays blocked even if it's from an allowed account, because
+  the link doesn't say whose it is. YouTube channels are recognised by their `@handle` (old
+  `/channel/UC…` links aren't). Shorts cards that don't show their channel's name, such as
+  some in mixed shelves, stay hidden. With *Block all of YouTube*, an allowed channel's video
+  is covered for a moment until YouTube shows who uploaded it, and then waits for you to press
+  play.
 - **Testing coverage.** The engine is tested against mock pages for every platform, and
   YouTube and TikTok were also checked on the live sites (signed out) in Edge. Instagram and
   Facebook need a signed-in account, so run their sections of [TESTING.md](TESTING.md) on real

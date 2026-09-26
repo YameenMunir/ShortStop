@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <title>Snapchat fixture</title>
     <script src="../../extension/shared/schedule.js"></script>
+    <script src="../../extension/shared/allowlist.js"></script>
     <script src="../../extension/content/core.js"></script>
     <script type="application/json" id="plan">
       {
@@ -24,6 +25,10 @@
           { "name": "web", "url": "https://www.snapchat.com/web", "cover": false },
           { "name": "profile", "url": "https://www.snapchat.com/add/someone", "cover": false },
           { "name": "atprofile", "url": "https://www.snapchat.com/@spotlightfan", "cover": false },
+          {"name": "allowscprofile", "settings": {"snapchat": true, "snapchatAllowed": ["spotlightfan"]}, "url": "https://www.snapchat.com/@spotlightfan/spotlight", "cover": false},
+          {"name": "allowscother", "url": "https://www.snapchat.com/@someone/spotlight", "cover": {"message": "Spotlight is switched off."}},
+          {"name": "allowscfeed", "url": "https://www.snapchat.com/spotlight", "cover": {"message": "Spotlight is switched off.", "links": ["Chat on Snapchat for web", "Open @spotlightfan"]}},
+          {"name": "allowscremoved", "settings": {"snapchat": true}, "url": "https://www.snapchat.com/@spotlightfan/spotlight", "cover": {"message": "Spotlight is switched off."}},
           { "name": "backtofeed", "url": "https://www.snapchat.com/spotlight", "cover": { "message": "Spotlight is switched off." } }
         ]
       }

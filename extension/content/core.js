@@ -18,7 +18,11 @@
  *      replaced by a ShortStop panel, re-applied whenever the route or the DOM
  *      changes. On covered routes, scroll/next-video keys are swallowed and any
  *      media that starts playing is paused at once.
- *   5. Settings changes apply live, without reloading the tab. Allowed times
+ *   5. Allowed accounts (`allowlist`, see shared/allowlist.js): a page that
+ *      belongs to an account on the platform's list is not covered, and rules
+ *      marked `allowOwner` let that account's items through. Feeds have no
+ *      single owner, so they stay covered. A focus session ignores the list.
+ *   6. Settings changes apply live, without reloading the tab. Allowed times
  *      (`schedules`, see shared/schedule.js) lift blocking while they last,
  *      re-checked once a second, so it comes back by itself when they end. A
  *      focus session (`focusUntil`) overrides that: every platform blocks until
@@ -52,6 +56,15 @@
  *       pauseMedia: true,                   // pause media on covered pages (default true)
  *       blockKeys: true,                    // swallow feed keys on covered pages (default true)
  *     },
+ *     allowlist: {                          // allowed accounts (shared/allowlist.js sites)
+ *       setting: 'youtubeAllowed',          // the list, in the synced settings
+ *       owner: (url) => name | null,        // whose own page this is (channel, profile)
+ *       viewOwner?: (url) => name | null,   // whose single video this is, from the page
+ *                                           // itself (uncovers the page, nothing else)
+ *       itemOwners: 'a[href^="/@"]',        // links inside an item that name its owner
+ *       hrefOwner: (href) => name | null,
+ *       label: (name) => '@name', href: (name) => '/@name',
+ *     },
  *     effects: [{                           // small actions run after every scan, e.g.
  *       name, page?, onlyIf?(options),      // switching a site's autoplay off
  *       run: () => void,
@@ -65,6 +78,9 @@
  *       closest: 'css selector',            // hide this ancestor of the match instead (JS only)
  *       text: /regex/,                      // only if the target's text matches (JS only)
  *       count: true,                        // counts toward "blocked today"
+ *       allowOwner: true | 'page',          // let an allowed account's items through: 'page'
+ *                                           // only on that account's own page; true also where
+ *                                           // the item's own links name it (itemOwners)
  *       independent: true,                  // keeps working while the platform's blocking is
  *                                           // off or in an allowed time (only its own
  *                                           // onlyIf option decides)
@@ -83,6 +99,9 @@
   const ATTR_BLURRED = 'data-shortstop-blurred';
   const ATTR_PAGE = 'data-shortstop-page';
   const ATTR_COVER = 'data-shortstop-cover';
+  const ATTR_ALLOWED = 'data-shortstop-allowed'; // An item that belongs to an allowed account.
+  const ATTR_OWNER = 'data-shortstop-owner-allowed'; // On <html>: an allowed account's own page.
+  const ATTR_VIEW = 'data-shortstop-view-allowed'; // On <html>: this page belongs to an allowed account.
   const MARKED = `[${ATTR_HIDDEN}], [${ATTR_BLURRED}]`;
   const COVER_TAG = 'shortstop-cover';
 
@@ -301,11 +320,31 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
     observer.observe(document, { childList: true });
   }
 
+  // Media ShortStop muted (not media the person muted themselves).
+  const mutedByShortStop = new WeakSet();
+
+  function muteAndPause(media) {
+    if (!media.muted) {
+      media.muted = true;
+      mutedByShortStop.add(media);
+    }
+    media.pause();
+  }
+
+  // Gives back the sound ShortStop took, e.g. when a covered page turns out to
+  // belong to an allowed account. The media stays paused: pressing play is up to them.
+  function restoreSound() {
+    for (const media of document.querySelectorAll('video, audio')) {
+      if (!mutedByShortStop.has(media)) continue;
+      mutedByShortStop.delete(media);
+      media.muted = false;
+    }
+  }
+
   function pauseMedia() {
     for (const media of document.querySelectorAll('video, audio')) {
       try {
-        media.muted = true;
-        media.pause();
+        muteAndPause(media);
       } catch (error) {
         /* Ignore media we cannot control. */
       }
@@ -387,6 +426,9 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.env = environment;
       this.rules = asList(config.rules).map((rule, index) => ({ action: 'hide', ...rule, index }));
       this.options = this.resolveOptions({});
+      this.allowed = new Set(); // Allowed accounts (empty during a focus session).
+      this.ownerAllowed = false; // This page is an allowed account's own page.
+      this.viewAllowed = false; // This page belongs to an allowed account (own page or video).
       this.lastSettings = {};
       this.scheduleOpen = false; // Inside an allowed time when settings were last applied.
       this.focusOn = false; // A focus session was running when settings were last applied.
@@ -455,7 +497,18 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       if (changed && this.styleEl) this.styleEl.textContent = this.buildCss();
       this.lastSettings = settings;
       this.focusOn = this.focusActive(settings);
+      this.allowed = this.resolveAllowlist(settings);
       this.setEnabled(this.isBlocking(settings));
+    }
+
+    // The platform's allowed accounts. A focus session blocks everything, so
+    // it ignores the list.
+    resolveAllowlist(settings) {
+      const allowlist = this.config.allowlist;
+      if (!allowlist || this.focusActive(settings)) return new Set();
+      const shared = global.ShortStopAllowlist;
+      const list = settings[allowlist.setting];
+      return new Set(shared ? shared.normalizeList(this.config.id, list) : []);
     }
 
     // Blocking is on unless this platform is switched off or inside one of its
@@ -535,8 +588,12 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
         this.styleEl = null;
       }
       for (const element of document.querySelectorAll(MARKED)) unmark(element);
+      for (const element of document.querySelectorAll(`[${ATTR_ALLOWED}]`)) element.removeAttribute(ATTR_ALLOWED);
       this.removeCover();
-      document.documentElement.removeAttribute(ATTR_PAGE);
+      const root = document.documentElement;
+      root.removeAttribute(ATTR_PAGE);
+      root.removeAttribute(ATTR_OWNER);
+      root.removeAttribute(ATTR_VIEW);
     }
 
     /* ---------------- Styles ---------------- */
@@ -550,8 +607,9 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       // stop the page scrolling if the panel had to cover the whole viewport.
       const cover = this.config.cover;
       if (cover && this.enabled) {
+        const notAllowed = this.config.allowlist ? `:not([${ATTR_VIEW}])` : '';
         for (const page of Object.keys(cover.pages)) {
-          const spec = this.coverSpec(page);
+          const spec = this.pageCoverSpec(page);
           if (!spec) continue;
           // With several candidate content areas, a later one is only hidden when
           // it does not contain an earlier one (which is where the panel goes).
@@ -562,7 +620,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
             .map((target, i) => (i === 0 ? target : `${target}${targets.slice(0, i).map((t) => `:not(:has(${t}))`).join('')}`))
             .join(', ');
           blocks.push(
-            `/* Covered page: ${page} */\nhtml[${ATTR_PAGE}="${page}"] :is(${hide}) { display: none !important; }`
+            `/* Covered page: ${page} */\nhtml[${ATTR_PAGE}="${page}"]${notAllowed} :is(${hide}) { display: none !important; }`
           );
         }
         blocks.push(
@@ -576,9 +634,15 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
         if (!this.enabled && !rule.independent) continue;
         if (rule.onlyIf && !rule.onlyIf(this.options)) continue;
         const pages = asList(rule.page);
+        const owned = Boolean(rule.allowOwner && this.config.allowlist);
+        // Owned rules skip an allowed account's own page, and (true) its items.
+        const root = owned ? `:not([${ATTR_OWNER}])` : '';
+        const item = owned && rule.allowOwner === true ? `:not([${ATTR_ALLOWED}], [${ATTR_ALLOWED}] *)` : '';
         const selector = pages.length
-          ? pages.map((page) => `html[${ATTR_PAGE}="${page}"] :is(${rule.selector})`).join(',\n')
-          : rule.selector;
+          ? pages.map((page) => `html[${ATTR_PAGE}="${page}"]${root} :is(${rule.selector})${item}`).join(',\n')
+          : owned
+            ? `html${root} :is(${rule.selector})${item}`
+            : rule.selector;
         blocks.push(`/* ${rule.name} */\n${selector} { display: none !important; }`);
       }
       return blocks.join('\n\n');
@@ -630,6 +694,40 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.page = Object.keys(pages).find((name) => matches(pages[name])) || 'other';
       const root = document.documentElement;
       if (root.getAttribute(ATTR_PAGE) !== this.page) root.setAttribute(ATTR_PAGE, this.page);
+      this.updateOwner(url);
+    }
+
+    // Whether this page belongs to an allowed account: its own page (from the
+    // URL), or a single video of theirs (from the page, e.g. YouTube's owner link).
+    updateOwner(url) {
+      const allowlist = this.config.allowlist;
+      let owner = null;
+      let viewer = null;
+      if (allowlist && url && this.allowed.size) {
+        owner = allowlist.owner(url);
+        viewer = owner || (allowlist.viewOwner ? allowlist.viewOwner(url) : null);
+      }
+      this.ownerAllowed = Boolean(owner) && this.allowed.has(owner);
+      this.viewAllowed = this.ownerAllowed || (Boolean(viewer) && this.allowed.has(viewer));
+      const root = document.documentElement;
+      root.toggleAttribute(ATTR_OWNER, this.ownerAllowed);
+      root.toggleAttribute(ATTR_VIEW, this.viewAllowed);
+    }
+
+    // An item that an allowed account owns: on its own page ('page' and true
+    // rules), inside an item already let through, or named by the item's own
+    // owner links (true rules only).
+    allowedTarget(element, rule) {
+      const allowlist = this.config.allowlist;
+      if (!rule.allowOwner || !allowlist || !this.allowed.size) return false;
+      if (this.ownerAllowed) return true;
+      if (rule.allowOwner !== true) return false;
+      if (element.parentElement && element.parentElement.closest(`[${ATTR_ALLOWED}]`)) return true;
+      for (const link of element.querySelectorAll(allowlist.itemOwners)) {
+        const name = allowlist.hrefOwner(link.getAttribute('href'));
+        if (name && this.allowed.has(name)) return true;
+      }
+      return false;
     }
 
     /* ---------------- Covered pages ---------------- */
@@ -637,6 +735,12 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
     // The cover settings for `page`, or null if that page is not covered
     // (or an option such as "allow notifications" currently uncovers it).
     coverSpec(page) {
+      return this.viewAllowed ? null : this.pageCoverSpec(page);
+    }
+
+    // The cover for a named page, whoever owns this particular one (the CSS
+    // leaves out allowed accounts' pages itself, with ATTR_VIEW).
+    pageCoverSpec(page) {
       const cover = this.config.cover;
       let spec = cover && Object.prototype.hasOwnProperty.call(cover.pages, page) ? cover.pages[page] : null;
       if (typeof spec === 'function') spec = spec(this.options);
@@ -663,6 +767,12 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
     updateCover() {
       const spec = this.enabled && !this.redirecting ? this.coverSpec(this.page) : null;
       if (!spec) {
+        if (this.viewAllowed && this.cover.host) {
+          // Covered at first, then recognised as an allowed account's page (e.g.
+          // YouTube's owner link arrived): not a block after all.
+          if (this.cover.countedHref === this.env.href() && this.pendingCount > 0) this.pendingCount -= 1;
+          restoreSound();
+        }
         this.removeCover();
         return;
       }
@@ -764,6 +874,11 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
         /* Links that need the URL just get null. */
       }
       const wanted = asList(source && source(this.options, url)).filter((link) => link && link.href);
+      // The allowed accounts are always one click away from a blocked page.
+      const allowlist = this.config.allowlist;
+      if (allowlist) {
+        for (const name of this.allowed) wanted.push({ label: `Open ${allowlist.label(name)}`, href: allowlist.href(name) });
+      }
       const key = JSON.stringify(wanted);
       if (key === this.cover.linksKey) return; // Unchanged: leave the DOM alone.
       this.cover.linksKey = key;
@@ -800,6 +915,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
         const match = url.pathname.match(rule.match);
         if (!this.enabled && !rule.independent) continue;
         if (!match || (rule.when && !rule.when(url)) || (rule.onlyIf && !rule.onlyIf(this.options))) continue;
+        if (rule.allowOwner && this.allowed.has(rule.allowOwner(match, url))) continue; // An allowed account's own page.
         const destination = new URL(rule.to(match, url), url.origin).href;
         if (destination !== url.href) return destination;
       }
@@ -871,8 +987,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
           'play',
           (event) => {
             if (event.target instanceof HTMLMediaElement && this.coverFlag('pauseMedia')) {
-              event.target.muted = true;
-              event.target.pause();
+              muteAndPause(event.target);
             }
           },
           true
@@ -967,6 +1082,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
 
     stillMatches(element, rule) {
       if (!this.applies(rule)) return false;
+      if (this.allowedTarget(element, rule)) return false; // Now belongs to an allowed account.
       try {
         const nodes = element.matches(rule.selector) ? [element] : [];
         if (rule.closest) nodes.push(...element.querySelectorAll(rule.selector));
@@ -1000,18 +1116,29 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
         : this.coverTargets(coveredSpec).length
           ? this.coverTarget()
           : document.documentElement;
+      const allowedSeen = new Set(); // Items let through this time round.
       for (const rule of this.rules) {
         if (!this.applies(rule)) continue;
         const attribute = rule.action === 'blur' ? ATTR_BLURRED : ATTR_HIDDEN;
         for (const node of this.query(rule)) {
           if (!this.textMatches(rule, node)) continue;
           const target = rule.closest ? node.closest(rule.closest) : node;
-          if (!target || target.matches(MARKED)) continue;
+          if (!target) continue;
+          if (this.allowedTarget(target, rule)) {
+            if (!target.hasAttribute(ATTR_ALLOWED)) target.setAttribute(ATTR_ALLOWED, '');
+            allowedSeen.add(target);
+            continue;
+          }
+          if (target.matches(MARKED)) continue;
           // Skip anything inside a block we already handled (no double counting).
           if (target.parentElement && target.parentElement.closest(MARKED)) continue;
           target.setAttribute(attribute, String(rule.index));
           if (rule.count && !(coveredArea && coveredArea.contains(target))) blocked += 1;
         }
+      }
+      // Items that stopped belonging to an allowed account (YouTube reuses cards).
+      for (const element of document.querySelectorAll(`[${ATTR_ALLOWED}]`)) {
+        if (!allowedSeen.has(element)) element.removeAttribute(ATTR_ALLOWED);
       }
       if (blocked) this.addCount(blocked);
       this.runEffects();

@@ -540,6 +540,86 @@ body {
   outline-offset: 2px;
 }
 
+/* ---- Allowed accounts: the same indented look as allowed times ---- */
+
+.allow {
+  margin: -2px 0 0;
+  padding: 0 0 10px 12px;
+  border-left: 2px solid var(--rule);
+  color: var(--slate);
+  font-size: 12px;
+}
+
+.allow.is-disabled {
+  opacity: 0.55;
+}
+
+.allow-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.allow-list[hidden],
+.allow-form[hidden] {
+  display: none;
+}
+
+.allow-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px 1px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--ink);
+}
+
+.allow-remove {
+  padding: 1px 6px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.allow-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.allow-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: 12px/1.3 var(--font-body);
+}
+
+.allow-input::placeholder {
+  color: var(--slate);
+}
+
+.allow-input:disabled,
+.allow-form .btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.allow-form .btn:disabled:hover {
+  border-color: var(--rule);
+}
+
+.allow-input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 /* ---- Allowed times: sits under a platform's options, like one of them ---- */
 
 .schedule {

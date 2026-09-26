@@ -13,6 +13,11 @@
  * memory. Shortening or removing a time is instant, and so is "Block now"
  * during an allowed time.
  *
+ * Allowed accounts (YouTube, Instagram, TikTok, Snapchat): a short list of
+ * channels or accounts whose own pages and items get through while the feeds
+ * stay blocked. Adding one loosens blocking, so it goes through the same
+ * waiting request as allowed times; removing one is instant.
+ *
  * A focus session ("Focus session" at the top) blocks every platform for 30
  * minutes to 2 hours: switches, YouTube's choice of what to block and allowed
  * times are locked until it ends. It is stored as `focusUntil` in the synced settings
@@ -26,6 +31,15 @@ const { PLATFORMS, todayKey, normalizeStats, totalOf } = globalThis.ShortStopSta
 // page explains it too).
 const { OFF_WAIT_SECONDS, OFF_WINDOW_SECONDS } = globalThis.ShortStopPause;
 const { MAX_WINDOWS, normalizeWindows, allowedUntil, isLooser } = globalThis.ShortStopSchedule;
+const { MAX_ACCOUNTS, sites: ALLOW_SITES, normalizeList } = globalThis.ShortStopAllowlist;
+
+// What an allowed account gets through on each site (and what stays blocked).
+const ALLOW_NOTES = {
+  youtube: "An allowed channel's page, videos and Shorts get through. The home feed and Up next stay blocked.",
+  instagram: "An allowed account's profile, Reels tab and Stories get through. The feed and Explore stay blocked.",
+  tiktok: "An allowed account's profile, videos and LIVE get through. For You and the other feeds stay blocked.",
+  snapchat: "An allowed account's own Spotlight gets through. The Spotlight feed stays blocked.",
+};
 
 const NAMES = {
   youtube: 'YouTube',
@@ -68,7 +82,8 @@ const WEEK = [1, 2, 3, 4, 5, 6, 0].map((day) => {
 /*
  * settings: sync storage (switches, options, `schedules`).
  * Local storage, this device only:
- *   pending        { platform: { kind: 'schedule', at, windows } } a waiting allowed-times change
+ *   pending        { platform: { kind: 'schedule', at, windows } } a waiting allowed-times change,
+ *                  or { kind: 'allow', at, name } an allowed account waiting to be added
  *   scheduleSkips  { platform: time } "Block now" ignores allowed times until then
  */
 const state = { settings: {}, pending: {}, scheduleSkips: {} };
@@ -77,6 +92,7 @@ const LOCAL_KEYS = ['pending', 'scheduleSkips'];
 const RETIRED_LOCAL_KEYS = ['pendingOff', 'unlocks', 'pauseLog'];
 const panels = new Map(); // platform -> { panel, status, buttons }
 const schedulers = new Map(); // platform -> the allowed-times controls
+const allowBoxes = new Map(); // platform -> the allowed-accounts controls
 const drafts = new Map(); // platform -> allowed times being edited
 
 /* ------------------------------------------------------------------ */
@@ -188,7 +204,8 @@ function confirmRequest(platform) {
   const request = pendingRequest(platform, Date.now());
   if (!request || request.phase !== 'ready') return Promise.resolve(); // Too early: nothing happens.
   state.pending = without(state.pending, platform);
-  setSchedule(platform, request.windows);
+  if (request.kind === 'allow') setAllowed(platform, [...savedAllowed(platform), request.name]);
+  else setSchedule(platform, request.windows);
   return commit({ sync: true, local: true });
 }
 
@@ -218,6 +235,14 @@ function blockAgain(platform) {
 function saveOption(key, value) {
   state.settings = { ...state.settings, [key]: value };
   return commit({ sync: true });
+}
+
+function savedAllowed(platform) {
+  return normalizeList(platform, state.settings[ALLOW_SITES[platform].setting]);
+}
+
+function setAllowed(platform, names) {
+  state.settings = { ...state.settings, [ALLOW_SITES[platform].setting]: normalizeList(platform, names) };
 }
 
 function setSchedule(platform, windows) {
@@ -265,6 +290,136 @@ function buildPanel(platform, input) {
 
   input.closest('.platform-row').after(panel);
   panels.set(platform, { panel, status, buttons });
+}
+
+/* ------------------------------------------------------------------ */
+/* Allowed accounts                                                     */
+/* ------------------------------------------------------------------ */
+
+// "Allowed channels" / "Allowed accounts" under a platform: the list, each with
+// a remove button, and a field to add one.
+function buildAllowlist(platform, item) {
+  const rules = ALLOW_SITES[platform];
+  const box = element('div', 'allow');
+  box.dataset.platform = platform;
+  const heading = `Allowed ${rules.noun}s`;
+  const title = element('span', 'schedule-title', heading);
+  title.id = `allow-title-${platform}`;
+  const head = element('div', 'schedule-row');
+  head.append(title);
+  const list = element('ul', 'allow-list');
+  list.setAttribute('aria-labelledby', title.id);
+  const summary = element('p', 'schedule-summary');
+  const form = element('form', 'allow-form');
+  form.noValidate = true;
+  const input = element('input', 'allow-input');
+  input.type = 'text';
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  input.placeholder = `${rules.example} or a link`;
+  input.setAttribute('aria-label', `Add an allowed ${NAMES[platform]} ${rules.noun}`);
+  const add = element('button', 'btn btn-plain', 'Add');
+  add.type = 'submit';
+  form.append(input, add);
+  const note = element(
+    'p',
+    'schedule-note',
+    `${ALLOW_NOTES[platform]} Adding one takes a ${OFF_WAIT_SECONDS}-second wait. Removing one is instant.`
+  );
+  const error = element('p', 'schedule-error');
+  error.setAttribute('role', 'alert');
+  box.append(head, list, summary, form, note, error);
+  item.append(box);
+
+  const controls = { box, list, summary, form, input, add, error, key: '' };
+  allowBoxes.set(platform, controls);
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    requestAllow(platform);
+  });
+  input.addEventListener('input', () => setText(error, ''));
+}
+
+// Adding an account loosens blocking, so it waits like an allowed time does.
+function requestAllow(platform) {
+  const controls = allowBoxes.get(platform);
+  const rules = ALLOW_SITES[platform];
+  const name = rules.parse(controls.input.value);
+  const saved = savedAllowed(platform);
+  if (!name) {
+    setText(
+      controls.error,
+      `That doesn't look like a ${NAMES[platform]} ${rules.noun}. Try ${rules.example} or a link to the ${rules.noun}.`
+    );
+    controls.input.focus();
+    return Promise.resolve();
+  }
+  if (saved.includes(name)) {
+    setText(controls.error, `${rules.label(name)} is already allowed.`);
+    controls.input.focus();
+    return Promise.resolve();
+  }
+  if (saved.length >= MAX_ACCOUNTS) {
+    setText(controls.error, `You can allow up to ${MAX_ACCOUNTS} ${rules.noun}s. Remove one first.`);
+    return Promise.resolve();
+  }
+  controls.input.value = '';
+  setText(controls.error, '');
+  state.pending = { ...state.pending, [platform]: { kind: 'allow', at: Date.now(), name } };
+  return commit({ local: true });
+}
+
+// Removing an account tightens blocking, so it is saved straight away.
+function removeAllowed(platform, name) {
+  setAllowed(
+    platform,
+    savedAllowed(platform).filter((entry) => entry !== name)
+  );
+  return commit({ sync: true });
+}
+
+function renderAllowlist(platform, now) {
+  const controls = allowBoxes.get(platform);
+  if (!controls) return;
+  const rules = ALLOW_SITES[platform];
+  const names = savedAllowed(platform);
+  const request = pendingRequest(platform, now);
+  const off = state.settings[platform] === false;
+  const focus = inFocus(now);
+
+  // Rebuild the list only when it changes, so focus isn't lost while typing.
+  const key = names.join('\n');
+  if (key !== controls.key) {
+    controls.key = key;
+    controls.list.replaceChildren();
+    for (const name of names) {
+      const entry = element('li', 'allow-item');
+      const remove = button('\u00d7', 'quiet', 'remove-allowed');
+      remove.classList.add('allow-remove');
+      remove.setAttribute('aria-label', `Remove ${rules.label(name)}`);
+      remove.title = `Remove ${rules.label(name)}`;
+      remove.addEventListener('click', () => {
+        removeAllowed(platform, name);
+        controls.input.focus();
+      });
+      entry.append(element('span', null, rules.label(name)), remove);
+      controls.list.append(entry);
+    }
+  }
+  controls.list.hidden = names.length === 0;
+
+  let summary = names.length ? '' : 'None';
+  if (request && request.kind === 'allow') summary = `${summary ? `${summary}. ` : ''}Adding ${rules.label(request.name)} (waiting).`;
+  if (focus && names.length) summary = 'Ignored during the focus session.';
+  setText(controls.summary, summary);
+  controls.summary.hidden = !summary;
+
+  // Nothing to allow while off; one waiting request at a time; locked in a focus session.
+  const locked = off || Boolean(request) || focus;
+  controls.input.disabled = locked;
+  controls.add.disabled = locked;
+  controls.form.hidden = names.length >= MAX_ACCOUNTS;
+  controls.box.classList.toggle('is-disabled', off);
 }
 
 /* ------------------------------------------------------------------ */
@@ -447,10 +602,16 @@ function renderPlatform(input, now) {
   if (request) mode = request.phase;
   else if (current.kind === 'scheduled') mode = 'scheduled';
 
+  const allowing = request && request.kind === 'allow' ? ALLOW_SITES[platform].label(request.name) : '';
+  const seconds = request && request.readyAt ? Math.ceil((request.readyAt - now) / 1000) : 0;
   const text = {
     closed: '',
-    waiting: request && request.readyAt ? `Saving the new allowed times in ${Math.ceil((request.readyAt - now) / 1000)}s.` : '',
-    ready: `Ready. Save ${NAMES[platform]}'s new allowed times?`,
+    waiting: !seconds
+      ? ''
+      : allowing
+        ? `Allowing ${allowing} in ${seconds}s.`
+        : `Saving the new allowed times in ${seconds}s.`,
+    ready: allowing ? `Ready. Allow ${allowing} on ${NAMES[platform]}?` : `Ready. Save ${NAMES[platform]}'s new allowed times?`,
     scheduled: current.until ? `Allowed by your schedule ${describeUntil(current.until, now)}.` : '',
   }[mode];
 
@@ -520,6 +681,7 @@ function render() {
   for (const input of platformSwitches) {
     renderPlatform(input, now);
     renderScheduler(input.dataset.platform, now);
+    renderAllowlist(input.dataset.platform, now);
   }
   renderOptions(now);
   renderFocus(now);
@@ -736,7 +898,9 @@ async function load() {
   // "turn off" or pause waits that were still counting down.
   const retired = RETIRED_LOCAL_KEYS.filter((key) => key in local);
   if (retired.length) chrome.storage.local.remove(retired).catch(() => {});
-  const waits = Object.entries(state.pending).filter(([, request]) => request && request.kind === 'schedule');
+  const waits = Object.entries(state.pending).filter(
+    ([, request]) => request && (request.kind === 'schedule' || request.kind === 'allow')
+  );
   if (waits.length !== Object.keys(state.pending).length) {
     state.pending = Object.fromEntries(waits);
     chrome.storage.local.set(localState()).catch(() => {});
@@ -749,7 +913,9 @@ async function init() {
   for (const input of platformSwitches) {
     const platform = input.dataset.platform;
     buildPanel(platform, input);
-    buildScheduler(platform, document.getElementById(`details-${platform}`));
+    const details = document.getElementById(`details-${platform}`);
+    if (ALLOW_SITES[platform]) buildAllowlist(platform, details);
+    buildScheduler(platform, details);
     input.addEventListener('click', (event) => {
       // The switch never flips by itself: state decides what it shows.
       event.preventDefault();

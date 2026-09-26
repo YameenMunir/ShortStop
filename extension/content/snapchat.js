@@ -23,6 +23,10 @@ ShortStop.start({
     discover: /^\/(?:discover|explore)(?:\/|$)/,
   },
 
+  // Allowed accounts, chosen in the popup under Snapchat: a profile's own
+  // Spotlight (/@username/spotlight). The Spotlight feed stays blocked.
+  allowlist: { ...ShortStopAllowlist.sites.snapchat, itemOwners: 'a[href^="/@"]' },
+
   cover: {
     // With no content area to find, the panel covers the whole viewport.
     target: ['main'],

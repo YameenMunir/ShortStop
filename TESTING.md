@@ -282,6 +282,31 @@ These selectors haven't been checked on the live site yet, so note anything that
       that ends before it starts (e.g. 23:00 to 01:00) runs past midnight.
 - [ ] Turn a platform off for good: its **Edit** button is greyed out.
 
+## Allowed accounts (popup)
+
+- [ ] Unfold YouTube: **Allowed channels** says "None". Type `not a channel!` and **Add**: it's
+      refused with "That doesn't look like a YouTube channel…".
+- [ ] Paste a channel link (e.g. `https://www.youtube.com/@veritasium/videos`) and **Add**. It
+      waits: "Allowing @veritasium in 29s.", with only Cancel, and the field is greyed out. After
+      30 seconds, **Save now**: `@veritasium` shows in the list.
+- [ ] Add the same channel again: "@veritasium is already allowed."
+- [ ] **Feeds and Shorts** (the default): search for the channel. Its Shorts cards show, and
+      clicking one plays it in the normal player. Other channels' Shorts stay hidden. Its channel
+      page shows its **Shorts** tab. The home page stays blocked, with **Open @veritasium** in the panel.
+- [ ] **Block all of YouTube**: `youtube.com/@veritasium` opens, and one of its videos opens
+      (covered for a moment, then shown with sound, waiting for you to press play). Another
+      channel, and another channel's video, stay blocked.
+- [ ] Remove it with **×**: it's removed at once, and an open channel tab is blocked again
+      without a reload.
+- [ ] **Instagram** (signed in): allow an account you follow. Its profile shows its **Reels** tab,
+      and its Stories open (the viewer is blocked again as soon as it moves on to someone else's).
+      With **Block all of Instagram**, its profile and posts open and other profiles don't.
+- [ ] **TikTok**: allow an account. When it's LIVE, `tiktok.com/@<name>/live` opens. With **Block all
+      of TikTok**, its profile and videos open and others don't.
+- [ ] Start a focus session: the list says "Ignored during the focus session.", the field is
+      greyed out, and the allowed channel is blocked like everything else until it ends.
+- [ ] Facebook, Reddit and X have no allowed-accounts list.
+
 ## More popup checks
 - [ ] Switch Facebook and TikTok off and back on (the panel disappears, the feed returns, and
       it's blocked again as soon as you switch it back on).

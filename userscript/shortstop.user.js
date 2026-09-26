@@ -76,6 +76,14 @@ const ALLOW_X_NOTIFICATIONS = false;
 // Snapchat: Spotlight, Discover and Explore are blocked.
 const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
+// Allowed accounts: their own pages and items get through, feeds stay blocked.
+// Names as they appear on the site, e.g. ['@veritasium', '@3blue1brown'].
+// Up to 10 each.
+const YOUTUBE_ALLOWED_CHANNELS = [];
+const INSTAGRAM_ALLOWED_ACCOUNTS = [];
+const TIKTOK_ALLOWED_ACCOUNTS = [];
+const SNAPCHAT_ALLOWED_ACCOUNTS = [];
+
 /* ================================================================ */
 
 (function () {
@@ -97,6 +105,10 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     x: BLOCK_X_FEEDS,
     xNotifications: ALLOW_X_NOTIFICATIONS,
     snapchat: BLOCK_SNAPCHAT_SPOTLIGHT,
+    youtubeAllowed: YOUTUBE_ALLOWED_CHANNELS,
+    instagramAllowed: INSTAGRAM_ALLOWED_ACCOUNTS,
+    tiktokAllowed: TIKTOK_ALLOWED_ACCOUNTS,
+    snapchatAllowed: SNAPCHAT_ALLOWED_ACCOUNTS,
   };
 
   /* ======== shared/schedule.js ======== */
@@ -215,6 +227,173 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     global.ShortStopSchedule = { MAX_WINDOWS, normalizeWindows, allowedUntil, isAllowed, isLooser };
   })(globalThis);
 
+  /* ======== shared/allowlist.js ======== */
+  /*
+   * ShortStop: allowed accounts
+   * ===========================
+   * Some people follow one YouTube channel or Instagram account on purpose and
+   * don't want it caught by feed blocking. Each platform below can keep a short
+   * list of allowed accounts (stored as lower-case names in the synced settings,
+   * under `setting`). An allowed account's OWN pages and items get through: its
+   * channel or profile, its videos, LIVE, Stories and Reels tab, and its Shorts
+   * cards. Algorithmic feeds (home, For You, Explore) have no single owner, so
+   * they stay blocked whatever the list says.
+   *
+   * Used by the popup (to read what people type or paste) and by the content
+   * scripts (to recognise an account's pages and links), so the two agree.
+   *
+   * Reddit, X and Facebook have no list: their communities, profiles and Pages
+   * are never blocked in the first place, only their feeds.
+   */
+  (function (global) {
+    'use strict';
+
+    const MAX_ACCOUNTS = 10; // Per platform, to keep the popup and synced settings small.
+
+    // A pasted link, if the text is one for this site (with or without https://).
+    function asUrl(text, hosts) {
+      const withScheme = /^[a-z]+:\/\//i.test(text) ? text : `https://${text}`;
+      try {
+        const url = new URL(withScheme);
+        const host = url.hostname.toLowerCase();
+        return hosts.some((site) => host === site || host.endsWith(`.${site}`)) ? url : null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function segment(pathname, index) {
+      const part = pathname.split('/')[index + 1] || '';
+      try {
+        return decodeURIComponent(part);
+      } catch (error) {
+        return part;
+      }
+    }
+
+    // Builds one platform's rules from: the site's hosts, the pattern a name must
+    // fit, and how to find the name in a link's path.
+    function site({ setting, noun, example, hosts, pattern, prefix, fromPath }) {
+      const clean = (name) => (name && pattern.test(name) ? name.toLowerCase() : null);
+      const fromHref = (href) => {
+        if (!href) return null;
+        try {
+          return clean(fromPath(new URL(href, 'https://example.invalid').pathname));
+        } catch (error) {
+          return null;
+        }
+      };
+      return {
+        setting,
+        noun, // "channel" or "account", for the popup's wording.
+        example, // What the popup's field suggests typing.
+        // What someone typed or pasted: a name, "@name", or a link to the account.
+        parse(text) {
+          const value = String(text || '').trim();
+          if (!value) return null;
+          // A link to this site ("youtube.com/@name", "https://..."), else a plain name
+          // (which may itself contain dots, like "john.doe").
+          const url = /[/.]/.test(value) ? asUrl(value, hosts) : null;
+          if (url) return clean(fromPath(url.pathname));
+          return clean(value.replace(/^@/, ''));
+        },
+        label: (name) => `${prefix}${name}`,
+        href: (name) => (prefix === '@' ? `/@${name}` : `/${name}/`),
+        // The account whose own page `url` is (its channel, profile or content), or null.
+        owner: (url) => clean(fromPath(url.pathname)),
+        // The account a link inside an item points to, or null.
+        hrefOwner: fromHref,
+      };
+    }
+
+    // Instagram paths whose first part is a section, not a username.
+    const INSTAGRAM_SECTIONS = new Set([
+      'about', 'accounts', 'api', 'ar', 'challenge', 'create', 'developer', 'direct', 'directory',
+      'emails', 'explore', 'graphql', 'legal', 'locations', 'notifications', 'p', 'privacy', 'reel',
+      'reels', 'session', 'stories', 'terms', 'tv', 'web', 'your_activity',
+    ]);
+
+    const SITES = {
+      youtube: site({
+        setting: 'youtubeAllowed',
+        noun: 'channel',
+        example: '@veritasium',
+        hosts: ['youtube.com'],
+        // YouTube handles: 3 to 30 letters, numbers, underscores, hyphens or dots.
+        pattern: /^[\p{L}\p{N}_.-]{3,30}$/u,
+        prefix: '@',
+        // /@handle and everything under it (its videos, Shorts and playlists tabs).
+        fromPath: (pathname) => {
+          const first = segment(pathname, 0);
+          return first.startsWith('@') ? first.slice(1) : null;
+        },
+      }),
+      instagram: site({
+        setting: 'instagramAllowed',
+        noun: 'account',
+        example: 'natgeo',
+        hosts: ['instagram.com'],
+        // Instagram usernames: up to 30 letters, numbers, dots and underscores.
+        pattern: /^[a-z0-9._]{1,30}$/i,
+        prefix: '@',
+        // /username/, /username/reel/ID, /username/reels/, and /stories/username/...
+        fromPath: (pathname) => {
+          const first = segment(pathname, 0).toLowerCase();
+          if (first === 'stories') {
+            const second = segment(pathname, 1);
+            return second === 'highlights' ? null : second;
+          }
+          return first && !INSTAGRAM_SECTIONS.has(first) ? first : null;
+        },
+      }),
+      tiktok: site({
+        setting: 'tiktokAllowed',
+        noun: 'account',
+        example: '@nasa',
+        hosts: ['tiktok.com'],
+        // TikTok usernames: up to 24 letters, numbers, underscores and dots.
+        pattern: /^[a-z0-9._]{2,24}$/i,
+        prefix: '@',
+        // /@username, its videos and photos, and its LIVE.
+        fromPath: (pathname) => {
+          const first = segment(pathname, 0);
+          return first.startsWith('@') ? first.slice(1) : null;
+        },
+      }),
+      snapchat: site({
+        setting: 'snapchatAllowed',
+        noun: 'account',
+        example: '@nasa',
+        hosts: ['snapchat.com'],
+        // Snapchat usernames: 3 to 15 letters, numbers, hyphens, underscores and dots.
+        pattern: /^[a-z0-9._-]{3,15}$/i,
+        prefix: '@',
+        // /@username and its Spotlight, and the /add/username profile links.
+        fromPath: (pathname) => {
+          const first = segment(pathname, 0);
+          if (first.startsWith('@')) return first.slice(1);
+          return first === 'add' ? segment(pathname, 1) : null;
+        },
+      }),
+    };
+    // Instagram's own links and labels have no "@" in the URL.
+    SITES.instagram.href = (name) => `/${name}/`;
+
+    // A stored list, cleaned up: known-good names, lower-case, no repeats, at most MAX_ACCOUNTS.
+    function normalizeList(platform, list) {
+      const rules = SITES[platform];
+      if (!rules || !Array.isArray(list)) return [];
+      const names = [];
+      for (const entry of list) {
+        const name = typeof entry === 'string' ? rules.parse(entry) : null;
+        if (name && !names.includes(name)) names.push(name);
+      }
+      return names.slice(0, MAX_ACCOUNTS);
+    }
+
+    global.ShortStopAllowlist = { MAX_ACCOUNTS, sites: SITES, normalizeList };
+  })(globalThis);
+
   /* ======== core.js ======== */
   /*
    * ShortStop core engine
@@ -236,7 +415,11 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    *      replaced by a ShortStop panel, re-applied whenever the route or the DOM
    *      changes. On covered routes, scroll/next-video keys are swallowed and any
    *      media that starts playing is paused at once.
-   *   5. Settings changes apply live, without reloading the tab. Allowed times
+   *   5. Allowed accounts (`allowlist`, see shared/allowlist.js): a page that
+   *      belongs to an account on the platform's list is not covered, and rules
+   *      marked `allowOwner` let that account's items through. Feeds have no
+   *      single owner, so they stay covered. A focus session ignores the list.
+   *   6. Settings changes apply live, without reloading the tab. Allowed times
    *      (`schedules`, see shared/schedule.js) lift blocking while they last,
    *      re-checked once a second, so it comes back by itself when they end. A
    *      focus session (`focusUntil`) overrides that: every platform blocks until
@@ -270,6 +453,15 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    *       pauseMedia: true,                   // pause media on covered pages (default true)
    *       blockKeys: true,                    // swallow feed keys on covered pages (default true)
    *     },
+   *     allowlist: {                          // allowed accounts (shared/allowlist.js sites)
+   *       setting: 'youtubeAllowed',          // the list, in the synced settings
+   *       owner: (url) => name | null,        // whose own page this is (channel, profile)
+   *       viewOwner?: (url) => name | null,   // whose single video this is, from the page
+   *                                           // itself (uncovers the page, nothing else)
+   *       itemOwners: 'a[href^="/@"]',        // links inside an item that name its owner
+   *       hrefOwner: (href) => name | null,
+   *       label: (name) => '@name', href: (name) => '/@name',
+   *     },
    *     effects: [{                           // small actions run after every scan, e.g.
    *       name, page?, onlyIf?(options),      // switching a site's autoplay off
    *       run: () => void,
@@ -283,6 +475,9 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    *       closest: 'css selector',            // hide this ancestor of the match instead (JS only)
    *       text: /regex/,                      // only if the target's text matches (JS only)
    *       count: true,                        // counts toward "blocked today"
+   *       allowOwner: true | 'page',          // let an allowed account's items through: 'page'
+   *                                           // only on that account's own page; true also where
+   *                                           // the item's own links name it (itemOwners)
    *       independent: true,                  // keeps working while the platform's blocking is
    *                                           // off or in an allowed time (only its own
    *                                           // onlyIf option decides)
@@ -301,6 +496,9 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     const ATTR_BLURRED = 'data-shortstop-blurred';
     const ATTR_PAGE = 'data-shortstop-page';
     const ATTR_COVER = 'data-shortstop-cover';
+    const ATTR_ALLOWED = 'data-shortstop-allowed'; // An item that belongs to an allowed account.
+    const ATTR_OWNER = 'data-shortstop-owner-allowed'; // On <html>: an allowed account's own page.
+    const ATTR_VIEW = 'data-shortstop-view-allowed'; // On <html>: this page belongs to an allowed account.
     const MARKED = `[${ATTR_HIDDEN}], [${ATTR_BLURRED}]`;
     const COVER_TAG = 'shortstop-cover';
 
@@ -519,11 +717,31 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       observer.observe(document, { childList: true });
     }
 
+    // Media ShortStop muted (not media the person muted themselves).
+    const mutedByShortStop = new WeakSet();
+
+    function muteAndPause(media) {
+      if (!media.muted) {
+        media.muted = true;
+        mutedByShortStop.add(media);
+      }
+      media.pause();
+    }
+
+    // Gives back the sound ShortStop took, e.g. when a covered page turns out to
+    // belong to an allowed account. The media stays paused: pressing play is up to them.
+    function restoreSound() {
+      for (const media of document.querySelectorAll('video, audio')) {
+        if (!mutedByShortStop.has(media)) continue;
+        mutedByShortStop.delete(media);
+        media.muted = false;
+      }
+    }
+
     function pauseMedia() {
       for (const media of document.querySelectorAll('video, audio')) {
         try {
-          media.muted = true;
-          media.pause();
+          muteAndPause(media);
         } catch (error) {
           /* Ignore media we cannot control. */
         }
@@ -605,6 +823,9 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         this.env = environment;
         this.rules = asList(config.rules).map((rule, index) => ({ action: 'hide', ...rule, index }));
         this.options = this.resolveOptions({});
+        this.allowed = new Set(); // Allowed accounts (empty during a focus session).
+        this.ownerAllowed = false; // This page is an allowed account's own page.
+        this.viewAllowed = false; // This page belongs to an allowed account (own page or video).
         this.lastSettings = {};
         this.scheduleOpen = false; // Inside an allowed time when settings were last applied.
         this.focusOn = false; // A focus session was running when settings were last applied.
@@ -673,7 +894,18 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         if (changed && this.styleEl) this.styleEl.textContent = this.buildCss();
         this.lastSettings = settings;
         this.focusOn = this.focusActive(settings);
+        this.allowed = this.resolveAllowlist(settings);
         this.setEnabled(this.isBlocking(settings));
+      }
+
+      // The platform's allowed accounts. A focus session blocks everything, so
+      // it ignores the list.
+      resolveAllowlist(settings) {
+        const allowlist = this.config.allowlist;
+        if (!allowlist || this.focusActive(settings)) return new Set();
+        const shared = global.ShortStopAllowlist;
+        const list = settings[allowlist.setting];
+        return new Set(shared ? shared.normalizeList(this.config.id, list) : []);
       }
 
       // Blocking is on unless this platform is switched off or inside one of its
@@ -753,8 +985,12 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
           this.styleEl = null;
         }
         for (const element of document.querySelectorAll(MARKED)) unmark(element);
+        for (const element of document.querySelectorAll(`[${ATTR_ALLOWED}]`)) element.removeAttribute(ATTR_ALLOWED);
         this.removeCover();
-        document.documentElement.removeAttribute(ATTR_PAGE);
+        const root = document.documentElement;
+        root.removeAttribute(ATTR_PAGE);
+        root.removeAttribute(ATTR_OWNER);
+        root.removeAttribute(ATTR_VIEW);
       }
 
       /* ---------------- Styles ---------------- */
@@ -768,8 +1004,9 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         // stop the page scrolling if the panel had to cover the whole viewport.
         const cover = this.config.cover;
         if (cover && this.enabled) {
+          const notAllowed = this.config.allowlist ? `:not([${ATTR_VIEW}])` : '';
           for (const page of Object.keys(cover.pages)) {
-            const spec = this.coverSpec(page);
+            const spec = this.pageCoverSpec(page);
             if (!spec) continue;
             // With several candidate content areas, a later one is only hidden when
             // it does not contain an earlier one (which is where the panel goes).
@@ -780,7 +1017,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
               .map((target, i) => (i === 0 ? target : `${target}${targets.slice(0, i).map((t) => `:not(:has(${t}))`).join('')}`))
               .join(', ');
             blocks.push(
-              `/* Covered page: ${page} */\nhtml[${ATTR_PAGE}="${page}"] :is(${hide}) { display: none !important; }`
+              `/* Covered page: ${page} */\nhtml[${ATTR_PAGE}="${page}"]${notAllowed} :is(${hide}) { display: none !important; }`
             );
           }
           blocks.push(
@@ -794,9 +1031,15 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
           if (!this.enabled && !rule.independent) continue;
           if (rule.onlyIf && !rule.onlyIf(this.options)) continue;
           const pages = asList(rule.page);
+          const owned = Boolean(rule.allowOwner && this.config.allowlist);
+          // Owned rules skip an allowed account's own page, and (true) its items.
+          const root = owned ? `:not([${ATTR_OWNER}])` : '';
+          const item = owned && rule.allowOwner === true ? `:not([${ATTR_ALLOWED}], [${ATTR_ALLOWED}] *)` : '';
           const selector = pages.length
-            ? pages.map((page) => `html[${ATTR_PAGE}="${page}"] :is(${rule.selector})`).join(',\n')
-            : rule.selector;
+            ? pages.map((page) => `html[${ATTR_PAGE}="${page}"]${root} :is(${rule.selector})${item}`).join(',\n')
+            : owned
+              ? `html${root} :is(${rule.selector})${item}`
+              : rule.selector;
           blocks.push(`/* ${rule.name} */\n${selector} { display: none !important; }`);
         }
         return blocks.join('\n\n');
@@ -848,6 +1091,40 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         this.page = Object.keys(pages).find((name) => matches(pages[name])) || 'other';
         const root = document.documentElement;
         if (root.getAttribute(ATTR_PAGE) !== this.page) root.setAttribute(ATTR_PAGE, this.page);
+        this.updateOwner(url);
+      }
+
+      // Whether this page belongs to an allowed account: its own page (from the
+      // URL), or a single video of theirs (from the page, e.g. YouTube's owner link).
+      updateOwner(url) {
+        const allowlist = this.config.allowlist;
+        let owner = null;
+        let viewer = null;
+        if (allowlist && url && this.allowed.size) {
+          owner = allowlist.owner(url);
+          viewer = owner || (allowlist.viewOwner ? allowlist.viewOwner(url) : null);
+        }
+        this.ownerAllowed = Boolean(owner) && this.allowed.has(owner);
+        this.viewAllowed = this.ownerAllowed || (Boolean(viewer) && this.allowed.has(viewer));
+        const root = document.documentElement;
+        root.toggleAttribute(ATTR_OWNER, this.ownerAllowed);
+        root.toggleAttribute(ATTR_VIEW, this.viewAllowed);
+      }
+
+      // An item that an allowed account owns: on its own page ('page' and true
+      // rules), inside an item already let through, or named by the item's own
+      // owner links (true rules only).
+      allowedTarget(element, rule) {
+        const allowlist = this.config.allowlist;
+        if (!rule.allowOwner || !allowlist || !this.allowed.size) return false;
+        if (this.ownerAllowed) return true;
+        if (rule.allowOwner !== true) return false;
+        if (element.parentElement && element.parentElement.closest(`[${ATTR_ALLOWED}]`)) return true;
+        for (const link of element.querySelectorAll(allowlist.itemOwners)) {
+          const name = allowlist.hrefOwner(link.getAttribute('href'));
+          if (name && this.allowed.has(name)) return true;
+        }
+        return false;
       }
 
       /* ---------------- Covered pages ---------------- */
@@ -855,6 +1132,12 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       // The cover settings for `page`, or null if that page is not covered
       // (or an option such as "allow notifications" currently uncovers it).
       coverSpec(page) {
+        return this.viewAllowed ? null : this.pageCoverSpec(page);
+      }
+
+      // The cover for a named page, whoever owns this particular one (the CSS
+      // leaves out allowed accounts' pages itself, with ATTR_VIEW).
+      pageCoverSpec(page) {
         const cover = this.config.cover;
         let spec = cover && Object.prototype.hasOwnProperty.call(cover.pages, page) ? cover.pages[page] : null;
         if (typeof spec === 'function') spec = spec(this.options);
@@ -881,6 +1164,12 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       updateCover() {
         const spec = this.enabled && !this.redirecting ? this.coverSpec(this.page) : null;
         if (!spec) {
+          if (this.viewAllowed && this.cover.host) {
+            // Covered at first, then recognised as an allowed account's page (e.g.
+            // YouTube's owner link arrived): not a block after all.
+            if (this.cover.countedHref === this.env.href() && this.pendingCount > 0) this.pendingCount -= 1;
+            restoreSound();
+          }
           this.removeCover();
           return;
         }
@@ -982,6 +1271,11 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
           /* Links that need the URL just get null. */
         }
         const wanted = asList(source && source(this.options, url)).filter((link) => link && link.href);
+        // The allowed accounts are always one click away from a blocked page.
+        const allowlist = this.config.allowlist;
+        if (allowlist) {
+          for (const name of this.allowed) wanted.push({ label: `Open ${allowlist.label(name)}`, href: allowlist.href(name) });
+        }
         const key = JSON.stringify(wanted);
         if (key === this.cover.linksKey) return; // Unchanged: leave the DOM alone.
         this.cover.linksKey = key;
@@ -1018,6 +1312,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
           const match = url.pathname.match(rule.match);
           if (!this.enabled && !rule.independent) continue;
           if (!match || (rule.when && !rule.when(url)) || (rule.onlyIf && !rule.onlyIf(this.options))) continue;
+          if (rule.allowOwner && this.allowed.has(rule.allowOwner(match, url))) continue; // An allowed account's own page.
           const destination = new URL(rule.to(match, url), url.origin).href;
           if (destination !== url.href) return destination;
         }
@@ -1089,8 +1384,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
             'play',
             (event) => {
               if (event.target instanceof HTMLMediaElement && this.coverFlag('pauseMedia')) {
-                event.target.muted = true;
-                event.target.pause();
+                muteAndPause(event.target);
               }
             },
             true
@@ -1185,6 +1479,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
 
       stillMatches(element, rule) {
         if (!this.applies(rule)) return false;
+        if (this.allowedTarget(element, rule)) return false; // Now belongs to an allowed account.
         try {
           const nodes = element.matches(rule.selector) ? [element] : [];
           if (rule.closest) nodes.push(...element.querySelectorAll(rule.selector));
@@ -1218,18 +1513,29 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
           : this.coverTargets(coveredSpec).length
             ? this.coverTarget()
             : document.documentElement;
+        const allowedSeen = new Set(); // Items let through this time round.
         for (const rule of this.rules) {
           if (!this.applies(rule)) continue;
           const attribute = rule.action === 'blur' ? ATTR_BLURRED : ATTR_HIDDEN;
           for (const node of this.query(rule)) {
             if (!this.textMatches(rule, node)) continue;
             const target = rule.closest ? node.closest(rule.closest) : node;
-            if (!target || target.matches(MARKED)) continue;
+            if (!target) continue;
+            if (this.allowedTarget(target, rule)) {
+              if (!target.hasAttribute(ATTR_ALLOWED)) target.setAttribute(ATTR_ALLOWED, '');
+              allowedSeen.add(target);
+              continue;
+            }
+            if (target.matches(MARKED)) continue;
             // Skip anything inside a block we already handled (no double counting).
             if (target.parentElement && target.parentElement.closest(MARKED)) continue;
             target.setAttribute(attribute, String(rule.index));
             if (rule.count && !(coveredArea && coveredArea.contains(target))) blocked += 1;
           }
+        }
+        // Items that stopped belonging to an allowed account (YouTube reuses cards).
+        for (const element of document.querySelectorAll(`[${ATTR_ALLOWED}]`)) {
+          if (!allowedSeen.has(element)) element.removeAttribute(ATTR_ALLOWED);
         }
         if (blocked) this.addCount(blocked);
         this.runEffects();
@@ -1339,9 +1645,26 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
    * A focus session raises 'shorts' to 'feeds' (it never leaves the home feed
    * open); 'all' stays 'all'.
    *
+   * Allowed channels (shared/allowlist.js): an allowed channel's own pages
+   * (/@handle and its tabs) and its videos are never covered, even with 'all',
+   * and its Shorts cards stay in lists. They still open in the normal player,
+   * because the Shorts player would scroll straight on into other channels.
+   * The home feed, Trending and Up next stay blocked: they are recommendations.
+   *
    * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
    * that slipped through, and add or adjust a rule below. See README.md.
    */
+  // The channel that owns the video on a /watch page, read from the player itself.
+  // The URL doesn't say, and during YouTube's in-page navigation the owner link
+  // can still be the previous video's, so only a player showing THIS video counts.
+  function youtubeVideoOwner(url) {
+    const video = url.pathname === '/watch' ? url.searchParams.get('v') : null;
+    if (!video || !/^[\w-]+$/.test(video)) return null;
+    const player = document.querySelector(`ytd-watch-flexy[video-id="${video}"]`);
+    const link = player && player.querySelector('ytd-video-owner-renderer a[href^="/@"], #owner a[href^="/@"]');
+    return link ? ShortStopAllowlist.sites.youtube.hrefOwner(link.getAttribute('href')) : null;
+  }
+
   // Rules and covered pages for the feeds: on in 'feeds' and 'all', off in 'shorts'.
   const youtubeBlocksFeeds = (options) => options.mode !== 'shorts';
 
@@ -1362,6 +1685,13 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
   ShortStop.start({
     id: 'youtube',
     hosts: ['youtube.com'],
+
+    // Allowed channels, chosen in the popup under YouTube.
+    allowlist: {
+      ...ShortStopAllowlist.sites.youtube,
+      viewOwner: youtubeVideoOwner,
+      itemOwners: 'a[href^="/@"]', // A card's channel name and avatar link to /@handle.
+    },
 
     // YouTube's own SPA events (desktop, then m.youtube.com).
     navigationEvents: ['yt-navigate-finish', 'yt-page-data-updated', 'state-navigateend'],
@@ -1461,33 +1791,39 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       /* ---- Shelves and sections (containers first) ---- */
       {
         name: 'Shorts shelf on search, watch and channel pages',
+        allowOwner: 'page',
         selector: 'ytd-reel-shelf-renderer',
         count: true,
       },
       {
         name: 'Shorts section on the home page',
+        allowOwner: 'page',
         selector: 'ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])',
         count: true,
       },
       {
         name: 'Shorts rich shelf (outside a section)',
+        allowOwner: 'page',
         selector: 'ytd-rich-shelf-renderer[is-shorts]',
         count: true,
       },
       {
         name: 'Shorts grid shelf in search (2025 layout)',
+        allowOwner: 'page',
         selector:
           'grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Mobile: Shorts section on the home page',
+        allowOwner: 'page',
         selector:
           'ytm-rich-section-renderer:has(ytm-reel-shelf-renderer, ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2)',
         count: true,
       },
       {
         name: 'Mobile: Shorts shelf (outside a section)',
+        allowOwner: 'page',
         selector: 'ytm-reel-shelf-renderer',
         count: true,
       },
@@ -1495,37 +1831,44 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       /* ---- Individual Shorts mixed into normal video lists ---- */
       {
         name: 'Short in the home / subscriptions grid',
+        allowOwner: true,
         selector: 'ytd-rich-item-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in search results',
+        allowOwner: true,
         selector: 'ytd-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in a channel or legacy grid',
+        allowOwner: true,
         selector: 'ytd-grid-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short in watch-page suggestions',
+        allowOwner: true,
         selector: 'ytd-compact-video-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Mobile: Short in a video list',
+        allowOwner: true,
         selector:
           'ytm-video-with-context-renderer:has(a[href^="/shorts/"]), ytm-rich-item-renderer:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short as a new-style lockup card',
+        allowOwner: true,
         selector: 'yt-lockup-view-model:has(a[href^="/shorts/"])',
         count: true,
       },
       {
         name: 'Short marked by the SHORTS badge on its thumbnail',
+        allowOwner: true,
         // Some lists link a Short as /watch?v=; the thumbnail badge still says SHORTS.
         selector:
           ':is(ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer):has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"])',
@@ -1533,6 +1876,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       },
       {
         name: 'Any leftover Shorts tile',
+        allowOwner: true,
         selector: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-reel-item-renderer',
         count: true,
       },
@@ -1550,6 +1894,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       },
       {
         name: 'Channel page "Shorts" tab',
+        allowOwner: 'page',
         selector: 'yt-tab-shape[tab-title="Shorts"], tp-yt-paper-tab:has(a[href$="/shorts"])',
       },
       {
@@ -1654,6 +1999,15 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
   }
 
   // Covered pages and recommendation rules: on in 'feeds' and 'all', off in 'reels'.
+  // The account behind a single photo post (/p/ID), read from the post's header:
+  // the URL doesn't name it. Only used with "Block all of Instagram", where posts
+  // are covered, so an allowed account's posts open.
+  function instagramPostOwner(url) {
+    if (!/^\/p\/[^/]+/.test(url.pathname)) return null;
+    const link = document.querySelector('main header a[href]');
+    return link ? ShortStopAllowlist.sites.instagram.hrefOwner(link.getAttribute('href')) : null;
+  }
+
   const instagramBlocksFeeds = (options) => options.mode !== 'reels';
   const instagramReelsOnly = (options) => options.mode === 'reels';
 
@@ -1701,10 +2055,19 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       },
     },
 
+    // Allowed accounts, chosen in the popup under Instagram: their profile, Reels
+    // tab, /username/reel/ links, Stories and (with "Block all") their posts.
+    allowlist: {
+      ...ShortStopAllowlist.sites.instagram,
+      viewOwner: instagramPostOwner,
+      itemOwners: 'header a[href]', // A feed post's header links to the account that posted it.
+    },
+
     redirects: [
       {
         name: "A profile's Reels tab to its main grid",
         match: /^\/([^/]+)\/reels\/?$/,
+        allowOwner: (match) => ShortStopAllowlist.sites.instagram.parse(match[1]),
         to: (match) => `/${match[1]}/`,
       },
       // Home, Explore, Reels and Stories are covered rather than redirected: a
@@ -1751,6 +2114,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       },
       {
         name: 'Reels tab on profiles',
+        allowOwner: 'page',
         selector: 'a[role="tab"][href$="/reels/"]',
       },
       {
@@ -1793,6 +2157,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       /* ---- 'reels': Reels removed from the pages that stay open ---- */
       {
         name: 'Reel in the Home feed',
+        allowOwner: true,
         selector: 'main article:has(a[href*="/reel/"])',
         page: 'home',
         onlyIf: instagramReelsOnly,
@@ -1800,6 +2165,7 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       },
       {
         name: 'Reel in the Explore, search or profile grid',
+        allowOwner: 'page',
         selector: 'main a[href*="/reel/"]',
         page: ['explore', 'search', 'other'],
         onlyIf: instagramReelsOnly,
@@ -2109,6 +2475,10 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     },
 
     // Extra switches and the choice of what to block, shown in the popup under TikTok.
+    // Allowed accounts, chosen in the popup under TikTok: their profile, videos
+    // and LIVE are never covered. For You and the other feeds stay blocked.
+    allowlist: { ...ShortStopAllowlist.sites.tiktok, itemOwners: 'a[href^="/@"]' },
+
     options: {
       notifications: { setting: 'tiktokNotifications', default: false },
       mode: { setting: 'tiktokMode', default: 'feeds', values: ['all', 'feeds'] },
@@ -2406,6 +2776,10 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       spotlight: /^\/(?:@[^/]+\/)?spotlight(?:\/|$)/, // The feed, single videos and a profile's Spotlight.
       discover: /^\/(?:discover|explore)(?:\/|$)/,
     },
+
+    // Allowed accounts, chosen in the popup under Snapchat: a profile's own
+    // Spotlight (/@username/spotlight). The Spotlight feed stays blocked.
+    allowlist: { ...ShortStopAllowlist.sites.snapchat, itemOwners: 'a[href^="/@"]' },
 
     cover: {
       // With no content area to find, the panel covers the whole viewport.

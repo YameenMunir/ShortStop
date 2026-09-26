@@ -75,6 +75,7 @@
           await load('../../extension/shared/stats.js');
           await load('../../extension/shared/pause.js');
           await load('../../extension/shared/schedule.js');
+          await load('../../extension/shared/allowlist.js');
           try { localStorage.removeItem('shortstop.openSites'); } catch (error) {}
           globalThis.ShortStopPause.OFF_WAIT_SECONDS = 2;
           globalThis.ShortStopPause.OFF_WINDOW_SECONDS = 5;
@@ -328,6 +329,77 @@
             new Date(skip).toString()
           );
           check('"Block now" turns the switch back on', toggle('youtube').checked && !shown(panel('youtube')));
+          /* ---- Allowed accounts ---- */
+          const allowBox = (platform) => $(`.allow[data-platform="${platform}"]`);
+          check(
+            'allowed accounts: offered for YouTube, Instagram, TikTok and Snapchat only',
+            ['youtube', 'instagram', 'tiktok', 'snapchat'].every((platform) => allowBox(platform)) &&
+              ['facebook', 'reddit', 'x'].every((platform) => !allowBox(platform))
+          );
+          check(
+            'allowed accounts: YouTube lists channels, the others accounts',
+            allowBox('youtube').querySelector('.schedule-title').textContent === 'Allowed channels' &&
+              allowBox('tiktok').querySelector('.schedule-title').textContent === 'Allowed accounts'
+          );
+          const allowInput = allowBox('youtube').querySelector('.allow-input');
+          const allowError = allowBox('youtube').querySelector('.schedule-error');
+          const addAccount = async (value) => {
+            allowInput.value = value;
+            allowBox('youtube').querySelector('.allow-form').requestSubmit();
+            await step();
+          };
+          await chrome.storage.local.set({ pending: {} });
+          await step();
+          check('allowed accounts: none to start with', allowBox('youtube').querySelector('.schedule-summary').textContent === 'None');
+          await addAccount('not a channel!');
+          check(
+            'allowed accounts: something that is not a channel is refused',
+            /doesn't look like a YouTube channel/.test(allowError.textContent) && !pendingOf('youtube'),
+            allowError.textContent
+          );
+          await addAccount('https://www.youtube.com/@Veritasium/videos');
+          check(
+            'allowed accounts: a pasted link is read as the channel, and waits',
+            pendingOf('youtube') && pendingOf('youtube').kind === 'allow' && pendingOf('youtube').name === 'veritasium' && !allowError.textContent,
+            JSON.stringify(pendingOf('youtube'))
+          );
+          check('allowed accounts: nothing is allowed before the wait', !(stores.sync.settings.youtubeAllowed || []).length);
+          check('allowed accounts: the card counts down', /^Allowing @veritasium in \ds\.$/.test(status('youtube')), status('youtube'));
+          check('allowed accounts: the field is locked while it waits', allowInput.disabled);
+          check(
+            'allowed accounts: the list says one is waiting',
+            allowBox('youtube').querySelector('.schedule-summary').textContent === 'None. Adding @veritasium (waiting).',
+            allowBox('youtube').querySelector('.schedule-summary').textContent
+          );
+          await wait(3300); // The popup refreshes its countdown once a second.
+          check('allowed accounts: after the wait it asks', status('youtube') === 'Ready. Allow @veritasium on YouTube?', status('youtube'));
+          action('youtube', 'confirm').click();
+          await step();
+          check(
+            'allowed accounts: Save now allows it',
+            JSON.stringify(stores.sync.settings.youtubeAllowed) === '["veritasium"]' && !pendingOf('youtube'),
+            JSON.stringify(stores.sync.settings.youtubeAllowed)
+          );
+          check(
+            'allowed accounts: it shows in the list, with a remove button',
+            allowBox('youtube').querySelector('.allow-item').textContent.includes('@veritasium') &&
+              allowBox('youtube').querySelector('.allow-remove').getAttribute('aria-label') === 'Remove @veritasium'
+          );
+          await addAccount('@VERITASIUM');
+          check('allowed accounts: the same channel twice is refused', /already allowed/.test(allowError.textContent) && !pendingOf('youtube'), allowError.textContent);
+          await addAccount('@3blue1brown');
+          action('youtube', 'cancel').click();
+          await step();
+          check('allowed accounts: Cancel drops a waiting one', !pendingOf('youtube') && JSON.stringify(stores.sync.settings.youtubeAllowed) === '["veritasium"]');
+          allowBox('youtube').querySelector('.allow-remove').click();
+          await step();
+          check(
+            'allowed accounts: removing is instant',
+            JSON.stringify(stores.sync.settings.youtubeAllowed) === '[]' && !allowBox('youtube').querySelector('.allow-item')
+          );
+          await chrome.storage.sync.set({ settings: { ...stores.sync.settings, youtubeAllowed: ['veritasium'] } });
+          await step();
+
           /* ---- Focus session ---- */
           await chrome.storage.sync.set({
             settings: { ...stores.sync.settings, schedules: {}, youtube: false, youtubeMode: 'shorts' },
@@ -422,6 +494,12 @@
             detailOf('instagram')
           );
           check('focus: allowed times cannot be edited', ALL.every((platform) => inScheduler(platform, '.schedule-edit').disabled));
+          check('focus: allowed accounts cannot be added', allowBox('youtube').querySelector('.allow-input').disabled);
+          check(
+            'focus: the list says it is ignored',
+            allowBox('youtube').querySelector('.schedule-summary').textContent === 'Ignored during the focus session.',
+            allowBox('youtube').querySelector('.schedule-summary').textContent
+          );
           check('focus: other options still work', !$('#option-instagram-notifications').disabled);
           check('focus: YouTube keeps its own setting underneath', stores.sync.settings.youtube === false);
 

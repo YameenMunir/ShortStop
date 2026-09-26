@@ -80,6 +80,10 @@ ShortStop.start({
   },
 
   // Extra switches and the choice of what to block, shown in the popup under TikTok.
+  // Allowed accounts, chosen in the popup under TikTok: their profile, videos
+  // and LIVE are never covered. For You and the other feeds stay blocked.
+  allowlist: { ...ShortStopAllowlist.sites.tiktok, itemOwners: 'a[href^="/@"]' },
+
   options: {
     notifications: { setting: 'tiktokNotifications', default: false },
     mode: { setting: 'tiktokMode', default: 'feeds', values: ['all', 'feeds'] },

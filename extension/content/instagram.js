@@ -45,6 +45,15 @@ function findOwnProfileHref() {
 }
 
 // Covered pages and recommendation rules: on in 'feeds' and 'all', off in 'reels'.
+// The account behind a single photo post (/p/ID), read from the post's header:
+// the URL doesn't name it. Only used with "Block all of Instagram", where posts
+// are covered, so an allowed account's posts open.
+function instagramPostOwner(url) {
+  if (!/^\/p\/[^/]+/.test(url.pathname)) return null;
+  const link = document.querySelector('main header a[href]');
+  return link ? ShortStopAllowlist.sites.instagram.hrefOwner(link.getAttribute('href')) : null;
+}
+
 const instagramBlocksFeeds = (options) => options.mode !== 'reels';
 const instagramReelsOnly = (options) => options.mode === 'reels';
 
@@ -92,10 +101,19 @@ ShortStop.start({
     },
   },
 
+  // Allowed accounts, chosen in the popup under Instagram: their profile, Reels
+  // tab, /username/reel/ links, Stories and (with "Block all") their posts.
+  allowlist: {
+    ...ShortStopAllowlist.sites.instagram,
+    viewOwner: instagramPostOwner,
+    itemOwners: 'header a[href]', // A feed post's header links to the account that posted it.
+  },
+
   redirects: [
     {
       name: "A profile's Reels tab to its main grid",
       match: /^\/([^/]+)\/reels\/?$/,
+      allowOwner: (match) => ShortStopAllowlist.sites.instagram.parse(match[1]),
       to: (match) => `/${match[1]}/`,
     },
     // Home, Explore, Reels and Stories are covered rather than redirected: a
@@ -142,6 +160,7 @@ ShortStop.start({
     },
     {
       name: 'Reels tab on profiles',
+      allowOwner: 'page',
       selector: 'a[role="tab"][href$="/reels/"]',
     },
     {
@@ -184,6 +203,7 @@ ShortStop.start({
     /* ---- 'reels': Reels removed from the pages that stay open ---- */
     {
       name: 'Reel in the Home feed',
+      allowOwner: true,
       selector: 'main article:has(a[href*="/reel/"])',
       page: 'home',
       onlyIf: instagramReelsOnly,
@@ -191,6 +211,7 @@ ShortStop.start({
     },
     {
       name: 'Reel in the Explore, search or profile grid',
+      allowOwner: 'page',
       selector: 'main a[href*="/reel/"]',
       page: ['explore', 'search', 'other'],
       onlyIf: instagramReelsOnly,
