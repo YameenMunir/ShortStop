@@ -45,7 +45,24 @@
             "url": "https://www.instagram.com/direct/t/1234567890/",
             "cover": false
           },
-          { "name": "homeagain", "url": "https://www.instagram.com/?variant=following", "cover": { "title": "Your feed is off" } }
+          { "name": "homeagain", "url": "https://www.instagram.com/?variant=following", "cover": { "title": "Your feed is off" } },
+          {"name": "modeall", "settings": {"instagram": true, "instagramMode": "all"}, "url": "https://www.instagram.com/direct/inbox/", "cover": {"title": "Instagram is blocked.", "message": "Switch Instagram off in ShortStop, or choose a lighter setting under it, to use Instagram.", "links": [], "mode": "fixed"}},
+          {"name": "modeallprofile", "url": "https://www.instagram.com/natgeo/", "cover": {"title": "Instagram is blocked.", "message": "Switch Instagram off in ShortStop, or choose a lighter setting under it, to use Instagram.", "links": [], "mode": "fixed"}},
+          {"name": "modeallsearch", "url": "https://www.instagram.com/explore/search/", "cover": {"title": "Instagram is blocked.", "message": "Switch Instagram off in ShortStop, or choose a lighter setting under it, to use Instagram.", "links": [], "mode": "fixed"}},
+          {"name": "modeallhome", "url": "https://www.instagram.com/", "cover": {"title": "Instagram is blocked.", "message": "Switch Instagram off in ShortStop, or choose a lighter setting under it, to use Instagram.", "links": [], "mode": "fixed"}},
+          {"name": "modeallnotifallowed", "settings": {"instagram": true, "instagramMode": "all", "instagramNotifications": true}, "url": "https://www.instagram.com/accounts/activity/", "cover": {"title": "Instagram is blocked.", "message": "Switch Instagram off in ShortStop, or choose a lighter setting under it, to use Instagram.", "links": [], "mode": "fixed"}},
+          {"name": "modealloff", "settings": {"instagram": false, "instagramMode": "all"}, "url": "https://www.instagram.com/direct/inbox/", "cover": false},
+          {"name": "modereels", "settings": {"instagram": true, "instagramMode": "reels"}, "url": "https://www.instagram.com/", "cover": false, "redirects": [["https://www.instagram.com/natgeo/reels/", "https://www.instagram.com/natgeo/"], ["https://www.instagram.com/explore/", null]]},
+          {"name": "modereelsexplore", "url": "https://www.instagram.com/explore/", "cover": false},
+          {"name": "modereelsstories", "url": "https://www.instagram.com/stories/natgeo/3456789/", "cover": false},
+          {"name": "modereelstab", "url": "https://www.instagram.com/reels/", "cover": {"title": "Reels are off", "message": "ShortStop has switched off Reels. The rest of Instagram still works.", "links": ["Messages", "Search for an account", "Your profile"]}},
+          {"name": "modereelsreel", "url": "https://www.instagram.com/reel/C1a2b3c4d5e/", "cover": {"title": "Reels are off"}},
+          {"name": "modereelsprofile", "url": "https://www.instagram.com/natgeo/", "cover": false},
+          {"name": "modereelsnotifications", "url": "https://www.instagram.com/accounts/activity/", "cover": {"title": "Notifications are off"}},
+          {"name": "modereelsdirect", "url": "https://www.instagram.com/direct/t/1234567890/", "cover": false},
+          {"name": "focusfromreels", "settings": {"instagram": false, "instagramMode": "reels", "focusUntil": 4102444800000}, "url": "https://www.instagram.com/", "cover": {"title": "Your feed is off"}},
+          {"name": "focusfromall", "settings": {"instagram": false, "instagramMode": "all", "focusUntil": 4102444800000}, "url": "https://www.instagram.com/natgeo/", "cover": {"title": "Instagram is blocked.", "message": "Switch Instagram off in ShortStop, or choose a lighter setting under it, to use Instagram.", "links": [], "mode": "fixed"}},
+          {"name": "backtofeeds", "settings": {"instagram": true}, "url": "https://www.instagram.com/explore/", "cover": {"title": "Explore is off"}}
         ],
         "redirects": [
           ["https://www.instagram.com/natgeo/reels/", "https://www.instagram.com/natgeo/"],
@@ -80,19 +97,19 @@
 
       <main data-name="content area">
         <!-- Home: stories tray, feed and suggestions. All of it sits behind the panel. -->
-        <div data-name="stories tray" data-expect="hidden">
+        <div data-name="stories tray" data-expect="hidden" data-expect-modereels="visible">
           <a href="/stories/natgeo/1/"><img alt="natgeo's profile picture" width="10" height="10" /></a>
         </div>
-        <article data-name="feed photo post" data-expect="hidden"><a href="/p/PHOTO111111/"><time>2h</time></a></article>
-        <article data-name="feed reel post" data-expect="hidden"><a href="/reel/REEL1111111/"><time>3h</time></a></article>
+        <article data-name="feed photo post" data-expect="hidden" data-expect-modereels="visible"><a href="/p/PHOTO111111/"><time>2h</time></a></article>
+        <article data-name="feed reel post" data-expect="hidden" data-expect-modereels="hidden"><a href="/reel/REEL1111111/"><time>3h</time></a></article>
         <video data-name="autoplaying feed video" muted></video>
 
         <!-- Profile page -->
-        <header data-name="profile header" data-expect-profile="visible">
+        <header data-name="profile header" data-expect-profile="visible" data-expect-modereelsprofile="visible">
           <h2>natgeo</h2>
           <button>Follow</button><button>Message</button>
         </header>
-        <div data-name="suggested accounts block" data-expect-profile="hidden" data-expect-post="hidden">
+        <div data-name="suggested accounts block" data-expect-profile="hidden" data-expect-post="hidden" data-expect-modereelsprofile="visible">
           <div><span>Suggested for you</span><a href="/explore/people/">See all</a></div>
           <ul>
             <li><a href="/someone/">someone</a><button>Follow</button></li>
@@ -100,10 +117,11 @@
         </div>
         <div>
           <a role="tab" href="/natgeo/" data-name="profile Posts tab" data-expect-profile="visible">Posts</a>
-          <a role="tab" href="/natgeo/reels/" data-name="profile Reels tab" data-expect-profile="hidden">Reels</a>
+          <a role="tab" href="/natgeo/reels/" data-name="profile Reels tab" data-expect-profile="hidden" data-expect-modereelsprofile="hidden">Reels</a>
           <a role="tab" href="/natgeo/tagged/" data-name="profile Tagged tab" data-expect-profile="visible">Tagged</a>
         </div>
-        <a href="/p/GRIDPOST111/" data-name="profile grid post" data-expect-profile="visible" data-expect-search="hidden">Grid post</a>
+        <a href="/p/GRIDPOST111/" data-name="profile grid post" data-expect-profile="visible" data-expect-search="hidden" data-expect-modereelsprofile="visible" data-expect-modereelsexplore="visible">Grid post</a>
+        <a href="/reel/GRIDREEL111/" data-name="profile or Explore grid reel" data-expect-modereelsprofile="hidden" data-expect-modereelsexplore="hidden">Grid reel</a>
 
         <!-- Search page: account results stay, any post grid goes -->
         <a href="/natgeo/" data-name="account search result" data-expect-search="visible">natgeo</a>
@@ -111,9 +129,9 @@
 
         <!-- DM thread -->
         <section>
-          <div data-name="DM text message" data-expect-direct="visible">See you at 6</div>
+          <div data-name="DM text message" data-expect-direct="visible" data-expect-modereelsdirect="visible">See you at 6</div>
           <div role="button" data-name="DM reel card (outer row)" data-expect-direct="visible">
-            <div role="button" data-name="DM reel card" data-expect-direct="blurred">
+            <div role="button" data-name="DM reel card" data-expect-direct="blurred" data-expect-modereelsdirect="blurred">
               <svg aria-label="Clip" width="10" height="10"></svg><span>Shared reel</span>
             </div>
           </div>

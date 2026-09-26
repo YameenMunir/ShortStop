@@ -101,7 +101,10 @@
       return;
     }
     if (!shown) return;
-    if (main) check(`${label}: content area hidden behind the panel`, !main.checkVisibility());
+    // A full-window panel ("fixed") sits over the page instead of replacing its content area.
+    if (main && host.getAttribute('mode') !== 'fixed') {
+      check(`${label}: content area hidden behind the panel`, !main.checkVisibility());
+    }
     const title = host.shadowRoot.querySelector('.title').textContent;
     if (expected.title) check(`${label}: panel title`, title === expected.title, `got "${title}"`);
     if (expected.message) {

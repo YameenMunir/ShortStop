@@ -188,6 +188,54 @@
           await step();
           check('the choices come back with YouTube', !choice('feeds').disabled && choice('feeds').checked);
 
+          /* ---- Instagram and TikTok: what to block ---- */
+          const pick = (platform, value) => $(`input[name="${platform}-mode"][value="${value}"]`);
+          const detailOf = (platform) => $(`#detail-${platform}`).textContent;
+          check('Instagram offers three choices', ['all', 'feeds', 'reels'].every((value) => pick('instagram', value)));
+          check('TikTok offers two choices', ['all', 'feeds'].every((value) => pick('tiktok', value)) && !pick('tiktok', 'shorts'));
+          check(
+            'Instagram and TikTok block feeds by default',
+            pick('instagram', 'feeds').checked && pick('tiktok', 'feeds').checked,
+            `${detailOf('instagram')} / ${detailOf('tiktok')}`
+          );
+          check(
+            'their choices sit in their folded options',
+            details('instagram').contains(pick('instagram', 'reels')) && details('tiktok').contains(pick('tiktok', 'all'))
+          );
+          expand('instagram').click();
+          expand('tiktok').click();
+          await step();
+          pick('instagram', 'reels').click();
+          await step();
+          check(
+            'choosing "Block Reels only" saves only that choice',
+            stores.sync.settings.instagramMode === 'reels' && stores.sync.settings.instagram === true && !('tiktokMode' in stores.sync.settings),
+            JSON.stringify(stores.sync.settings)
+          );
+          check('the Instagram row says only Reels are off', detailOf('instagram') === 'Reels off', detailOf('instagram'));
+          pick('instagram', 'all').click();
+          await step();
+          check('the Instagram row follows "Block all"', detailOf('instagram') === 'All of Instagram blocked', detailOf('instagram'));
+          pick('tiktok', 'all').click();
+          await step();
+          check(
+            'choosing "Block all of TikTok" saves it',
+            stores.sync.settings.tiktokMode === 'all' && detailOf('tiktok') === 'All of TikTok blocked',
+            detailOf('tiktok')
+          );
+          toggle('tiktok').click();
+          await step();
+          check('the TikTok choices are greyed out while TikTok is off', ['all', 'feeds'].every((value) => pick('tiktok', value).disabled));
+          toggle('tiktok').click();
+          await step();
+          check('the TikTok choices come back with TikTok', !pick('tiktok', 'all').disabled && pick('tiktok', 'all').checked);
+          pick('instagram', 'reels').click();
+          pick('tiktok', 'feeds').click();
+          await step();
+          expand('instagram').click();
+          expand('tiktok').click();
+          await step();
+
           /* ---- Switching off leaves the other settings alone ---- */
           toggle('youtube').click();
           await step();
@@ -367,6 +415,12 @@
             choice('feeds').checked && ['all', 'feeds', 'shorts'].every((value) => choice(value).disabled) &&
               stores.sync.settings.youtubeMode === 'shorts'
           );
+          check(
+            'focus: Instagram shows "feeds and Reels" (raised from Reels only) and is locked',
+            pick('instagram', 'feeds').checked && pick('instagram', 'reels').disabled &&
+              detailOf('instagram') === 'Feed, Explore, Reels and Stories off' && stores.sync.settings.instagramMode === 'reels',
+            detailOf('instagram')
+          );
           check('focus: allowed times cannot be edited', ALL.every((platform) => inScheduler(platform, '.schedule-edit').disabled));
           check('focus: other options still work', !$('#option-instagram-notifications').disabled);
           check('focus: YouTube keeps its own setting underneath', stores.sync.settings.youtube === false);
@@ -376,6 +430,7 @@
           check('focus: when it ends, the switches unlock by themselves', ALL.every((platform) => !toggle(platform).disabled));
           check('focus: YouTube is back to its own setting (off)', !toggle('youtube').checked);
           check('focus: YouTube is back to its own choice (Shorts only), greyed out as YouTube is off', choice('shorts').checked && choice('shorts').disabled);
+          check('focus: Instagram is back to its own choice (Reels only)', pick('instagram', 'reels').checked && detailOf('instagram') === 'Reels off');
           check('focus: the choices come back', shown($('#focus-choices')) && !focusBox.classList.contains('is-active'));
         } catch (error) {
           check('popup test crashed', false, String(error && error.stack));

@@ -42,8 +42,13 @@ const BLOCK_YOUTUBE_SHORTS = true;
 //   'shorts' only Shorts; the rest of YouTube works normally
 const YOUTUBE_MODE = 'feeds';
 
-// Instagram: the Home feed, Explore, Reels and Stories are blocked.
+// Instagram: true = blocking on, false = Instagram is left alone.
 const BLOCK_INSTAGRAM_REELS = true;
+// What Instagram's blocking covers:
+//   'all'    every Instagram page, including messages, profiles and search
+//   'feeds'  the Home feed, Explore, Reels and Stories (default)
+//   'reels'  only Reels; the feed, Explore and Stories work normally
+const INSTAGRAM_MODE = 'feeds';
 const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
 
 // Facebook: the News Feed, Reels, Watch, Stories and other recommendation
@@ -52,8 +57,12 @@ const BLOCK_FACEBOOK_FEEDS = true;
 const ALLOW_FACEBOOK_NOTIFICATIONS = false;
 const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
 
-// TikTok: For You, Following, Friends, LIVE and Explore are blocked.
+// TikTok: true = blocking on, false = TikTok is left alone.
 const BLOCK_TIKTOK_FEEDS = true;
+// What TikTok's blocking covers:
+//   'all'    every TikTok page, including search, messages and single videos
+//   'feeds'  For You, Following, Friends, LIVE and Explore (default)
+const TIKTOK_MODE = 'feeds';
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
 
 // Reddit: the Home feed, Popular, All and Explore are blocked. Communities,
@@ -76,11 +85,13 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     youtube: BLOCK_YOUTUBE_SHORTS,
     youtubeMode: YOUTUBE_MODE,
     instagram: BLOCK_INSTAGRAM_REELS,
+    instagramMode: INSTAGRAM_MODE,
     facebook: BLOCK_FACEBOOK_FEEDS,
     facebookNotifications: ALLOW_FACEBOOK_NOTIFICATIONS,
     facebookMarketplaceSearch: ALLOW_FACEBOOK_MARKETPLACE_SEARCH,
     instagramNotifications: ALLOW_INSTAGRAM_NOTIFICATIONS,
     tiktok: BLOCK_TIKTOK_FEEDS,
+    tiktokMode: TIKTOK_MODE,
     tiktokNotifications: ALLOW_TIKTOK_NOTIFICATIONS,
     reddit: BLOCK_REDDIT_FEEDS,
     x: BLOCK_X_FEEDS,
@@ -1599,10 +1610,24 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
   /*
    * ShortStop: Instagram (focus mode)
    * =================================
-   * Instagram's Home feed, Explore, Reels and Stories are all built to keep you
-   * scrolling, so they are treated the same: the page's content area is hidden
-   * from the first paint and replaced with a ShortStop panel. There is nothing
-   * left to scroll, so the Home feed is no loophole around blocking Reels.
+   * While Instagram's switch is on, the popup offers three choices (`mode`):
+   *
+   *   'all'    Block all of Instagram: every page shows the ShortStop panel over
+   *            the whole window, messages included, media is paused and feed
+   *            keys are swallowed.
+   *   'feeds'  Block feeds and Reels (the default), described below.
+   *   'reels'  Block Reels only: the Home feed, Explore, Stories, profiles and
+   *            messages work, minus Reels: the Reels pages are covered, Reels
+   *            are removed from the Home feed, Explore, search and profile
+   *            grids, the Reels links and tabs are hidden, and Reels shared in
+   *            DMs are blurred.
+   *
+   * A focus session raises 'reels' to 'feeds'; 'all' stays 'all'.
+   *
+   * 'feeds': Instagram's Home feed, Explore, Reels and Stories are all built to
+   * keep you scrolling, so they are treated the same: the page's content area is
+   * hidden from the first paint and replaced with a ShortStop panel. There is
+   * nothing left to scroll, so the Home feed is no loophole around blocking Reels.
    *
    * Still available on purpose:
    *   - Direct Messages (Reels shared in DMs are blurred and unclickable)
@@ -1628,6 +1653,27 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     return null;
   }
 
+  // Covered pages and recommendation rules: on in 'feeds' and 'all', off in 'reels'.
+  const instagramBlocksFeeds = (options) => options.mode !== 'reels';
+  const instagramReelsOnly = (options) => options.mode === 'reels';
+
+  // 'all': the panel covers the whole window on every Instagram page.
+  const instagramBlockedPage = (options) =>
+    options.mode === 'all'
+      ? {
+          title: 'Instagram is blocked.',
+          message: 'Switch Instagram off in ShortStop, or choose a lighter setting under it, to use Instagram.',
+          target: [], // No content area: the full-window panel covers everything.
+          pauseMedia: true,
+          blockKeys: true,
+          links: () => [],
+        }
+      : null;
+
+  // A feed page: blocked in 'all', covered in 'feeds', open in 'reels'.
+  const instagramFeedPage = (spec) => (options) =>
+    instagramBlockedPage(options) || (instagramBlocksFeeds(options) ? spec : null);
+
   ShortStop.start({
     id: 'instagram',
     hosts: ['instagram.com'],
@@ -1644,9 +1690,15 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       direct: /^\/direct(\/|$)/,
     },
 
-    // Extra switches shown in the popup under Instagram.
+    // Extra switches and the choice of what to block, shown in the popup under Instagram.
     options: {
       notifications: { setting: 'instagramNotifications', default: false },
+      mode: {
+        setting: 'instagramMode',
+        default: 'feeds',
+        values: ['all', 'feeds', 'reels'],
+        duringFocus: (mode) => (mode === 'reels' ? 'feeds' : mode),
+      },
     },
 
     redirects: [
@@ -1664,16 +1716,24 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       message:
         "ShortStop has switched off Instagram's feeds, so there's nothing to scroll. " +
         'Messages, search and profiles still work.',
+      // A page's panel depends on the choice under Instagram's switch.
       pages: {
-        home: { title: 'Your feed is off' },
-        explore: { title: 'Explore is off' },
-        reels: { title: 'Reels are off' },
-        stories: { title: 'Stories are off' },
-        notifications: {
-          title: 'Notifications are off',
-          message: 'Turn on "Allow notifications" in the ShortStop menu if you need them.',
-          onlyIf: (options) => !options.notifications,
-        },
+        home: instagramFeedPage({ title: 'Your feed is off' }),
+        explore: instagramFeedPage({ title: 'Explore is off' }),
+        reels: (options) =>
+          instagramBlockedPage(options) ||
+          (instagramReelsOnly(options)
+            ? { title: 'Reels are off', message: 'ShortStop has switched off Reels. The rest of Instagram still works.' }
+            : { title: 'Reels are off' }),
+        stories: instagramFeedPage({ title: 'Stories are off' }),
+        notifications: (options) =>
+          instagramBlockedPage(options) ||
+          (options.notifications
+            ? null
+            : { title: 'Notifications are off', message: 'Turn on "Allow notifications" in the ShortStop menu if you need them.' }),
+        search: instagramBlockedPage,
+        direct: instagramBlockedPage,
+        other: instagramBlockedPage, // Profiles, single posts, settings...
       },
       links: (options) => [
         { label: 'Messages', href: '/direct/inbox/' },
@@ -1709,11 +1769,13 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       {
         name: '"See all" suggested accounts link',
         selector: 'a[href^="/explore/people"]',
+        onlyIf: instagramBlocksFeeds,
       },
       {
         name: '"Suggested for you" accounts on profiles',
         selector: 'main span, main h2, main h3, main h4, main div[role="heading"]',
         page: 'other', // Profiles and posts. Covered pages are hidden already.
+        onlyIf: instagramBlocksFeeds,
         text: /^Suggested for you$/i,
         // The nearest block that holds the account cards (they have Follow
         // buttons), but never the profile header itself.
@@ -1724,6 +1786,23 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
         name: 'Post grid on the search page (only account results should show)',
         selector: 'main a[href*="/p/"], main a[href*="/reel/"]',
         page: 'search',
+        onlyIf: instagramBlocksFeeds,
+        count: true,
+      },
+
+      /* ---- 'reels': Reels removed from the pages that stay open ---- */
+      {
+        name: 'Reel in the Home feed',
+        selector: 'main article:has(a[href*="/reel/"])',
+        page: 'home',
+        onlyIf: instagramReelsOnly,
+        count: true,
+      },
+      {
+        name: 'Reel in the Explore, search or profile grid',
+        selector: 'main a[href*="/reel/"]',
+        page: ['explore', 'search', 'other'],
+        onlyIf: instagramReelsOnly,
         count: true,
       },
 
@@ -1951,7 +2030,16 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
   /*
    * ShortStop: TikTok (focus mode)
    * ==============================
-   * Every algorithmic feed is treated the same: For You, Following, Friends,
+   * While TikTok's switch is on, the popup offers two choices (`mode`):
+   *
+   *   'all'    Block all of TikTok: every page shows the ShortStop panel over the
+   *            whole window, search, messages and single videos included.
+   *   'feeds'  Block the feeds (the default), described below.
+   *
+   * TikTok is short videos all the way through, so there is no "short videos
+   * only" choice. A focus session keeps the choice as it is.
+   *
+   * 'feeds': every algorithmic feed is treated the same: For You, Following, Friends,
    * LIVE, Explore, Short dramas and the discovery pages behind hashtags, sounds
    * and topics.
    * On those routes the feed area is hidden from the first paint and replaced
@@ -1985,6 +2073,21 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     return href && /^\/@[^/?#]+/.test(href) ? href : null;
   }
 
+  // 'all': the panel covers the whole window on every TikTok page.
+  const tiktokBlockedPage = (options) =>
+    options.mode === 'all'
+      ? {
+          title: 'TikTok is blocked.',
+          message: 'Switch TikTok off in ShortStop, or choose a lighter setting under it, to use TikTok.',
+          target: [], // No content area: the full-window panel covers everything.
+          search: null,
+          links: () => [],
+        }
+      : null;
+
+  // A feed page: blocked in 'all', covered with its own message in 'feeds'.
+  const tiktokFeedPage = (message) => (options) => tiktokBlockedPage(options) || { message };
+
   ShortStop.start({
     id: 'tiktok',
     hosts: ['tiktok.com'],
@@ -2005,9 +2108,10 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       messages: /^\/messages(?:\/|$)/,
     },
 
-    // Extra switches shown in the popup under TikTok.
+    // Extra switches and the choice of what to block, shown in the popup under TikTok.
     options: {
       notifications: { setting: 'tiktokNotifications', default: false },
+      mode: { setting: 'tiktokMode', default: 'feeds', values: ['all', 'feeds'] },
     },
 
     cover: {
@@ -2015,17 +2119,23 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
       // fallback. The panel goes where the feed was, next to TikTok's sidebar.
       target: ['div[id^="main-content-"]', 'main'],
       title: 'Scrolling is blocked by your focus settings.',
+      // A page's panel depends on the choice under TikTok's switch.
       pages: {
-        foryou: { message: "TikTok's For You feed is switched off." },
-        following: { message: 'The Following feed is switched off.' },
-        friends: { message: 'The Friends feed is switched off.' },
-        live: { message: 'LIVE is switched off.' },
-        explore: { message: 'Explore and discovery feeds are switched off.' },
-        shortdrama: { message: 'Short dramas are switched off.' },
-        notifications: {
-          message: 'Notifications are switched off. Turn on "Allow notifications" in the ShortStop menu if you need them.',
-          onlyIf: (options) => !options.notifications,
-        },
+        foryou: tiktokFeedPage("TikTok's For You feed is switched off."),
+        following: tiktokFeedPage('The Following feed is switched off.'),
+        friends: tiktokFeedPage('The Friends feed is switched off.'),
+        live: tiktokFeedPage('LIVE is switched off.'),
+        explore: tiktokFeedPage('Explore and discovery feeds are switched off.'),
+        shortdrama: tiktokFeedPage('Short dramas are switched off.'),
+        notifications: (options) =>
+          tiktokBlockedPage(options) ||
+          (options.notifications
+            ? null
+            : { message: 'Notifications are switched off. Turn on "Allow notifications" in the ShortStop menu if you need them.' }),
+        video: tiktokBlockedPage,
+        search: tiktokBlockedPage,
+        messages: tiktokBlockedPage,
+        other: tiktokBlockedPage, // Profiles, uploading, settings...
       },
       search: {
         label: 'Search TikTok',
