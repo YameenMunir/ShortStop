@@ -25,9 +25,26 @@
  * A focus session raises 'shorts' to 'feeds' (it never leaves the home feed
  * open); 'all' stays 'all'.
  *
+ * Allowed channels (shared/allowlist.js): an allowed channel's own pages
+ * (/@handle and its tabs) and its videos are never covered, even with 'all',
+ * and its Shorts cards stay in lists. They still open in the normal player,
+ * because the Shorts player would scroll straight on into other channels.
+ * The home feed, Trending and Up next stay blocked: they are recommendations.
+ *
  * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
  * that slipped through, and add or adjust a rule below. See README.md.
  */
+// The channel that owns the video on a /watch page, read from the player itself.
+// The URL doesn't say, and during YouTube's in-page navigation the owner link
+// can still be the previous video's, so only a player showing THIS video counts.
+function youtubeVideoOwner(url) {
+  const video = url.pathname === '/watch' ? url.searchParams.get('v') : null;
+  if (!video || !/^[\w-]+$/.test(video)) return null;
+  const player = document.querySelector(`ytd-watch-flexy[video-id="${video}"]`);
+  const link = player && player.querySelector('ytd-video-owner-renderer a[href^="/@"], #owner a[href^="/@"]');
+  return link ? ShortStopAllowlist.sites.youtube.hrefOwner(link.getAttribute('href')) : null;
+}
+
 // Rules and covered pages for the feeds: on in 'feeds' and 'all', off in 'shorts'.
 const youtubeBlocksFeeds = (options) => options.mode !== 'shorts';
 
@@ -48,6 +65,13 @@ const youtubeBlockedPage = (options) =>
 ShortStop.start({
   id: 'youtube',
   hosts: ['youtube.com'],
+
+  // Allowed channels, chosen in the popup under YouTube.
+  allowlist: {
+    ...ShortStopAllowlist.sites.youtube,
+    viewOwner: youtubeVideoOwner,
+    itemOwners: 'a[href^="/@"]', // A card's channel name and avatar link to /@handle.
+  },
 
   // YouTube's own SPA events (desktop, then m.youtube.com).
   navigationEvents: ['yt-navigate-finish', 'yt-page-data-updated', 'state-navigateend'],
@@ -147,33 +171,39 @@ ShortStop.start({
     /* ---- Shelves and sections (containers first) ---- */
     {
       name: 'Shorts shelf on search, watch and channel pages',
+      allowOwner: 'page',
       selector: 'ytd-reel-shelf-renderer',
       count: true,
     },
     {
       name: 'Shorts section on the home page',
+      allowOwner: 'page',
       selector: 'ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])',
       count: true,
     },
     {
       name: 'Shorts rich shelf (outside a section)',
+      allowOwner: 'page',
       selector: 'ytd-rich-shelf-renderer[is-shorts]',
       count: true,
     },
     {
       name: 'Shorts grid shelf in search (2025 layout)',
+      allowOwner: 'page',
       selector:
         'grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Mobile: Shorts section on the home page',
+      allowOwner: 'page',
       selector:
         'ytm-rich-section-renderer:has(ytm-reel-shelf-renderer, ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2)',
       count: true,
     },
     {
       name: 'Mobile: Shorts shelf (outside a section)',
+      allowOwner: 'page',
       selector: 'ytm-reel-shelf-renderer',
       count: true,
     },
@@ -181,37 +211,44 @@ ShortStop.start({
     /* ---- Individual Shorts mixed into normal video lists ---- */
     {
       name: 'Short in the home / subscriptions grid',
+      allowOwner: true,
       selector: 'ytd-rich-item-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short in search results',
+      allowOwner: true,
       selector: 'ytd-video-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short in a channel or legacy grid',
+      allowOwner: true,
       selector: 'ytd-grid-video-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short in watch-page suggestions',
+      allowOwner: true,
       selector: 'ytd-compact-video-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Mobile: Short in a video list',
+      allowOwner: true,
       selector:
         'ytm-video-with-context-renderer:has(a[href^="/shorts/"]), ytm-rich-item-renderer:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short as a new-style lockup card',
+      allowOwner: true,
       selector: 'yt-lockup-view-model:has(a[href^="/shorts/"])',
       count: true,
     },
     {
       name: 'Short marked by the SHORTS badge on its thumbnail',
+      allowOwner: true,
       // Some lists link a Short as /watch?v=; the thumbnail badge still says SHORTS.
       selector:
         ':is(ytd-rich-item-renderer, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer):has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"])',
@@ -219,6 +256,7 @@ ShortStop.start({
     },
     {
       name: 'Any leftover Shorts tile',
+      allowOwner: true,
       selector: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-reel-item-renderer',
       count: true,
     },
@@ -236,6 +274,7 @@ ShortStop.start({
     },
     {
       name: 'Channel page "Shorts" tab',
+      allowOwner: 'page',
       selector: 'yt-tab-shape[tab-title="Shorts"], tp-yt-paper-tab:has(a[href$="/shorts"])',
     },
     {

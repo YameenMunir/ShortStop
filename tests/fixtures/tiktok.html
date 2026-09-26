@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <title>TikTok fixture</title>
     <script src="../../extension/shared/schedule.js"></script>
+    <script src="../../extension/shared/allowlist.js"></script>
     <script src="../../extension/content/core.js"></script>
     <script type="application/json" id="plan">
       {
@@ -59,6 +60,13 @@
           {"name": "modeallnotifallowed", "settings": {"tiktok": true, "tiktokMode": "all", "tiktokNotifications": true}, "url": "https://www.tiktok.com/notifications", "cover": {"title": "TikTok is blocked.", "message": "Switch TikTok off in ShortStop, or choose a lighter setting under it, to use TikTok.", "links": [], "search": false, "mode": "fixed"}},
           {"name": "modealloff", "settings": {"tiktok": false, "tiktokMode": "all"}, "url": "https://www.tiktok.com/@natgeo/video/7300000000000000000", "cover": false},
           {"name": "focusfromall", "settings": {"tiktok": false, "tiktokMode": "all", "focusUntil": 4102444800000}, "url": "https://www.tiktok.com/search?q=cats", "cover": {"title": "TikTok is blocked.", "message": "Switch TikTok off in ShortStop, or choose a lighter setting under it, to use TikTok.", "links": [], "search": false, "mode": "fixed"}},
+          {"name": "allowttlive", "settings": {"tiktok": true, "tiktokAllowed": ["@NASA"]}, "url": "https://www.tiktok.com/@nasa/live", "cover": false},
+          {"name": "allowttliveother", "url": "https://www.tiktok.com/@someone/live", "cover": {"message": "LIVE is switched off."}},
+          {"name": "allowttforyou", "url": "https://www.tiktok.com/foryou", "cover": {"message": "TikTok's For You feed is switched off.", "links": ["Messages", "Upload a video", "Your profile", "Open @nasa"]}},
+          {"name": "allowttall", "settings": {"tiktok": true, "tiktokMode": "all", "tiktokAllowed": ["nasa"]}, "url": "https://www.tiktok.com/@nasa", "cover": false},
+          {"name": "allowttallvideo", "url": "https://www.tiktok.com/@nasa/video/7300000000000000001", "cover": false},
+          {"name": "allowttallother", "url": "https://www.tiktok.com/@natgeo/video/7300000000000000000", "cover": {"title": "TikTok is blocked.", "links": ["Open @nasa"]}},
+          {"name": "allowttfocus", "settings": {"tiktok": true, "tiktokMode": "all", "tiktokAllowed": ["nasa"], "focusUntil": 4102444800000}, "url": "https://www.tiktok.com/@nasa", "cover": {"title": "TikTok is blocked.", "links": []}},
           {"name": "modefeeds", "settings": {"tiktok": true, "tiktokMode": "feeds"}, "url": "https://www.tiktok.com/search?q=cats", "cover": false}
         ]
       }

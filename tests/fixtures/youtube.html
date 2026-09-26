@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <title>YouTube fixture</title>
     <script src="../../extension/shared/schedule.js"></script>
+    <script src="../../extension/shared/allowlist.js"></script>
     <script src="../../extension/content/core.js"></script>
     <script type="application/json" id="plan">
 {
@@ -261,6 +262,16 @@
         "mode": "fixed"
       }
     },
+    {"name": "allowyt", "settings": {"youtube": true, "youtubeAllowed": ["@Veritasium"]}, "url": "https://www.youtube.com/results?search_query=cats", "redirects": [["https://www.youtube.com/shorts/allow111111", "https://www.youtube.com/watch?v=allow111111"]], "checks": [["the allowed card is marked as allowed", "document.getElementById('allowed-card').hasAttribute('data-shortstop-allowed')"], ["the other channel's card is not", "!document.getElementById('other-card').hasAttribute('data-shortstop-allowed')"]]},
+    {"name": "allowytchannel", "url": "https://www.youtube.com/@veritasium/shorts", "cover": false, "checks": [["the page is marked as the allowed channel's own", "document.documentElement.hasAttribute('data-shortstop-owner-allowed')"]]},
+    {"name": "allowytotherchannel", "url": "https://www.youtube.com/@someoneelse/shorts", "cover": false, "checks": [["another channel's page is not", "!document.documentElement.hasAttribute('data-shortstop-owner-allowed')"]]},
+    {"name": "allowytall", "settings": {"youtube": true, "youtubeMode": "all", "youtubeAllowed": ["veritasium"]}, "url": "https://www.youtube.com/@veritasium", "cover": false},
+    {"name": "allowytallother", "url": "https://www.youtube.com/@someoneelse", "cover": {"title": "YouTube is blocked.", "links": ["Open @veritasium"]}, "checks": [["a covered page mutes the video", "document.getElementById('allow-sound').muted"]]},
+    {"name": "allowytwatch", "url": "https://www.youtube.com/watch?v=allowvid001", "cover": false, "checks": [["the allowed channel's video gets its sound back", "!document.getElementById('allow-sound').muted"]]},
+    {"name": "allowytstale", "url": "https://www.youtube.com/watch?v=othervid002", "cover": {"title": "YouTube is blocked."}},
+    {"name": "allowytfocus", "settings": {"youtube": true, "youtubeAllowed": ["veritasium"], "focusUntil": 4102444800000}, "url": "https://www.youtube.com/results?search_query=cats"},
+    {"name": "allowytfocusall", "settings": {"youtube": true, "youtubeMode": "all", "youtubeAllowed": ["veritasium"], "focusUntil": 4102444800000}, "url": "https://www.youtube.com/@veritasium", "cover": {"title": "YouTube is blocked.", "links": []}},
+    {"name": "allowytremoved", "settings": {"youtube": true}, "url": "https://www.youtube.com/results?search_query=cats"},
     {
       "name": "backtofeeds",
       "settings": {
@@ -451,6 +462,26 @@
     <ytd-shelf-renderer data-name="People also watched shelf" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><h2 id="title">People also watched</h2><a href="/watch?v=also1234567">x</a></ytd-shelf-renderer>
     <ytd-horizontal-card-list-renderer data-name="Channels new to you" data-expect-modeshorts="visible" data-expect-modeshortsoff="visible" data-expect="hidden" data-count><span id="title">Channels new to you</span></ytd-horizontal-card-list-renderer>
     <ytd-shelf-renderer data-name="Latest from a channel shelf" data-expect="visible"><h2 id="title">Latest from National Geographic</h2><a href="/watch?v=latest12345">x</a></ytd-shelf-renderer>
+
+    <!-- Allowed channels (@veritasium is allowed in the "allowyt..." phases) -->
+    <ytd-rich-item-renderer id="allowed-card" data-name="the allowed channel's Short card" data-expect="hidden" data-count
+      data-expect-allowyt="visible" data-expect-allowytfocus="hidden" data-expect-allowytremoved="hidden">
+      <ytm-shorts-lockup-view-model-v2 data-name="Short tile inside the allowed card" data-expect-allowyt="visible"><a href="/shorts/allow111111">Allowed Short</a></ytm-shorts-lockup-view-model-v2>
+      <a href="/@Veritasium">Veritasium</a>
+    </ytd-rich-item-renderer>
+    <ytd-rich-item-renderer id="other-card" data-name="another channel's Short card" data-expect="hidden" data-count data-expect-allowyt="hidden">
+      <a href="/shorts/other111111">Other Short</a><a href="/@someoneelse">Someone else</a>
+    </ytd-rich-item-renderer>
+    <ytd-reel-shelf-renderer data-name="Shorts shelf holding an allowed channel's Short" data-expect="hidden" data-count
+      data-expect-allowyt="hidden" data-expect-allowytchannel="visible" data-expect-allowytotherchannel="hidden">
+      <ytd-reel-item-renderer><a href="/shorts/shelf111111">Shelf Short</a><a href="/@veritasium">Veritasium</a></ytd-reel-item-renderer>
+    </ytd-reel-shelf-renderer>
+    <yt-tab-shape data-name="Shorts tab on a channel page" tab-title="Shorts" data-expect="hidden"
+      data-expect-allowytchannel="visible" data-expect-allowytotherchannel="hidden">Shorts</yt-tab-shape>
+    <ytd-watch-flexy video-id="allowvid001">
+      <ytd-video-owner-renderer><a href="/@veritasium">Veritasium</a></ytd-video-owner-renderer>
+    </ytd-watch-flexy>
+    <video id="allow-sound" data-name="a video ShortStop mutes on covered pages"></video>
 
     <template id="dynamic">
       <ytd-rich-item-renderer data-name="Short loaded by infinite scroll" data-expect-dynamic="hidden" data-count><a href="/shorts/scroll12345">Scrolled Short</a></ytd-rich-item-renderer>

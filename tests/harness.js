@@ -372,6 +372,17 @@
         const got = engine.resolveRedirect(from);
         check(`on ${phase.name}: redirect ${from} -> ${to}`, got === to, `got ${got}`);
       }
+      // `checks`: [label, expression] pairs, each expression evaluated on the page after the phase.
+      for (const [label, expression] of phase.checks || []) {
+        let passed = false;
+        let detail = expression;
+        try {
+          passed = Boolean(new Function(`return (${expression});`)());
+        } catch (error) {
+          detail = String(error);
+        }
+        check(`on ${phase.name}: ${label}`, passed, detail);
+      }
       if (phase.reloads !== undefined) {
         const made = state.reloads - reloadsBefore;
         check(`on ${phase.name}: page reloads ${phase.reloads} time(s)`, made === phase.reloads, `reloaded ${made} time(s)`);
