@@ -67,7 +67,7 @@
   locked until it ends. Start one from the popup, or press **Alt+Shift+F twice** for an hour.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,705
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,703
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -113,8 +113,7 @@ Maybe you follow one creator on purpose. Under YouTube, Instagram, TikTok and Sn
 - **Feeds stay blocked.** Home, For You, Explore, Up next and the Spotlight feed are recommendations
   with no single owner, so an allowed account never opens them. A blocked page lists your
   allowed accounts as links (**Open @veritasium**), so they're one click away.
-- **Adding** one takes the same 30-second wait and confirmation as allowed times, so you can't
-  open up a site on impulse. **Removing** one is instant.
+- **Adding** or **removing** one is saved straight away, with no wait. Open tabs follow at once.
 - **During a focus session** the list is ignored, and new accounts can't be added.
 - Reddit, X and Facebook have no list: their communities, profiles and Pages are never blocked in
   the first place, only their feeds.
@@ -205,7 +204,7 @@ makes no network requests.
   website.
 - Your platform switches, options, allowed accounts, allowed times and a running focus session's
   end time are saved with `chrome.storage.sync`, so they follow your browser profile. The daily
-  counter, a waiting change (an allowed time or account) and any *Block now* live in
+  counter, a waiting change to the allowed times and any *Block now* live in
   `chrome.storage.local`, on your device only.
 
 ## Install
@@ -503,7 +502,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,705 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,703 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -577,7 +576,8 @@ platform it checks:
   (nor a stale player's), the panel's **Open @…** links, Instagram's profile, Reels tab and
   redirect, Stories and `/<name>/reel/` links, a post's header counting but not its comments,
   TikTok's profile, videos and LIVE, Snapchat's profile Spotlight, a focus session ignoring
-  the list, and removing an account blocking again
+  the list, removing an account blocking again, adding and removing in the popup with no wait,
+  and an addition left waiting by an older version being added when the popup opens
 - Allowed times on every platform: blocking is lifted inside one, ignores another day's,
   another platform's or a malformed one, respects *Block now*, and (with a fake clock)
   switches off and back on by itself when an allowed time starts and ends

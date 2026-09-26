@@ -15,8 +15,7 @@
  *
  * Allowed accounts (YouTube, Instagram, TikTok, Snapchat): a short list of
  * channels or accounts whose own pages and items get through while the feeds
- * stay blocked. Adding one loosens blocking, so it goes through the same
- * waiting request as allowed times; removing one is instant.
+ * stay blocked. Adding or removing one is saved straight away.
  *
  * A focus session ("Focus session" at the top) blocks every platform for 30
  * minutes to 2 hours: switches, YouTube's choice of what to block and allowed
@@ -83,7 +82,6 @@ const WEEK = [1, 2, 3, 4, 5, 6, 0].map((day) => {
  * settings: sync storage (switches, options, `schedules`).
  * Local storage, this device only:
  *   pending        { platform: { kind: 'schedule', at, windows } } a waiting allowed-times change,
- *                  or { kind: 'allow', at, name } an allowed account waiting to be added
  *   scheduleSkips  { platform: time } "Block now" ignores allowed times until then
  */
 const state = { settings: {}, pending: {}, scheduleSkips: {} };
@@ -204,8 +202,7 @@ function confirmRequest(platform) {
   const request = pendingRequest(platform, Date.now());
   if (!request || request.phase !== 'ready') return Promise.resolve(); // Too early: nothing happens.
   state.pending = without(state.pending, platform);
-  if (request.kind === 'allow') setAllowed(platform, [...savedAllowed(platform), request.name]);
-  else setSchedule(platform, request.windows);
+  setSchedule(platform, request.windows);
   return commit({ sync: true, local: true });
 }
 
@@ -324,7 +321,7 @@ function buildAllowlist(platform, item) {
   const note = element(
     'p',
     'schedule-note',
-    `${ALLOW_NOTES[platform]} Adding one takes a ${OFF_WAIT_SECONDS}-second wait. Removing one is instant.`
+    ALLOW_NOTES[platform]
   );
   const error = element('p', 'schedule-error');
   error.setAttribute('role', 'alert');
@@ -335,13 +332,13 @@ function buildAllowlist(platform, item) {
   allowBoxes.set(platform, controls);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    requestAllow(platform);
+    addAllowed(platform);
   });
   input.addEventListener('input', () => setText(error, ''));
 }
 
-// Adding an account loosens blocking, so it waits like an allowed time does.
-function requestAllow(platform) {
+// Adding an account is saved straight away, like removing one.
+function addAllowed(platform) {
   const controls = allowBoxes.get(platform);
   const rules = ALLOW_SITES[platform];
   const name = rules.parse(controls.input.value);
@@ -365,11 +362,11 @@ function requestAllow(platform) {
   }
   controls.input.value = '';
   setText(controls.error, '');
-  state.pending = { ...state.pending, [platform]: { kind: 'allow', at: Date.now(), name } };
-  return commit({ local: true });
+  setAllowed(platform, [...saved, name]);
+  return commit({ sync: true });
 }
 
-// Removing an account tightens blocking, so it is saved straight away.
+// Removing an account is saved straight away too.
 function removeAllowed(platform, name) {
   setAllowed(
     platform,
@@ -383,7 +380,6 @@ function renderAllowlist(platform, now) {
   if (!controls) return;
   const rules = ALLOW_SITES[platform];
   const names = savedAllowed(platform);
-  const request = pendingRequest(platform, now);
   const off = state.settings[platform] === false;
   const focus = inFocus(now);
 
@@ -409,13 +405,12 @@ function renderAllowlist(platform, now) {
   controls.list.hidden = names.length === 0;
 
   let summary = names.length ? '' : 'None';
-  if (request && request.kind === 'allow') summary = `${summary ? `${summary}. ` : ''}Adding ${rules.label(request.name)} (waiting).`;
   if (focus && names.length) summary = 'Ignored during the focus session.';
   setText(controls.summary, summary);
   controls.summary.hidden = !summary;
 
-  // Nothing to allow while off; one waiting request at a time; locked in a focus session.
-  const locked = off || Boolean(request) || focus;
+  // Nothing to allow while off, and locked in a focus session.
+  const locked = off || focus;
   controls.input.disabled = locked;
   controls.add.disabled = locked;
   controls.form.hidden = names.length >= MAX_ACCOUNTS;
@@ -602,16 +597,11 @@ function renderPlatform(input, now) {
   if (request) mode = request.phase;
   else if (current.kind === 'scheduled') mode = 'scheduled';
 
-  const allowing = request && request.kind === 'allow' ? ALLOW_SITES[platform].label(request.name) : '';
   const seconds = request && request.readyAt ? Math.ceil((request.readyAt - now) / 1000) : 0;
   const text = {
     closed: '',
-    waiting: !seconds
-      ? ''
-      : allowing
-        ? `Allowing ${allowing} in ${seconds}s.`
-        : `Saving the new allowed times in ${seconds}s.`,
-    ready: allowing ? `Ready. Allow ${allowing} on ${NAMES[platform]}?` : `Ready. Save ${NAMES[platform]}'s new allowed times?`,
+    waiting: seconds ? `Saving the new allowed times in ${seconds}s.` : '',
+    ready: `Ready. Save ${NAMES[platform]}'s new allowed times?`,
     scheduled: current.until ? `Allowed by your schedule ${describeUntil(current.until, now)}.` : '',
   }[mode];
 
@@ -898,9 +888,16 @@ async function load() {
   // "turn off" or pause waits that were still counting down.
   const retired = RETIRED_LOCAL_KEYS.filter((key) => key in local);
   if (retired.length) chrome.storage.local.remove(retired).catch(() => {});
-  const waits = Object.entries(state.pending).filter(
-    ([, request]) => request && (request.kind === 'schedule' || request.kind === 'allow')
-  );
+  // Accounts used to wait before being added. One still waiting is added now,
+  // as it would be today.
+  let addedWaiting = false;
+  for (const [platform, request] of Object.entries(state.pending)) {
+    if (!request || request.kind !== 'allow' || !ALLOW_SITES[platform]) continue;
+    setAllowed(platform, [...savedAllowed(platform), request.name]);
+    addedWaiting = true;
+  }
+  if (addedWaiting) chrome.storage.sync.set({ settings: state.settings }).catch(() => {});
+  const waits = Object.entries(state.pending).filter(([, request]) => request && request.kind === 'schedule');
   if (waits.length !== Object.keys(state.pending).length) {
     state.pending = Object.fromEntries(waits);
     chrome.storage.local.set(localState()).catch(() => {});

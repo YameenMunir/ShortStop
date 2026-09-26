@@ -286,9 +286,9 @@ These selectors haven't been checked on the live site yet, so note anything that
 
 - [ ] Unfold YouTube: **Allowed channels** says "None". Type `not a channel!` and **Add**: it's
       refused with "That doesn't look like a YouTube channel…".
-- [ ] Paste a channel link (e.g. `https://www.youtube.com/@veritasium/videos`) and **Add**. It
-      waits: "Allowing @veritasium in 29s.", with only Cancel, and the field is greyed out. After
-      30 seconds, **Save now**: `@veritasium` shows in the list.
+- [ ] Paste a channel link (e.g. `https://www.youtube.com/@veritasium/videos`) and **Add**.
+      `@veritasium` shows in the list straight away, with no countdown, and the field is ready for
+      another.
 - [ ] Add the same channel again: "@veritasium is already allowed."
 - [ ] **Feeds and Shorts** (the default): search for the channel. Its Shorts cards show, and
       clicking one plays it in the normal player. Other channels' Shorts stay hidden. Its channel
