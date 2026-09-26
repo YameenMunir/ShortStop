@@ -99,13 +99,37 @@
             <span class="chevron" aria-hidden="true"></span>
             <span class="platform-text">
             <span class="platform-name">Instagram</span>
-            <span class="platform-detail">Feed, Explore, Reels and Stories off</span>
+            <span class="platform-detail" id="detail-instagram">Feed, Explore, Reels and Stories off</span>
           </span>
           </button>
           <span class="platform-count" id="count-instagram" title="Blocked today">0</span>
           <input class="switch" type="checkbox" role="switch" id="toggle-instagram" data-platform="instagram" aria-label="Block Instagram" checked />
         </div>
         <div class="platform-details" id="details-instagram" hidden>
+        <div class="choices" role="radiogroup" aria-labelledby="instagram-mode-label" data-default="feeds">
+          <p class="choices-legend" id="instagram-mode-label">While Instagram is on, choose what to block:</p>
+        <label class="choice">
+          <input type="radio" name="instagram-mode" value="all" data-setting="instagramMode" data-parent="instagram" />
+          <span class="option-text">
+            <span class="option-title">Block all of Instagram</span>
+            <span class="option-detail">Every Instagram page, including messages, profiles and search.</span>
+          </span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="instagram-mode" value="feeds" data-setting="instagramMode" data-parent="instagram" />
+          <span class="option-text">
+            <span class="option-title">Block feeds and Reels</span>
+            <span class="option-detail">The Home feed, Explore, Reels and Stories. Messages, search and profiles still work.</span>
+          </span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="instagram-mode" value="reels" data-setting="instagramMode" data-parent="instagram" />
+          <span class="option-text">
+            <span class="option-title">Block Reels only</span>
+            <span class="option-detail">Keep Instagram usable, but remove Reels from the feed, Explore, profiles and messages.</span>
+          </span>
+        </label>
+        </div>
         <label class="option-row" for="option-instagram-notifications">
           <span>Allow notifications</span>
           <input
@@ -163,13 +187,30 @@
             <span class="chevron" aria-hidden="true"></span>
             <span class="platform-text">
             <span class="platform-name">TikTok</span>
-            <span class="platform-detail">All feeds and LIVE off</span>
+            <span class="platform-detail" id="detail-tiktok">All feeds and LIVE off</span>
           </span>
           </button>
           <span class="platform-count" id="count-tiktok" title="Blocked today">0</span>
           <input class="switch" type="checkbox" role="switch" id="toggle-tiktok" data-platform="tiktok" aria-label="Block TikTok" checked />
         </div>
         <div class="platform-details" id="details-tiktok" hidden>
+        <div class="choices" role="radiogroup" aria-labelledby="tiktok-mode-label" data-default="feeds">
+          <p class="choices-legend" id="tiktok-mode-label">While TikTok is on, choose what to block:</p>
+        <label class="choice">
+          <input type="radio" name="tiktok-mode" value="all" data-setting="tiktokMode" data-parent="tiktok" />
+          <span class="option-text">
+            <span class="option-title">Block all of TikTok</span>
+            <span class="option-detail">Every TikTok page, including search, messages and videos you open.</span>
+          </span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="tiktok-mode" value="feeds" data-setting="tiktokMode" data-parent="tiktok" />
+          <span class="option-text">
+            <span class="option-title">Block feeds</span>
+            <span class="option-detail">For You, Following, LIVE, Explore and the other feeds. Search, messages and videos you open still work.</span>
+          </span>
+        </label>
+        </div>
         <label class="option-row" for="option-tiktok-notifications">
           <span>Allow notifications</span>
           <input

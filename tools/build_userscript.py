@@ -65,8 +65,13 @@ const BLOCK_YOUTUBE_SHORTS = true;
 //   'shorts' only Shorts; the rest of YouTube works normally
 const YOUTUBE_MODE = 'feeds';
 
-// Instagram: the Home feed, Explore, Reels and Stories are blocked.
+// Instagram: true = blocking on, false = Instagram is left alone.
 const BLOCK_INSTAGRAM_REELS = true;
+// What Instagram's blocking covers:
+//   'all'    every Instagram page, including messages, profiles and search
+//   'feeds'  the Home feed, Explore, Reels and Stories (default)
+//   'reels'  only Reels; the feed, Explore and Stories work normally
+const INSTAGRAM_MODE = 'feeds';
 const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
 
 // Facebook: the News Feed, Reels, Watch, Stories and other recommendation
@@ -75,8 +80,12 @@ const BLOCK_FACEBOOK_FEEDS = true;
 const ALLOW_FACEBOOK_NOTIFICATIONS = false;
 const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
 
-// TikTok: For You, Following, Friends, LIVE and Explore are blocked.
+// TikTok: true = blocking on, false = TikTok is left alone.
 const BLOCK_TIKTOK_FEEDS = true;
+// What TikTok's blocking covers:
+//   'all'    every TikTok page, including search, messages and single videos
+//   'feeds'  For You, Following, Friends, LIVE and Explore (default)
+const TIKTOK_MODE = 'feeds';
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
 
 // Reddit: the Home feed, Popular, All and Explore are blocked. Communities,
@@ -99,11 +108,13 @@ const BLOCK_SNAPCHAT_SPOTLIGHT = true;
     youtube: BLOCK_YOUTUBE_SHORTS,
     youtubeMode: YOUTUBE_MODE,
     instagram: BLOCK_INSTAGRAM_REELS,
+    instagramMode: INSTAGRAM_MODE,
     facebook: BLOCK_FACEBOOK_FEEDS,
     facebookNotifications: ALLOW_FACEBOOK_NOTIFICATIONS,
     facebookMarketplaceSearch: ALLOW_FACEBOOK_MARKETPLACE_SEARCH,
     instagramNotifications: ALLOW_INSTAGRAM_NOTIFICATIONS,
     tiktok: BLOCK_TIKTOK_FEEDS,
+    tiktokMode: TIKTOK_MODE,
     tiktokNotifications: ALLOW_TIKTOK_NOTIFICATIONS,
     reddit: BLOCK_REDDIT_FEEDS,
     x: BLOCK_X_FEEDS,

@@ -1,7 +1,16 @@
 /*
  * ShortStop: TikTok (focus mode)
  * ==============================
- * Every algorithmic feed is treated the same: For You, Following, Friends,
+ * While TikTok's switch is on, the popup offers two choices (`mode`):
+ *
+ *   'all'    Block all of TikTok: every page shows the ShortStop panel over the
+ *            whole window, search, messages and single videos included.
+ *   'feeds'  Block the feeds (the default), described below.
+ *
+ * TikTok is short videos all the way through, so there is no "short videos
+ * only" choice. A focus session keeps the choice as it is.
+ *
+ * 'feeds': every algorithmic feed is treated the same: For You, Following, Friends,
  * LIVE, Explore, Short dramas and the discovery pages behind hashtags, sounds
  * and topics.
  * On those routes the feed area is hidden from the first paint and replaced
@@ -35,6 +44,21 @@ function findOwnTikTokProfileHref() {
   return href && /^\/@[^/?#]+/.test(href) ? href : null;
 }
 
+// 'all': the panel covers the whole window on every TikTok page.
+const tiktokBlockedPage = (options) =>
+  options.mode === 'all'
+    ? {
+        title: 'TikTok is blocked.',
+        message: 'Switch TikTok off in ShortStop, or choose a lighter setting under it, to use TikTok.',
+        target: [], // No content area: the full-window panel covers everything.
+        search: null,
+        links: () => [],
+      }
+    : null;
+
+// A feed page: blocked in 'all', covered with its own message in 'feeds'.
+const tiktokFeedPage = (message) => (options) => tiktokBlockedPage(options) || { message };
+
 ShortStop.start({
   id: 'tiktok',
   hosts: ['tiktok.com'],
@@ -55,9 +79,10 @@ ShortStop.start({
     messages: /^\/messages(?:\/|$)/,
   },
 
-  // Extra switches shown in the popup under TikTok.
+  // Extra switches and the choice of what to block, shown in the popup under TikTok.
   options: {
     notifications: { setting: 'tiktokNotifications', default: false },
+    mode: { setting: 'tiktokMode', default: 'feeds', values: ['all', 'feeds'] },
   },
 
   cover: {
@@ -65,17 +90,23 @@ ShortStop.start({
     // fallback. The panel goes where the feed was, next to TikTok's sidebar.
     target: ['div[id^="main-content-"]', 'main'],
     title: 'Scrolling is blocked by your focus settings.',
+    // A page's panel depends on the choice under TikTok's switch.
     pages: {
-      foryou: { message: "TikTok's For You feed is switched off." },
-      following: { message: 'The Following feed is switched off.' },
-      friends: { message: 'The Friends feed is switched off.' },
-      live: { message: 'LIVE is switched off.' },
-      explore: { message: 'Explore and discovery feeds are switched off.' },
-      shortdrama: { message: 'Short dramas are switched off.' },
-      notifications: {
-        message: 'Notifications are switched off. Turn on "Allow notifications" in the ShortStop menu if you need them.',
-        onlyIf: (options) => !options.notifications,
-      },
+      foryou: tiktokFeedPage("TikTok's For You feed is switched off."),
+      following: tiktokFeedPage('The Following feed is switched off.'),
+      friends: tiktokFeedPage('The Friends feed is switched off.'),
+      live: tiktokFeedPage('LIVE is switched off.'),
+      explore: tiktokFeedPage('Explore and discovery feeds are switched off.'),
+      shortdrama: tiktokFeedPage('Short dramas are switched off.'),
+      notifications: (options) =>
+        tiktokBlockedPage(options) ||
+        (options.notifications
+          ? null
+          : { message: 'Notifications are switched off. Turn on "Allow notifications" in the ShortStop menu if you need them.' }),
+      video: tiktokBlockedPage,
+      search: tiktokBlockedPage,
+      messages: tiktokBlockedPage,
+      other: tiktokBlockedPage, // Profiles, uploading, settings...
     },
     search: {
       label: 'Search TikTok',

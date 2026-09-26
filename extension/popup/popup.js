@@ -46,15 +46,17 @@ addEventListener('pointerdown', () => delete document.documentElement.dataset.ke
 
 const platformSwitches = Array.from(document.querySelectorAll('.switch[data-platform]'));
 const optionSwitches = Array.from(document.querySelectorAll('.switch[data-setting]'));
-// Choices under a platform's switch (YouTube: 'all', 'feeds' or 'shorts').
+// Choices under a platform's switch (YouTube: 'all', 'feeds' or 'shorts';
+// Instagram: 'all', 'feeds' or 'reels'; TikTok: 'all' or 'feeds').
 const choiceInputs = Array.from(document.querySelectorAll('input[type="radio"][data-setting]'));
-const YOUTUBE_DETAIL = {
-  all: 'All of YouTube blocked',
-  feeds: 'Home feed, Up next and Shorts off',
-  shorts: 'Shorts off',
+// What each choice blocks, shown under the platform's name.
+const CHOICE_DETAIL = {
+  youtube: { all: 'All of YouTube blocked', feeds: 'Home feed, Up next and Shorts off', shorts: 'Shorts off' },
+  instagram: { all: 'All of Instagram blocked', feeds: 'Feed, Explore, Reels and Stories off', reels: 'Reels off' },
+  tiktok: { all: 'All of TikTok blocked', feeds: 'All feeds and LIVE off' },
 };
-// A focus session raises 'shorts' to 'feeds' (duringFocus in content/youtube.js).
-const FOCUS_RAISES = { shorts: 'feeds' };
+// A focus session raises the lightest choice to 'feeds' (duringFocus in content/<platform>.js).
+const FOCUS_RAISES = { shorts: 'feeds', reels: 'feeds' };
 
 // Monday first. 5 January 2026 is a Monday.
 const WEEK = [1, 2, 3, 4, 5, 6, 0].map((day) => {
@@ -490,8 +492,10 @@ function renderOptions(now) {
     input.checked = input.value === chosen;
     input.disabled = state.settings[input.dataset.parent] === false || focus;
   }
-  const youtubeMode = choiceValue(choiceInputs[0]);
-  setText(document.getElementById('detail-youtube'), YOUTUBE_DETAIL[focus ? FOCUS_RAISES[youtubeMode] || youtubeMode : youtubeMode]);
+  for (const [platform, details] of Object.entries(CHOICE_DETAIL)) {
+    const mode = choiceValue(document.querySelector(`input[type="radio"][data-parent="${platform}"]`));
+    setText(document.getElementById(`detail-${platform}`), details[focus ? FOCUS_RAISES[mode] || mode : mode]);
+  }
 }
 
 // The stored choice for a group of radio buttons, or the group's default.

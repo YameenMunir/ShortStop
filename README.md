@@ -52,8 +52,9 @@
   there's nothing to scroll.
 - **Still useful.** Search, messages, profiles, groups, uploading and a video you open on
   purpose keep working, so the sites stay usable as communication tools.
-- **Your choice on YouTube.** Block all of YouTube, just its feeds and Shorts, or only Shorts
-  while the rest of YouTube works normally.
+- **Your choice of how much to block.** On YouTube, block all of it, just its feeds and Shorts,
+  or only Shorts. On Instagram, block all of it, its feeds and Reels, or only Reels. On TikTok,
+  block all of it or just its feeds.
 - **One-click switches.** Each site's blocking turns off and back on in one click, and open
   tabs follow at once, with no reload.
 - **Allowed times.** Let a site through at set times, like YouTube from 8 to 9pm on weekdays
@@ -62,7 +63,7 @@
   locked until it ends. Start one from the popup, or press **Alt+Shift+F twice** for an hour.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,447
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,576
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -71,14 +72,14 @@
 | Platform | What ShortStop changes |
 | --- | --- |
 | **YouTube** | **You choose what to block.** Under YouTube's switch, pick one of three: **Block all of YouTube**: every YouTube page, including videos, search, subscriptions and Shorts, shows the ShortStop panel (*"YouTube is blocked."*) over the whole window, and nothing plays. **Block feeds and Shorts** (the default): the **home page's recommended grid**, Trending/Explore and Gaming are replaced by the panel (*"Scrolling is blocked by your focus settings."*), with a YouTube search box and links to Subscriptions, Watch later, Your playlists and History; on the watch page the **"Up next"** list is hidden (the playlist panel and live chat stay), **end-screen** video walls, end cards and the "More videos" overlay are removed, and **autoplay** is switched off; search results lose their "For you" / "People also watched" shelves; and Shorts are removed. Search, subscriptions, playlists, channels, history and any video you open keep working, and the miniplayer keeps playing when you go back to Home. **Block YouTube Shorts only**: YouTube works completely normally, home page included, minus Shorts. In every choice, `/shorts/VIDEO_ID` opens in the normal player (`/watch?v=VIDEO_ID`), and Shorts shelves, cards, tabs, chips and sidebar entries are removed everywhere. Switch YouTube off and it's left completely alone, Shorts included. |
-| **Instagram** | **Focus mode.** The Home feed, Explore (including hashtag, place and suggested-people pages), Reels and Stories are all blocked the same way. Their content is replaced by a ShortStop panel before it paints, so there's nothing to scroll and no way round it through the Home feed. The panel links to what still works: **Messages**, **account search**, **your profile**, and posting through Instagram's own menu. Profiles and single posts you open on purpose still work, minus the Reels tab and "Suggested for you" accounts. Reels shared in DMs are blurred and can't be opened. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
+| **Instagram** | **You choose what to block.** Under Instagram's switch, pick one of three: **Block all of Instagram**: every page, messages and profiles included, shows the ShortStop panel (*"Instagram is blocked."*) over the whole window. **Block Reels only**: the Home feed, Explore, Stories, profiles and messages work normally, minus Reels: the Reels tab and single Reels show the panel, Reel posts are removed from the Home feed and Reel tiles from Explore, search and profile grids, and Reels shared in DMs are blurred. **Block feeds and Reels** (the default), **focus mode**: the Home feed, Explore (including hashtag, place and suggested-people pages), Reels and Stories are all blocked the same way. Their content is replaced by a ShortStop panel before it paints, so there's nothing to scroll and no way round it through the Home feed. The panel links to what still works: **Messages**, **account search**, **your profile**, and posting through Instagram's own menu. Profiles and single posts you open on purpose still work, minus the Reels tab and "Suggested for you" accounts. Reels shared in DMs are blurred and can't be opened. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 | **Facebook** | **Focus mode.** Facebook stays a communication and utility tool, not an endless feed. The News Feed (including the Feeds filters), Reels, Watch, Stories, the groups feed and Discover, Gaming, friend suggestions and **Marketplace's recommended listings** are all blocked the same way. Each shows *"Scrolling is blocked by your focus settings."* where the feed was, with a Facebook search box and links to **Messenger**, **your profile** (to post), **your groups** and **Pages you manage**. A Watch link someone sent you gets an *Open this video only* button. Menu and top-bar shortcuts into feeds are hidden. On a blocked feed, feed keys (including Facebook's own J/K) are swallowed and videos are paused. Inside pages that stay open (profiles, a specific group, search), Reels, the Stories tray and "Suggested for you" / "People you may know" units are removed. **Marketplace:** searching and categories, listings, selling and the inbox work, and *Allow Marketplace search* in the popup can turn search off too. **Notifications** are blocked unless you turn on *Allow notifications*. |
-| **TikTok** | **Focus mode.** Every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, Short dramas (the catalog and its episodes), and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
+| **TikTok** | **You choose what to block.** Under TikTok's switch, pick **Block all of TikTok**, where every page, search, messages and single videos included, shows the ShortStop panel (*"TikTok is blocked."*) over the whole window, or **Block feeds** (the default), **focus mode**: every algorithmic feed is blocked the same way: For You, Following, Friends, LIVE (the feed and individual streams), Explore, Short dramas (the catalog and its episodes), and the discovery pages behind hashtags, sounds, topics and channels. The feed is replaced by a panel saying *"Scrolling is blocked by your focus settings."*, so switching from For You to Following or LIVE gets you nowhere. The panel has a search box and links to **Messages**, **Upload** and **your profile**. The sidebar links into feeds are hidden. On a blocked feed, the arrow, Page Up/Down, Space and J/K keys are swallowed, and any video that starts playing is paused. **Search**, **messages**, **profiles and single videos** you open on purpose (minus "You may like" and suggested accounts), **uploading** and **account settings** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. |
 | **Reddit** | **Focus mode.** The **Home feed** (every sort order: Best, Hot, New, Top, Rising), **Popular**, **All**, and **Explore** and topic pages are replaced by the panel, with a Reddit search box and links to **your profile**, **saved posts** and **chat**. The Popular, All and Explore links are hidden (communities with similar names, like r/allthingsdnd, are not). A **community you open on purpose** still works, like a Facebook group, and so do **posts and comments**, **search** and **profiles**. "More posts you may like", "Popular communities" and similar boxes are removed. Works on www.reddit.com and old.reddit.com. |
 | **X** | **Focus mode.** The **Home timeline** (For you and Following both live at `/home`), **Explore** with its trending tabs, and topic timelines are replaced by the panel, with an X search box and links to **Messages**, **Bookmarks** and **your profile**. The Home and Explore links are hidden, and so are "What's happening" and "Who to follow" in the right-hand column. On a blocked timeline, X's J/K and Space shortcuts are swallowed and videos are paused. **Search**, **messages**, **profiles**, **single posts**, **bookmarks** and **lists** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. Works on x.com and twitter.com. |
 | **Snapchat** | **Focus mode.** **Spotlight** (the feed, single Spotlight links, which play on into the next video, and a profile's Spotlight) and the **Discover** and **Explore** pages are replaced by the panel, with a link to **Snapchat for web** (chat). Links into Spotlight, Discover and Explore are hidden. Chat and public profiles keep working. |
 
-The popup has a switch per platform, plus a choice of what to block under YouTube, *Allow notifications* under Instagram,
+The popup has a switch per platform, plus a choice of what to block under YouTube, Instagram and TikTok, *Allow notifications* under Instagram,
 Facebook, TikTok and X, *Allow Marketplace search* under Facebook, and *Allowed times* under each.
 To keep it on one screen, each site's options stay folded away: click a site's name to unfold
 them, and the popup remembers which sites you left open. The switch next to the name works
@@ -90,7 +91,7 @@ since install.
 
 Each site's switch turns off **in one click**: blocking stops in every open tab straight away,
 with no choice, countdown or confirmation, and clicking it again turns blocking back on at
-once. YouTube's choice of what to block is kept either way.
+once. The site's choice of what to block is kept either way.
 
 ### Allowed times
 
@@ -118,8 +119,9 @@ When you want that, start a **focus session** from the top of the popup: pick **
 
 - Until it ends, **every site is blocked**: its switch and its allowed times are overridden,
   and they're locked in the popup (the switches show on and can't be clicked, and allowed times
-  can't be edited). YouTube's choice is locked too, and *Block YouTube Shorts only* counts as
-  *Block feeds and Shorts*, so a session never leaves the home feed open. The smaller options
+  can't be edited). The choices of what to block are locked too: *Block YouTube Shorts only*
+  counts as *Block feeds and Shorts*, and Instagram's *Block Reels only* as *Block feeds and
+  Reels*, so a session never leaves a home feed open. *Block all* stays as it is. The smaller options
   such as *Allow notifications* still work.
 - The popup shows how long is left and when it ends. It **can't be stopped early**, which is
   the point, so the length is confirmed before it starts.
@@ -281,7 +283,8 @@ focus modes for YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat.
 const BLOCK_YOUTUBE_SHORTS = true;              // false: leave YouTube completely alone
 const YOUTUBE_MODE = 'feeds';                   // 'all', 'feeds' (feeds and Shorts) or 'shorts'
 
-const BLOCK_INSTAGRAM_REELS = true;             // Home feed, Explore, Reels, Stories
+const BLOCK_INSTAGRAM_REELS = true;             // false: leave Instagram alone
+const INSTAGRAM_MODE = 'feeds';                 // 'all', 'feeds' (feeds and Reels) or 'reels'
 const ALLOW_INSTAGRAM_NOTIFICATIONS = false;
 
 const BLOCK_FACEBOOK_FEEDS = true;              // News Feed, Reels, Watch, Stories, Marketplace browsing
@@ -289,6 +292,7 @@ const ALLOW_FACEBOOK_NOTIFICATIONS = false;
 const ALLOW_FACEBOOK_MARKETPLACE_SEARCH = true;
 
 const BLOCK_TIKTOK_FEEDS = true;                // For You, Following, Friends, LIVE, Explore
+const TIKTOK_MODE = 'feeds';                    // 'all' or 'feeds'
 const ALLOW_TIKTOK_NOTIFICATIONS = false;
 
 const BLOCK_REDDIT_FEEDS = true;                // Home, Popular, All, Explore
@@ -318,9 +322,10 @@ extension/
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
 │   ├── youtube.js           YouTube: the three choices (all, feeds and Shorts, Shorts only), Shorts
 │   │                        redirects, the covered home feed and autoplay effects
-│   ├── instagram.js         Instagram focus mode: covered routes, selectors, redirects
+│   ├── instagram.js         Instagram: the three choices (all, feeds and Reels, Reels only),
+│   │                        covered routes, selectors, redirects
 │   ├── facebook.js          Facebook focus mode: covered feeds, Marketplace rules, selectors
-│   ├── tiktok.js            TikTok focus mode: covered feeds, panel search, selectors
+│   ├── tiktok.js            TikTok: the two choices (all, feeds), covered feeds, panel search, selectors
 │   ├── reddit.js            Reddit focus mode: Home, Popular, All and Explore covered
 │   ├── x.js                 X focus mode: Home timeline and Explore covered, sidebar trends
 │   └── snapchat.js          Snapchat focus mode: Spotlight, Discover and Explore covered
@@ -365,8 +370,8 @@ Each platform file is a single config object, and `core.js` does the work:
      feed pages do, so its miniplayer keeps playing and working, while *Block all of YouTube*
      pauses everything.
    - A covered page can also be a function of the popup's options, and can say it has no
-     content area: that's how *Block all of YouTube* covers every page with the full-window
-     panel, while the other choices cover only the feeds or nothing.
+     content area: that's how *Block all* (YouTube, Instagram and TikTok) covers every page
+     with the full-window panel, while the other choices cover only the feeds or nothing.
    - The route is re-checked on every navigation and DOM change, so the panel comes back if
      the site re-renders it away. If there is no content area (still loading, or after a
      redesign), the panel covers the whole viewport and locks scrolling instead.
@@ -451,7 +456,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,447 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,576 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -523,10 +528,16 @@ platform it checks:
   another platform's or a malformed one, respects *Block now*, and (with a fake clock)
   switches off and back on by itself when an allowed time starts and ends
 - Focus sessions on every platform: blocking while switched off or inside an allowed time,
-  ending by itself on time, and (YouTube) raising *Shorts only* to *feeds and Shorts*
+  ending by itself on time, and raising YouTube's *Shorts only* and Instagram's *Reels only*
+  to their *feeds* choice
 - YouTube's three choices: *all* covering every page over the whole window and pausing media,
   *Shorts only* leaving the home page, Up next and autoplay alone while still removing Shorts
   and redirecting `/shorts/` links, and everything left alone once YouTube is switched off
+- Instagram's three choices: *all* covering every page (messages and profiles included) over
+  the whole window, and *Reels only* leaving the Home feed, Explore, Stories and suggestions
+  alone while removing Reel posts and tiles, covering the Reels pages and blurring Reels in DMs
+- TikTok's two choices: *all* covering every page (search, messages, profiles and single
+  videos included), and everything left alone once TikTok is switched off
 - Facebook Marketplace: home and city browsing blocked; search, categories, listings and
   selling allowed; everything but listings and selling blocked when search is switched off
 - YouTube: Up next hidden while the playlist panel and live chat stay, end screens removed,
@@ -540,8 +551,9 @@ Three more pages have no site markup. `schedule.html` unit-tests
 back-to-back times, bad data, and which edits count as looser. `popup.html` loads the real
 popup with an in-memory `chrome.storage` and clicks through it: leftovers from the retired
 pause flow being tidied away, every switch turning off and back on in one click, each site's
-options folding and unfolding from its name (remembered, and without touching the switch), YouTube's three
-choices (saved, greyed out while YouTube is off, and the row's description following them),
+options folding and unfolding from its name (remembered, and without touching the switch), the
+choices of what to block under YouTube, Instagram and TikTok (saved, greyed out while the site is
+off, the row's description following them, and raised during a focus session),
 adding a time (waits), shortening and removing one (instant), a time with no days,
 *Block now*, a focus session starting, locking everything and unlocking by itself, and the
 shortcut line under it: the switch turning the shortcut off and on, the link to the browser's
@@ -579,9 +591,12 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
   key itself: to free the key for other programs, remove it in the browser's shortcut settings.
 - **Private windows.** Browsers don't run extensions in private/incognito windows unless you
   allow it under the extension's details, so blocking doesn't apply there by default.
-- The smaller options (YouTube's choice of what to block, *Allow notifications*, *Allow
+- The smaller options (the choice of what to block, *Allow notifications*, *Allow
   Marketplace search*) switch instantly too. During a focus session, YouTube's *Shorts only*
-  counts as *feeds and Shorts*, so a session never leaves the home feed open.
+  and Instagram's *Reels only* count as their *feeds* choice, so a session never leaves a home
+  feed open.
+- Instagram's *Reels only* finds Reels by their `/reel/` links. A video post Instagram links as
+  `/p/` stays, and this choice hasn't been checked on the live site yet.
 - YouTube's "For you" / "People also watched" shelves in search are matched by their English
   titles, and the m.youtube.com "related videos" rule hasn't been checked on a phone.
 - Instagram and Facebook selectors that use ARIA labels (the DM Reel badge, the

@@ -104,6 +104,17 @@ in place of the content, with Instagram's own sidebar or bottom bar still usable
       mobile. `/accounts/activity/` shows "Notifications are off".
 - [ ] **Notifications on:** turn on *Allow notifications* in the popup. The Notifications item
       comes back without a reload, and the panel gains a Notifications button. Turn it off again.
+- [ ] **Choices:** in the popup, click Instagram's name. It offers *Block all of Instagram*,
+      *Block feeds and Reels* (selected) and *Block Reels only*, and the row's description
+      follows the choice.
+- [ ] **Block Reels only:** the Home feed, Explore, Stories and profiles work, with no Reel posts
+      in the feed and no Reel tiles in Explore or on profiles. `/reels/` and a single Reel show
+      "Reels are off". A Reel sent in a DM is blurred. Notifications still follow *Allow
+      notifications*.
+- [ ] **Block all of Instagram:** every page, Messages and profiles included, shows "Instagram is
+      blocked." over the whole window, with no links. Switch Instagram off: it's all back at once.
+- [ ] **Focus session with *Reels only*:** the Home feed shows "Your feed is off" until it ends.
+
 
 ## Facebook (signed in, www.facebook.com)
 
@@ -163,6 +174,11 @@ in place of the videos, with TikTok's sidebar and top bar still usable.
 - [ ] **Notifications off (default):** the inbox/notifications button is gone.
 - [ ] **Notifications on:** turn on *Allow notifications* under TikTok in the popup. The button
       comes back without a reload. Turn it off again.
+- [ ] **Choices:** in the popup, click TikTok's name. It offers *Block all of TikTok* and *Block
+      feeds* (selected), and the row's description follows the choice.
+- [ ] **Block all of TikTok:** search, messages, a profile and a single video all show "TikTok is
+      blocked." over the whole window, and nothing plays. Switch TikTok off: it's all back at once.
+
 
 ## Reddit (www.reddit.com, then old.reddit.com)
 
