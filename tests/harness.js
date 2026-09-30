@@ -15,6 +15,7 @@
  *   plan.cover / phase.cover               { title, links } if the page must be covered, false if not
  *   phase.settings                         settings to apply before that phase's navigation
  *   plan.initialWait                       ms to wait before the first checks (default 500)
+ *   window.harnessState.categoryFixes      category corrections the page saved (content preferences)
  *
  * Results are written as JSON into <pre id="results"> for tests/run_tests.py.
  */
@@ -29,7 +30,9 @@
     orphaned: false,
     reloads: 0,
     listeners: [],
+    categoryFixes: {},
   };
+  window.harnessState = state; // For phase `checks` expressions.
 
   ShortStop.useEnv({
     href: () => state.url,
@@ -42,6 +45,7 @@
       state.counted += amount;
       return Promise.resolve();
     },
+    saveCategoryFixes: (platform, fixes) => (state.categoryFixes = { ...state.categoryFixes, [platform]: fixes }),
   });
 
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

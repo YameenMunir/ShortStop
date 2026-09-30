@@ -4,7 +4,8 @@ Build userscript/shortstop.user.js from the extension's own source files.
 The userscript is the extension's core engine (with the allowed-times helper
 it uses) plus the YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat
 configs, stitched into one file with an iOS-friendly environment (toggles as constants, no
-storage, no counter, no allowed times; allowed accounts as lists). Selectors therefore only ever
+storage, no counter, no allowed times; allowed accounts as lists; content preferences as
+constants, with corrections kept only until the page closes). Selectors therefore only ever
 need updating in extension/content/*.js; run this afterwards:
 
     python tools/build_userscript.py
@@ -18,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTENT = ROOT / "extension" / "content"
 SCHEDULE = ROOT / "extension" / "shared" / "schedule.js"  # core.js needs it.
 ALLOWLIST = ROOT / "extension" / "shared" / "allowlist.js"  # The platform configs need it.
+CATEGORIES = ROOT / "extension" / "shared" / "categories.js"  # Content preferences need it.
 OUTPUT = ROOT / "userscript" / "shortstop.user.js"
 
 PLATFORM_FILES = ("youtube.js", "instagram.js", "facebook.js", "tiktok.js", "reddit.js", "x.js", "snapchat.js")
@@ -108,6 +110,19 @@ const INSTAGRAM_ALLOWED_ACCOUNTS = [];
 const TIKTOK_ALLOWED_ACCOUNTS = [];
 const SNAPCHAT_ALLOWED_ACCOUNTS = [];
 
+// YouTube content preferences: sort videos into categories and allow, reduce
+// or hide each one where YouTube still shows videos. Off by default.
+const YOUTUBE_FILTER_CATEGORIES = false;
+// Categories to change, as 'reduce' (fewer in recommendations) or 'hide';
+// every other one is allowed. The categories: education, science, business,
+// news, productivity, coding, health, music, gaming, entertainment, sports,
+// lifestyle, vlogs, podcasts, movies, documentaries, comedy, celebrity, other.
+// Example: { gaming: 'hide', celebrity: 'hide', entertainment: 'reduce' }
+const YOUTUBE_CATEGORIES = {};
+const YOUTUBE_FILTER_SUBSCRIPTIONS = false;
+// true: a video you open in a hidden category shows a notice first.
+const YOUTUBE_CHECK_OPENED_VIDEOS = false;
+
 /* ================================================================ */
 
 (function () {
@@ -133,6 +148,10 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
     instagramAllowed: INSTAGRAM_ALLOWED_ACCOUNTS,
     tiktokAllowed: TIKTOK_ALLOWED_ACCOUNTS,
     snapchatAllowed: SNAPCHAT_ALLOWED_ACCOUNTS,
+    youtubeCategoryFilter: YOUTUBE_FILTER_CATEGORIES,
+    youtubeCategories: YOUTUBE_CATEGORIES,
+    youtubeCategorySubscriptions: YOUTUBE_FILTER_SUBSCRIPTIONS,
+    youtubeCategoryWatch: YOUTUBE_CHECK_OPENED_VIDEOS,
   };
 """
 
@@ -166,7 +185,9 @@ def main():
     parts = [HEADER.replace("__VERSION__", manifest["version"])]
     parts.append(section("shared/schedule.js", SCHEDULE.read_text(encoding="utf-8")))
     parts.append(section("shared/allowlist.js", ALLOWLIST.read_text(encoding="utf-8")))
+    parts.append(section("shared/categories.js", CATEGORIES.read_text(encoding="utf-8")))
     parts.append(section("core.js", (CONTENT / "core.js").read_text(encoding="utf-8")))
+    parts.append(section("category-filter.js", (CONTENT / "category-filter.js").read_text(encoding="utf-8")))
     parts.append(indent(ENV))
     for name in PLATFORM_FILES:
         parts.append(section(name, (CONTENT / name).read_text(encoding="utf-8")))

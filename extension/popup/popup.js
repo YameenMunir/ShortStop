@@ -18,6 +18,13 @@
  * stay blocked. Adding one loosens blocking, so it goes through the same
  * waiting request as allowed times; removing one is instant.
  *
+ * Content preferences (YouTube): an optional filter, off by default, that sorts
+ * videos into categories and allows, reduces or hides each one where YouTube
+ * still shows videos. Presets set every category at once. Choices are saved
+ * straight away (they shape what is shown rather than switch blocking off);
+ * corrections made on YouTube ("this channel is Education") are kept on this
+ * device only and can be removed here.
+ *
  * A focus session ("Focus session" at the top) blocks every platform for 30
  * minutes to 2 hours: switches, YouTube's choice of what to block and allowed
  * times are locked until it ends. It is stored as `focusUntil` in the synced settings
@@ -32,6 +39,24 @@ const { PLATFORMS, todayKey, normalizeStats, totalOf } = globalThis.ShortStopSta
 const { OFF_WAIT_SECONDS, OFF_WINDOW_SECONDS } = globalThis.ShortStopPause;
 const { MAX_WINDOWS, normalizeWindows, allowedUntil, isLooser } = globalThis.ShortStopSchedule;
 const { MAX_ACCOUNTS, sites: ALLOW_SITES, normalizeList } = globalThis.ShortStopAllowlist;
+const { CATEGORIES, PRESETS, LABELS: CATEGORY_LABELS, normalizePrefs, normalizeFixes, presetPrefs, matchingPreset } =
+  globalThis.ShortStopCategories;
+
+// Content preferences: the settings behind each platform's category filter.
+const CATEGORY_SITES = {
+  youtube: { setting: 'youtubeCategories', enabled: 'youtubeCategoryFilter' },
+};
+// Where the filter has something to do, for each choice of what YouTube blocks.
+const CATEGORY_WHERE = {
+  all: 'All of YouTube is blocked right now, so there is nothing to filter.',
+  feeds: 'Filters search results, and Subscriptions if you like. The home feed and Up next are blocked already.',
+  shorts: 'Filters the home feed, Up next and search results, and Subscriptions if you like.',
+};
+const CATEGORY_MODES = [
+  ['allow', 'Allow'],
+  ['reduce', 'Reduce'],
+  ['hide', 'Hide'],
+];
 
 // What an allowed account gets through on each site (and what stays blocked).
 const ALLOW_NOTES = {
@@ -85,14 +110,16 @@ const WEEK = [1, 2, 3, 4, 5, 6, 0].map((day) => {
  *   pending        { platform: { kind: 'schedule', at, windows } } a waiting allowed-times change,
  *                  or { kind: 'allow', at, name } an allowed account waiting to be added
  *   scheduleSkips  { platform: time } "Block now" ignores allowed times until then
+ *   categoryFixes  { platform: { key: { category, label } } } corrections made on the site
  */
-const state = { settings: {}, pending: {}, scheduleSkips: {} };
-const LOCAL_KEYS = ['pending', 'scheduleSkips'];
+const state = { settings: {}, pending: {}, scheduleSkips: {}, categoryFixes: {} };
+const LOCAL_KEYS = ['pending', 'scheduleSkips', 'categoryFixes'];
 // Kept by the retired pause flow ("Allow 10 minutes", "Turn off..."); removed on load.
 const RETIRED_LOCAL_KEYS = ['pendingOff', 'unlocks', 'pauseLog'];
 const panels = new Map(); // platform -> { panel, status, buttons }
 const schedulers = new Map(); // platform -> the allowed-times controls
 const allowBoxes = new Map(); // platform -> the allowed-accounts controls
+const categoryBoxes = new Map(); // platform -> the content-preferences controls
 const drafts = new Map(); // platform -> allowed times being edited
 
 /* ------------------------------------------------------------------ */
@@ -423,6 +450,198 @@ function renderAllowlist(platform, now) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Content preferences                                                  */
+/* ------------------------------------------------------------------ */
+
+function savedCategories(platform) {
+  return normalizePrefs(state.settings[CATEGORY_SITES[platform].setting]);
+}
+
+function savedFixes(platform) {
+  return normalizeFixes(state.categoryFixes[platform]);
+}
+
+// Shapes what is shown rather than switching blocking off, so it is saved at once.
+function setCategories(platform, prefs) {
+  state.settings = { ...state.settings, [CATEGORY_SITES[platform].setting]: normalizePrefs(prefs) };
+  return commit({ sync: true });
+}
+
+function setCategory(platform, category, mode) {
+  const prefs = savedCategories(platform);
+  if (mode === 'allow') delete prefs[category];
+  else prefs[category] = mode;
+  return setCategories(platform, prefs);
+}
+
+function removeFix(platform, key) {
+  const fixes = savedFixes(platform);
+  delete fixes[key];
+  state.categoryFixes = { ...state.categoryFixes, [platform]: fixes };
+  return commit({ local: true });
+}
+
+// "Gaming, Comedy and Sports", or "Gaming, Comedy, Sports and 4 more".
+function listLabels(ids) {
+  const labels = ids.map((id) => CATEGORY_LABELS[id]);
+  if (labels.length <= 1) return labels.join('');
+  if (labels.length <= 4) return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+  return `${labels.slice(0, 3).join(', ')} and ${labels.length - 3} more`;
+}
+
+// One line saying what the choices do.
+function describeCategories(prefs) {
+  const preset = PRESETS.find((entry) => entry.id === matchingPreset(prefs));
+  if (preset && preset.id !== 'all') return `${preset.label}: ${preset.detail} shown. The rest is hidden.`;
+  const hidden = CATEGORIES.filter((category) => prefs[category.id] === 'hide').map((category) => category.id);
+  const reduced = CATEGORIES.filter((category) => prefs[category.id] === 'reduce').map((category) => category.id);
+  if (!hidden.length && !reduced.length) return 'Every category is allowed. Pick a preset or choose your own.';
+  const parts = [];
+  if (hidden.length) parts.push(`Hiding ${listLabels(hidden)}.`);
+  if (reduced.length) parts.push(`Fewer ${listLabels(reduced)}.`);
+  return parts.join(' ');
+}
+
+// Under "Filter video categories": presets, a summary, the list behind
+// "Choose", a note, and the corrections made on the site. The switches for
+// Subscriptions and videos opened directly are in popup.html.
+function buildCategories(platform) {
+  const body = document.getElementById(`categories-body-${platform}`);
+  const where = element('p', 'categories-note');
+
+  const presets = element('div', 'categories-presets');
+  presets.setAttribute('role', 'group');
+  presets.setAttribute('aria-label', 'Presets');
+  presets.append(element('span', 'categories-label', 'Presets'));
+  const presetButtons = PRESETS.map((preset) => {
+    const node = button(preset.label, 'plain', 'preset');
+    node.dataset.preset = preset.id;
+    node.title = preset.id === 'all' ? preset.detail : `${preset.detail} shown, the rest hidden`;
+    node.setAttribute('aria-pressed', 'false');
+    node.addEventListener('click', () => setCategories(platform, presetPrefs(preset.id)));
+    return node;
+  });
+  presets.append(...presetButtons);
+
+  const head = element('div', 'schedule-row categories-row');
+  const summary = element('p', 'categories-summary');
+  summary.setAttribute('aria-live', 'polite');
+  const edit = button('Choose', 'quiet', 'edit-categories');
+  edit.classList.add('schedule-edit');
+  edit.setAttribute('aria-expanded', 'false');
+  edit.setAttribute('aria-label', 'Choose categories');
+  head.append(summary, edit);
+
+  const list = element('ul', 'category-list');
+  list.id = `category-list-${platform}`;
+  list.hidden = true;
+  edit.setAttribute('aria-controls', list.id);
+  const radios = [];
+  for (const category of CATEGORIES) {
+    const row = element('li', 'category-row');
+    const name = element('span', 'category-name', category.label);
+    name.id = `category-${platform}-${category.id}`;
+    const group = element('div', 'segmented');
+    group.setAttribute('role', 'radiogroup');
+    group.setAttribute('aria-labelledby', name.id);
+    for (const [mode, text] of CATEGORY_MODES) {
+      const segment = element('label', 'segment');
+      const input = element('input');
+      input.type = 'radio';
+      input.name = `category-${platform}-${category.id}`;
+      input.value = mode;
+      input.dataset.category = category.id;
+      input.addEventListener('change', () => input.checked && setCategory(platform, category.id, mode));
+      radios.push(input);
+      segment.append(input, element('span', null, text));
+      group.append(segment);
+    }
+    row.append(name, group);
+    list.append(row);
+  }
+  edit.addEventListener('click', () => {
+    const open = list.hidden;
+    list.hidden = !open;
+    edit.setAttribute('aria-expanded', String(open));
+    edit.textContent = open ? 'Done' : 'Choose';
+  });
+
+  const note = element(
+    'p',
+    'schedule-note',
+    "Reduce keeps about a third of a category's videos in recommendations. Hidden videos keep a Show anyway button. " +
+      'Videos are sorted by their title, channel and description, so it is a best guess: point at a video on YouTube to correct its category.'
+  );
+
+  const fixes = element('div', 'categories-fixes');
+  const fixesTitle = element('span', 'categories-label', 'Your corrections');
+  fixesTitle.id = `category-fixes-title-${platform}`;
+  const fixList = element('ul', 'allow-list');
+  fixList.setAttribute('aria-labelledby', fixesTitle.id);
+  fixes.append(fixesTitle, fixList);
+
+  body.prepend(where, presets, head, list, note);
+  body.append(fixes);
+  categoryBoxes.set(platform, {
+    box: document.getElementById(`categories-${platform}`),
+    body,
+    where,
+    presetButtons,
+    summary,
+    radios,
+    fixes,
+    fixList,
+    fixesKey: null,
+  });
+}
+
+function renderCategories(platform, now) {
+  const controls = categoryBoxes.get(platform);
+  const site = CATEGORY_SITES[platform];
+  const off = state.settings[platform] === false;
+  controls.body.hidden = state.settings[site.enabled] !== true;
+  controls.box.classList.toggle('is-disabled', off);
+
+  const prefs = savedCategories(platform);
+  for (const input of controls.radios) {
+    input.checked = input.value === (prefs[input.dataset.category] || 'allow');
+    input.disabled = off;
+  }
+  const preset = matchingPreset(prefs);
+  for (const node of controls.presetButtons) {
+    node.setAttribute('aria-pressed', String(node.dataset.preset === preset));
+    node.disabled = off;
+  }
+  setText(controls.summary, describeCategories(prefs));
+
+  // Where it applies depends on what YouTube's choice already blocks.
+  const modeInput = document.querySelector(`input[type="radio"][data-parent="${platform}"]`);
+  let mode = modeInput ? choiceValue(modeInput) : 'shorts';
+  if (inFocus(now)) mode = FOCUS_RAISES[mode] || mode;
+  setText(controls.where, CATEGORY_WHERE[mode] || '');
+
+  // Corrections, newest first: rebuilt only when they change, so focus is kept.
+  const fixes = savedFixes(platform);
+  const key = JSON.stringify(fixes);
+  if (key !== controls.fixesKey) {
+    controls.fixesKey = key;
+    controls.fixList.replaceChildren();
+    for (const [fixKey, fix] of Object.entries(fixes).reverse()) {
+      const name = fix.label || fixKey.replace(/^[a-z]+:/, '');
+      const entry = element('li', 'allow-item');
+      const remove = button('\u00d7', 'quiet', 'remove-fix');
+      remove.classList.add('allow-remove');
+      remove.setAttribute('aria-label', `Remove the correction for ${name}`);
+      remove.title = 'Remove this correction';
+      remove.addEventListener('click', () => removeFix(platform, fixKey));
+      entry.append(element('span', null, `${name}: ${CATEGORY_LABELS[fix.category]}`), remove);
+      controls.fixList.append(entry);
+    }
+  }
+  controls.fixes.hidden = Object.keys(fixes).length === 0;
+}
+
+/* ------------------------------------------------------------------ */
 /* Allowed times                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -684,6 +903,7 @@ function render() {
     renderAllowlist(input.dataset.platform, now);
   }
   renderOptions(now);
+  for (const platform of categoryBoxes.keys()) renderCategories(platform, now);
   renderFocus(now);
 }
 
@@ -914,6 +1134,7 @@ async function init() {
     const platform = input.dataset.platform;
     buildPanel(platform, input);
     const details = document.getElementById(`details-${platform}`);
+    if (CATEGORY_SITES[platform]) buildCategories(platform);
     if (ALLOW_SITES[platform]) buildAllowlist(platform, details);
     buildScheduler(platform, details);
     input.addEventListener('click', (event) => {

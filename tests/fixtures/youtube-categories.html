@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>YouTube content preferences fixture</title>
+    <script src="../../extension/shared/schedule.js"></script>
+    <script src="../../extension/shared/allowlist.js"></script>
+    <script src="../../extension/shared/categories.js"></script>
+    <script src="../../extension/content/core.js"></script>
+    <script src="../../extension/content/category-filter.js"></script>
+    <script>
+      // Shorthands for the phase checks below.
+      window.cat = (id) => document.getElementById(id).getAttribute('data-shortstop-category');
+      window.filt = (id) => document.getElementById(id).getAttribute('data-shortstop-filter');
+      window.note = (id) => document.querySelector(`#${id} > shortstop-note`);
+      window.titleShown = (id) => document.querySelector(`#${id} :is(#video-title, h3)`).checkVisibility();
+      window.hover = (element) => element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      // Swaps the watch page's structured data, as YouTube does on in-page navigation.
+      window.describeVideo = (data) => {
+        document.querySelector('ytd-player-microformat-renderer script').textContent = JSON.stringify(data);
+        return true;
+      };
+    </script>
+    <script type="application/json" id="plan">
+{
+  "platform": "youtube",
+  "url": "https://www.youtube.com/results?search_query=games",
+  "phases": [
+    {"name": "catoff", "settings": {"youtube": true}, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["off by default: nothing is sorted", "!document.querySelector('[data-shortstop-category]')"],
+       ["off by default: no stylesheet", "!document.getElementById('shortstop-categories-youtube')"]
+     ]},
+    {"name": "cathide", "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}}, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["a game is folded into a note", "filt('s-game') === 'hide' && cat('s-game') === 'gaming'"],
+       ["the note says what was hidden", "note('s-game').shadowRoot.querySelector('[role=group]').getAttribute('aria-label') === 'Gaming video hidden by ShortStop' && note('s-game').shadowRoot.querySelector('select').value === 'gaming'"],
+       ["the note follows YouTube's light theme", "note('s-game').getAttribute('theme') === 'light'"],
+       ["the note is shown and the video is not", "note('s-game').checkVisibility() && !titleShown('s-game')"],
+       ["the note offers Show anyway", "note('s-game').shadowRoot.querySelector('button').textContent === 'Show anyway'"],
+       ["a coding video stays", "cat('s-code') === 'coding' && !filt('s-code') && titleShown('s-code')"],
+       ["a close call (coding and gaming) stays", "!filt('s-mixed')"],
+       ["an uncertain video is Other and stays", "cat('s-unsure') === 'other' && !filt('s-unsure')"],
+       ["a new-style lockup is sorted too", "cat('s-lockup') === 'music' && !filt('s-lockup')"],
+       ["ads are left alone", "!document.getElementById('s-ad').hasAttribute('data-shortstop-category')"],
+       ["a Short hidden by its own rule is left to it", "!document.getElementById('s-short').hasAttribute('data-shortstop-category')"],
+       ["a card that has not rendered its title yet waits", "!document.getElementById('s-loading').hasAttribute('data-shortstop-category')"],
+       ["the stylesheet is in", "Boolean(document.getElementById('shortstop-categories-youtube'))"]
+     ]},
+    {"name": "catrendered", "stay": true, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["(the late card renders its title)", "(document.querySelector('#s-loading #video-title').textContent = 'Roblox obby gameplay', true)"]
+     ]},
+    {"name": "catrenderedsorted", "stay": true, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [["a card is sorted once its title arrives", "filt('s-loading') === 'hide'"]]},
+    {"name": "catshowanyway", "stay": true, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["Show anyway brings the video back at once", "(note('s-game').shadowRoot.querySelector('button').click(), !filt('s-game') && !note('s-game') && titleShown('s-game'))"]
+     ]},
+    {"name": "catshowanywaykept", "stay": true, "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide", "comedy": "hide"}}, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["a video shown anyway stays shown when the choices change", "!filt('s-game') && titleShown('s-game')"],
+       ["other games are still hidden", "filt('s-game2') === 'hide'"]
+     ]},
+    {"name": "catfix", "stay": true, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["a correction from the note is saved for the channel", "(() => { const menu = note('s-game2').shadowRoot.querySelector('select'); menu.value = 'education'; menu.dispatchEvent(new Event('change')); const fix = (harnessState.categoryFixes.youtube || {})['name:gaming guy']; return fix && fix.category === 'education' && fix.label === 'Gaming Guy'; })()"]
+     ]},
+    {"name": "catfixapplied", "stay": true, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["the corrected video comes back", "cat('s-game2') === 'education' && !filt('s-game2') && titleShown('s-game2')"],
+       ["so does the same channel's other video", "cat('s-game3') === 'education' && !filt('s-game3')"],
+       ["other channels are not affected", "filt('s-allowed') === 'hide'"]
+     ]},
+    {"name": "catfixstored", "stay": true, "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}, "categoryFixes": {"youtube": {"name:fextralife": {"category": "education", "label": "Fextralife"}}}}, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["stored corrections apply", "cat('s-game') === 'education'"],
+       ["the stored list replaces the old one", "cat('s-game2') === 'gaming' && filt('s-game2') === 'hide'"]
+     ]},
+    {"name": "catchip", "stay": true, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["pointing at a card shows its category chip", "(hover(document.querySelector('#s-code #video-title')), Boolean(document.querySelector('#s-code > shortstop-chip')))"],
+       ["the chip shows the guess", "document.querySelector('#s-code > shortstop-chip').shadowRoot.querySelector('select').value === 'coding'"],
+       ["moving away takes it off", "(hover(document.body), !document.querySelector('shortstop-chip'))"],
+       ["a hidden card has its note instead of a chip", "(hover(note('s-game2')), !document.querySelector('shortstop-chip'))"],
+       ["correcting from the chip works too", "(() => { hover(document.querySelector('#s-unsure #video-title')); const menu = document.querySelector('#s-unsure > shortstop-chip').shadowRoot.querySelector('select'); menu.value = 'gaming'; menu.dispatchEvent(new Event('change')); return harnessState.categoryFixes.youtube['name:some person'].category === 'gaming'; })()"]
+     ]},
+    {"name": "catchipapplied", "stay": true, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [["the chip's correction hides the video", "filt('s-unsure') === 'hide' && cat('s-unsure') === 'gaming'"]]},
+    {"name": "catallowed", "stay": true, "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}, "youtubeAllowed": ["allowedgamer"]}, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["an allowed channel's video is never hidden", "cat('s-allowed') === 'gaming' && !filt('s-allowed')"],
+       ["other games still are", "filt('s-game2') === 'hide'"]
+     ]},
+    {"name": "catreducesearch", "stay": true, "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "reduce"}}, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [["reduce leaves search results alone", "!document.querySelector('ytd-search [data-shortstop-filter]')"]]},
+    {"name": "catreducehome", "settings": {"youtube": true, "youtubeMode": "shorts", "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "reduce"}}, "url": "https://www.youtube.com/", "cover": false,
+     "checks": [
+       ["reduce hides the same two in three games on the home feed", "['001', '003', '004', '006'].every((n) => filt('h-' + n) === 'reduce' && !document.getElementById('h-' + n).checkVisibility())"],
+       ["...and keeps the third", "['002', '005'].every((n) => !filt('h-' + n) && document.getElementById('h-' + n).checkVisibility())"],
+       ["no note for reduced videos", "!document.querySelector('#home shortstop-note')"],
+       ["other categories on the home feed stay", "cat('h-code') === 'coding' && !filt('h-code')"],
+       ["cards on the page left behind are released", "!document.querySelector('ytd-search [data-shortstop-category]')"]
+     ]},
+    {"name": "cathomecovered", "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}}, "url": "https://www.youtube.com/",
+     "cover": {"message": "YouTube's recommended videos are switched off."},
+     "checks": [["a covered home feed is not sorted", "!document.querySelector('#home [data-shortstop-category]')"]]},
+    {"name": "catsubsoff", "url": "https://www.youtube.com/feed/subscriptions", "cover": false,
+     "checks": [["Subscriptions are left alone unless chosen", "!document.getElementById('sub-game').hasAttribute('data-shortstop-category')"]]},
+    {"name": "catsubson", "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}, "youtubeCategorySubscriptions": true}, "url": "https://www.youtube.com/feed/subscriptions", "cover": false,
+     "checks": [["Subscriptions follow the choices when chosen", "filt('sub-game') === 'hide'"]]},
+    {"name": "catupnext", "settings": {"youtube": true, "youtubeMode": "shorts", "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}}, "url": "https://www.youtube.com/watch?v=watchgame01",
+     "checks": [
+       ["Up next is filtered", "filt('w-game') === 'hide' && cat('w-code') === 'coding' && !filt('w-code')"],
+       ["a video opened directly is left alone by default", "!document.querySelector('shortstop-view')"]
+     ]},
+    {"name": "catupnextblocked", "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}}, "url": "https://www.youtube.com/watch?v=watchgame01",
+     "checks": [["a blocked Up next is not sorted", "!document.getElementById('w-game').hasAttribute('data-shortstop-category')"]]},
+    {"name": "catview", "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}, "youtubeCategoryWatch": true}, "url": "https://www.youtube.com/watch?v=watchgame01",
+     "checks": [
+       ["with the stricter option, a hidden category's video shows a notice", "document.querySelector('shortstop-view').shadowRoot.querySelector('h1').textContent === 'This looks like a Gaming video.'"],
+       ["the notice offers Watch anyway and Go back", "[...document.querySelector('shortstop-view').shadowRoot.querySelectorAll('button')].map((b) => b.textContent).join('|') === 'Watch anyway|Go back'"],
+       ["a video that starts playing behind it is paused", "(() => { const video = document.getElementById('watch-video'); let paused = false; const original = video.pause; video.pause = function () { paused = true; return original.call(this); }; video.dispatchEvent(new Event('play')); video.pause = original; return paused; })()"]
+     ]},
+    {"name": "catviewanyway", "stay": true, "url": "https://www.youtube.com/watch?v=watchgame01",
+     "checks": [["Watch anyway takes the notice away", "(document.querySelector('shortstop-view').shadowRoot.querySelector('button').click(), !document.querySelector('shortstop-view'))"]]},
+    {"name": "catviewkept", "stay": true, "url": "https://www.youtube.com/watch?v=watchgame01",
+     "checks": [["...and it does not come back", "!document.querySelector('shortstop-view')"]]},
+    {"name": "catviewstale", "url": "https://www.youtube.com/watch?v=othervideo2",
+     "checks": [["the previous video's details are not trusted", "!document.querySelector('shortstop-view')"]]},
+    {"name": "catviewprepvague", "stay": true, "url": "https://www.youtube.com/watch?v=othervideo2",
+     "checks": [["(the page describes a vague video)", "describeVideo({ embedUrl: 'https://www.youtube.com/embed/watchvague1', name: 'My weekend', author: 'Some Person Two', genre: '' })"]]},
+    {"name": "catviewvague", "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide", "other": "hide"}, "youtubeCategoryWatch": true}, "url": "https://www.youtube.com/watch?v=watchvague1",
+     "checks": [["an uncertain guess never stands in front of a video, even with Other hidden", "!document.querySelector('shortstop-view')"]]},
+    {"name": "catviewprepgenre", "stay": true, "url": "https://www.youtube.com/watch?v=watchvague1",
+     "checks": [["(the page describes a video YouTube files under Gaming)", "describeVideo({ embedUrl: 'https://www.youtube.com/embed/watchgenre1', name: 'Episode 12', author: { name: 'Someone' }, genre: 'Gaming' })"]]},
+    {"name": "catviewgenre", "url": "https://www.youtube.com/watch?v=watchgenre1",
+     "checks": [["YouTube's own category is enough", "Boolean(document.querySelector('shortstop-view'))"]]},
+    {"name": "catviewcorrected", "stay": true, "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}, "youtubeCategoryWatch": true, "categoryFixes": {"youtube": {"name:someone": {"category": "education", "label": "Someone"}}}}, "url": "https://www.youtube.com/watch?v=watchgenre1",
+     "checks": [["a correction takes the notice away", "!document.querySelector('shortstop-view')"]]},
+    {"name": "catswitchedoff", "settings": {"youtube": false, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}}, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["switching YouTube off clears everything", "!document.querySelector('[data-shortstop-category], [data-shortstop-filter], shortstop-note, shortstop-chip, shortstop-view')"],
+       ["...and removes the stylesheet", "!document.getElementById('shortstop-categories-youtube')"]
+     ]},
+    {"name": "catbackon", "settings": {"youtube": true, "youtubeCategoryFilter": true, "youtubeCategories": {"gaming": "hide"}}, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [["back on: games are hidden again", "filt('s-game2') === 'hide'"]]},
+    {"name": "catfilteroff", "settings": {"youtube": true, "youtubeCategoryFilter": false, "youtubeCategories": {"gaming": "hide"}}, "url": "https://www.youtube.com/results?search_query=games",
+     "checks": [
+       ["turning the filter off clears everything", "!document.querySelector('[data-shortstop-category], [data-shortstop-filter], shortstop-note, shortstop-chip, shortstop-view')"],
+       ["...while the rest of ShortStop keeps working", "!document.getElementById('s-short').checkVisibility()"]
+     ]}
+  ]
+}
+    </script>
+    <script src="../harness.js"></script>
+    <script src="../../extension/content/youtube.js"></script>
+  </head>
+  <body>
+    <!-- Search results -->
+    <ytd-search>
+      <ytd-video-renderer id="s-game" data-name="a game in search" data-expect="visible"><div id="dismissible">
+        <a id="video-title" href="/watch?v=game0000001" title="Elden Ring DLC - All Bosses">Elden Ring DLC - All Bosses</a>
+        <ytd-channel-name><a href="/@fextralife">Fextralife</a></ytd-channel-name>
+      </div></ytd-video-renderer>
+      <ytd-video-renderer id="s-game2"><div id="dismissible">
+        <a id="video-title" href="/watch?v=game0000002" title="Minecraft Hardcore Speedrun World Record">Minecraft Hardcore Speedrun World Record</a>
+        <ytd-channel-name><a href="/@gamingguy">Gaming Guy</a></ytd-channel-name>
+      </div></ytd-video-renderer>
+      <ytd-video-renderer id="s-game3"><div id="dismissible">
+        <a id="video-title" href="/watch?v=game0000003" title="Fortnite Chapter 6 Gameplay">Fortnite Chapter 6 Gameplay</a>
+        <ytd-channel-name><a href="/@gamingguy">Gaming Guy</a></ytd-channel-name>
+      </div></ytd-video-renderer>
+      <ytd-video-renderer id="s-code" data-name="a coding video in search" data-expect="visible"><div id="dismissible">
+        <a id="video-title" href="/watch?v=code0000001" title="100+ JavaScript Concepts you Need to Know">100+ JavaScript Concepts you Need to Know</a>
+        <ytd-channel-name><a href="/@fireship">Fireship</a></ytd-channel-name>
+        <yt-formatted-string class="metadata-snippet-text">Learn the basics of JavaScript.</yt-formatted-string>
+      </div></ytd-video-renderer>
+      <ytd-video-renderer id="s-mixed"><div id="dismissible">
+        <a id="video-title" href="/watch?v=mixed000001" title="Minecraft coding tutorial: build a mod in Java">Minecraft coding tutorial: build a mod in Java</a>
+        <ytd-channel-name><a href="/@kaupenjoe">Kaupenjoe</a></ytd-channel-name>
+      </div></ytd-video-renderer>
+      <ytd-video-renderer id="s-unsure"><div id="dismissible">
+        <a id="video-title" href="/watch?v=unsure00001" title="My cat does something weird">My cat does something weird</a>
+        <ytd-channel-name><a href="/@someperson">Some Person</a></ytd-channel-name>
+      </div></ytd-video-renderer>
+      <ytd-video-renderer id="s-allowed"><div id="dismissible">
+        <a id="video-title" href="/watch?v=allowgame01" title="Valorant ranked gameplay">Valorant ranked gameplay</a>
+        <ytd-channel-name><a href="/@allowedgamer">Allowed Gamer</a></ytd-channel-name>
+      </div></ytd-video-renderer>
+      <ytd-video-renderer id="s-loading"><div id="dismissible">
+        <a id="video-title" href="/watch?v=loading0001"></a>
+        <ytd-channel-name><a href="/@builder">Builder</a></ytd-channel-name>
+      </div></ytd-video-renderer>
+      <yt-lockup-view-model id="s-lockup"><div class="ytLockupViewModelHost">
+        <a href="/watch?v=lockmusic01">thumbnail</a>
+        <h3 title="Taylor Swift - Anti-Hero (Official Music Video)"><a href="/watch?v=lockmusic01">Taylor Swift - Anti-Hero (Official Music Video)</a></h3>
+        <span class="ytContentMetadataViewModelMetadataText">TaylorSwiftVEVO</span>
+      </div></yt-lockup-view-model>
+      <ytd-in-feed-ad-layout-renderer>
+        <yt-lockup-view-model id="s-ad"><div><a href="/watch?v=adgame00001">ad</a><h3 title="Play the best strategy game of 2026">Play the best strategy game of 2026</h3></div></yt-lockup-view-model>
+      </ytd-in-feed-ad-layout-renderer>
+      <ytd-video-renderer id="s-short" data-name="a Short in search" data-expect="hidden" data-count><div id="dismissible">
+        <a id="video-title" href="/shorts/short000001" title="Minecraft Short">Minecraft Short</a>
+      </div></ytd-video-renderer>
+    </ytd-search>
+
+    <!-- Home and Subscriptions (YouTube keeps both in memory) -->
+    <ytd-page-manager>
+      <ytd-browse page-subtype="home" id="home">
+        <ytd-rich-item-renderer id="h-001"><div id="content"><yt-lockup-view-model><div><a href="/watch?v=homegame001">t</a><h3 title="Minecraft survival gameplay part 1">Minecraft survival gameplay part 1</h3><span class="ytContentMetadataViewModelMetadataText">Block Builder</span></div></yt-lockup-view-model></div></ytd-rich-item-renderer>
+        <ytd-rich-item-renderer id="h-002"><div id="content"><yt-lockup-view-model><div><a href="/watch?v=homegame002">t</a><h3 title="Minecraft survival gameplay part 2">Minecraft survival gameplay part 2</h3><span class="ytContentMetadataViewModelMetadataText">Block Builder</span></div></yt-lockup-view-model></div></ytd-rich-item-renderer>
+        <ytd-rich-item-renderer id="h-003"><div id="content"><yt-lockup-view-model><div><a href="/watch?v=homegame003">t</a><h3 title="Minecraft survival gameplay part 3">Minecraft survival gameplay part 3</h3><span class="ytContentMetadataViewModelMetadataText">Block Builder</span></div></yt-lockup-view-model></div></ytd-rich-item-renderer>
+        <ytd-rich-item-renderer id="h-004"><div id="content"><yt-lockup-view-model><div><a href="/watch?v=homegame004">t</a><h3 title="Minecraft survival gameplay part 4">Minecraft survival gameplay part 4</h3><span class="ytContentMetadataViewModelMetadataText">Block Builder</span></div></yt-lockup-view-model></div></ytd-rich-item-renderer>
+        <ytd-rich-item-renderer id="h-005"><div id="content"><yt-lockup-view-model><div><a href="/watch?v=homegame005">t</a><h3 title="Minecraft survival gameplay part 5">Minecraft survival gameplay part 5</h3><span class="ytContentMetadataViewModelMetadataText">Block Builder</span></div></yt-lockup-view-model></div></ytd-rich-item-renderer>
+        <ytd-rich-item-renderer id="h-006"><div id="content"><yt-lockup-view-model><div><a href="/watch?v=homegame006">t</a><h3 title="Minecraft survival gameplay part 6">Minecraft survival gameplay part 6</h3><span class="ytContentMetadataViewModelMetadataText">Block Builder</span></div></yt-lockup-view-model></div></ytd-rich-item-renderer>
+        <ytd-rich-item-renderer id="h-code"><div id="content"><yt-lockup-view-model><div><a href="/watch?v=homecode001">t</a><h3 title="Python in 100 Seconds">Python in 100 Seconds</h3><span class="ytContentMetadataViewModelMetadataText">Fireship</span></div></yt-lockup-view-model></div></ytd-rich-item-renderer>
+      </ytd-browse>
+      <ytd-browse page-subtype="subscriptions">
+        <ytd-rich-item-renderer id="sub-game"><div id="content"><yt-lockup-view-model><div><a href="/watch?v=subgame0001">t</a><h3 title="Zelda walkthrough part 3">Zelda walkthrough part 3</h3><span class="ytContentMetadataViewModelMetadataText">Link Fan</span></div></yt-lockup-view-model></div></ytd-rich-item-renderer>
+      </ytd-browse>
+    </ytd-page-manager>
+
+    <!-- Watch page: the video's structured data, the player and Up next -->
+    <ytd-watch-flexy video-id="watchgame01">
+      <ytd-player-microformat-renderer><script type="application/ld+json">{"@type": "VideoObject", "name": "Elden Ring: every boss ranked", "embedUrl": "https://www.youtube.com/embed/watchgame01", "genre": "Gaming", "author": "Boss Ranker", "description": "All the bosses, ranked."}</script></ytd-player-microformat-renderer>
+      <video id="watch-video"></video>
+      <ytd-watch-next-secondary-results-renderer data-name="Up next" data-count>
+        <yt-lockup-view-model id="w-game"><div><a href="/watch?v=upnextgame1">t</a><h3 title="Zelda walkthrough part 4">Zelda walkthrough part 4</h3><span class="ytContentMetadataViewModelMetadataText">Link Fan</span></div></yt-lockup-view-model>
+        <yt-lockup-view-model id="w-code"><div><a href="/watch?v=upnextcode1">t</a><h3 title="Learn Rust in 10 minutes">Learn Rust in 10 minutes</h3><span class="ytContentMetadataViewModelMetadataText">Code Channel</span></div></yt-lockup-view-model>
+      </ytd-watch-next-secondary-results-renderer>
+    </ytd-watch-flexy>
+  </body>
+</html>

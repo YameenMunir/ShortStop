@@ -27,6 +27,10 @@
  *      re-checked once a second, so it comes back by itself when they end. A
  *      focus session (`focusUntil`) overrides that: every platform blocks until
  *      it ends.
+ *   7. Content preferences (`categories`, see content/category-filter.js):
+ *      while blocking is on, video cards in the areas the platform names are
+ *      sorted into categories and allowed, reduced or hidden, as chosen in the
+ *      popup. It runs after each scan, so it needs no observer of its own.
  *
  * Config shape (see the platform files for real examples):
  *   {
@@ -65,6 +69,7 @@
  *       hrefOwner: (href) => name | null,
  *       label: (name) => '@name', href: (name) => '/@name',
  *     },
+ *     categories: { ... },                  // content preferences (content/category-filter.js)
  *     effects: [{                           // small actions run after every scan, e.g.
  *       name, page?, onlyIf?(options),      // switching a site's autoplay off
  *       run: () => void,
@@ -228,8 +233,8 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
     const api = global.chrome;
 
     // Settings (including allowed times) live in sync storage. "Block now"
-    // skips of an allowed time live in this device's local storage and are
-    // merged in.
+    // skips of an allowed time and category corrections live in this device's
+    // local storage and are merged in.
     function readSettings() {
       const read = (area, key) =>
         new Promise((resolve) => {
@@ -242,9 +247,11 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
             resolve({}); // Extension was reloaded: this script is orphaned.
           }
         });
-      return Promise.all([read('sync', 'settings'), read('local', 'scheduleSkips')]).then(
-        ([settings, scheduleSkips]) => ({ ...settings, scheduleSkips })
-      );
+      return Promise.all([
+        read('sync', 'settings'),
+        read('local', 'scheduleSkips'),
+        read('local', 'categoryFixes'),
+      ]).then(([settings, scheduleSkips, categoryFixes]) => ({ ...settings, scheduleSkips, categoryFixes }));
     }
 
     return {
@@ -269,13 +276,25 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
           api.storage.onChanged.addListener((changes, area) => {
             if (
               (area === 'sync' && changes.settings) ||
-              (area === 'local' && changes.scheduleSkips)
+              (area === 'local' && (changes.scheduleSkips || changes.categoryFixes))
             ) {
               readSettings().then(callback);
             }
           });
         } catch (error) {
           /* Orphaned script; nothing to listen to. */
+        }
+      },
+      // Category corrections made on the page ("this channel is Education").
+      saveCategoryFixes(platform, fixes) {
+        try {
+          api.storage.local.get('categoryFixes', (result) => {
+            void api.runtime.lastError;
+            const all = (result && result.categoryFixes) || {};
+            api.storage.local.set({ categoryFixes: { ...all, [platform]: fixes } }, () => void api.runtime.lastError);
+          });
+        } catch (error) {
+          /* Orphaned script: the correction still applies in this tab. */
         }
       },
       count(platform, amount) {
@@ -446,6 +465,9 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.page = 'other';
       this.lastHref = environment.href();
       this.warnedRules = new Set();
+      // Content preferences, for platforms that describe their video cards.
+      const Filter = global.ShortStopCategoryFilter;
+      this.categoryFilter = config.categories && Filter && global.ShortStopCategories ? new Filter(this, config.categories) : null;
     }
 
     boot() {
@@ -498,6 +520,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       this.lastSettings = settings;
       this.focusOn = this.focusActive(settings);
       this.allowed = this.resolveAllowlist(settings);
+      if (this.categoryFilter) this.categoryFilter.apply(settings);
       this.setEnabled(this.isBlocking(settings));
     }
 
@@ -590,6 +613,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       for (const element of document.querySelectorAll(MARKED)) unmark(element);
       for (const element of document.querySelectorAll(`[${ATTR_ALLOWED}]`)) element.removeAttribute(ATTR_ALLOWED);
       this.removeCover();
+      if (this.categoryFilter) this.categoryFilter.clear();
       const root = document.documentElement;
       root.removeAttribute(ATTR_PAGE);
       root.removeAttribute(ATTR_OWNER);
@@ -1142,6 +1166,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid #1f6feb; outline-
       }
       if (blocked) this.addCount(blocked);
       this.runEffects();
+      if (this.categoryFilter) this.categoryFilter.scan();
     }
 
     // Small actions that hiding cannot do (e.g. switching autoplay off). They

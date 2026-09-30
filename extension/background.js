@@ -35,6 +35,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     instagramMode: 'feeds',
     tiktokMode: 'feeds',
     focusShortcut: true,
+    youtubeCategoryFilter: false, // Content preferences: off until someone turns them on.
+    youtubeCategorySubscriptions: false,
+    youtubeCategoryWatch: false,
     ...settings,
   };
   for (const platform of PLATFORMS) complete[platform] = settings[platform] !== false;

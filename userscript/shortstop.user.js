@@ -84,6 +84,19 @@ const INSTAGRAM_ALLOWED_ACCOUNTS = [];
 const TIKTOK_ALLOWED_ACCOUNTS = [];
 const SNAPCHAT_ALLOWED_ACCOUNTS = [];
 
+// YouTube content preferences: sort videos into categories and allow, reduce
+// or hide each one where YouTube still shows videos. Off by default.
+const YOUTUBE_FILTER_CATEGORIES = false;
+// Categories to change, as 'reduce' (fewer in recommendations) or 'hide';
+// every other one is allowed. The categories: education, science, business,
+// news, productivity, coding, health, music, gaming, entertainment, sports,
+// lifestyle, vlogs, podcasts, movies, documentaries, comedy, celebrity, other.
+// Example: { gaming: 'hide', celebrity: 'hide', entertainment: 'reduce' }
+const YOUTUBE_CATEGORIES = {};
+const YOUTUBE_FILTER_SUBSCRIPTIONS = false;
+// true: a video you open in a hidden category shows a notice first.
+const YOUTUBE_CHECK_OPENED_VIDEOS = false;
+
 /* ================================================================ */
 
 (function () {
@@ -109,6 +122,10 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
     instagramAllowed: INSTAGRAM_ALLOWED_ACCOUNTS,
     tiktokAllowed: TIKTOK_ALLOWED_ACCOUNTS,
     snapchatAllowed: SNAPCHAT_ALLOWED_ACCOUNTS,
+    youtubeCategoryFilter: YOUTUBE_FILTER_CATEGORIES,
+    youtubeCategories: YOUTUBE_CATEGORIES,
+    youtubeCategorySubscriptions: YOUTUBE_FILTER_SUBSCRIPTIONS,
+    youtubeCategoryWatch: YOUTUBE_CHECK_OPENED_VIDEOS,
   };
 
   /* ======== shared/schedule.js ======== */
@@ -394,6 +411,364 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
     global.ShortStopAllowlist = { MAX_ACCOUNTS, sites: SITES, normalizeList };
   })(globalThis);
 
+  /* ======== shared/categories.js ======== */
+  /*
+   * ShortStop: content categories
+   * =============================
+   * "Shape what you see, rather than blocking the internet." People choose, per
+   * category, whether videos are allowed, reduced (fewer of them in
+   * recommendations) or hidden (with a "Show anyway" button). This file is the
+   * platform-neutral half: the categories, the presets, and a small keyword
+   * classifier that guesses a video's category from its title, channel name,
+   * description and (where the site gives one) its own category label.
+   *
+   * It is a guess, and treated as one:
+   *   - A category needs real evidence (a score of at least CONFIDENT) before it
+   *     counts. Anything weaker is "Other", which is allowed unless the person
+   *     chose otherwise.
+   *   - When two categories are close, the gentler choice wins: a coding video
+   *     that also mentions a game is not hidden because Gaming is.
+   *   - A correction (this channel is Education) always beats the guess.
+   *
+   * Used by the popup (categories, presets, the saved choices) and by the content
+   * scripts (classify, decide), so the two agree. Nothing leaves the device.
+   */
+  (function (global) {
+    'use strict';
+
+    const MODES = ['allow', 'reduce', 'hide']; // Gentlest first.
+    const CONFIDENT = 3; // One strong keyword, or two weaker ones.
+    const CLOSE = 0.6; // A category within 60% of the best one also counts.
+    const MAX_FIXES = 200; // Corrections kept per platform (oldest dropped first).
+
+    const CATEGORIES = [
+      { id: 'education', label: 'Education' },
+      { id: 'science', label: 'Science & Technology' },
+      { id: 'business', label: 'Business & Finance' },
+      { id: 'news', label: 'News' },
+      { id: 'productivity', label: 'Productivity' },
+      { id: 'coding', label: 'Coding / Programming' },
+      { id: 'health', label: 'Health & Fitness' },
+      { id: 'music', label: 'Music' },
+      { id: 'gaming', label: 'Gaming' },
+      { id: 'entertainment', label: 'Entertainment' },
+      { id: 'sports', label: 'Sports' },
+      { id: 'lifestyle', label: 'Lifestyle' },
+      { id: 'vlogs', label: 'Vlogs' },
+      { id: 'podcasts', label: 'Podcasts' },
+      { id: 'movies', label: 'Movies / TV' },
+      { id: 'documentaries', label: 'Documentaries' },
+      { id: 'comedy', label: 'Comedy' },
+      { id: 'celebrity', label: 'Celebrity / Influencer' },
+      { id: 'other', label: 'Other' }, // Anything the classifier can't place.
+    ];
+    const IDS = CATEGORIES.map((category) => category.id);
+    const LABELS = Object.fromEntries(CATEGORIES.map((category) => [category.id, category.label]));
+
+    // Presets set every category at once: the listed ones (and Other, so an
+    // uncertain guess is never hidden) are allowed, the rest hidden.
+    const PRESETS = [
+      {
+        id: 'focus',
+        label: 'Focus',
+        detail: 'Education, Science & Technology, Productivity, Coding and Business',
+        allow: ['education', 'science', 'productivity', 'coding', 'business', 'other'],
+      },
+      {
+        id: 'study',
+        label: 'Study',
+        detail: 'Education, Science & Technology (maths included) and Documentaries',
+        allow: ['education', 'science', 'documentaries', 'other'],
+      },
+      { id: 'all', label: 'Allow all', detail: 'Every category shown', allow: IDS },
+    ];
+
+    /*
+     * Keywords: [weight, words]. 3 is enough on its own, 2 and 1 need company.
+     * Words match whole words (a trailing "s" is allowed), case and accents
+     * ignored. `channel` words are only looked for in the channel's name.
+     */
+    const KEYWORDS = {
+      education: [
+        [3, 'tutorial|lecture|lesson|full course|crash course|online course|explained|exam|revision|gcse|a level|a-level|sat prep|ielts|toefl|calculus|algebra|geometry|trigonometry|mathematics|maths|math|grammar|vocabulary|learn english|khan academy|homework help|study guide'],
+        [2, 'course|learn|learning|beginner|how does|why do|why does|teacher|professor|university|history of|introduction to|intro to|masterclass'],
+        [1, 'guide|explain|basics|fundamentals|class|school'],
+      ],
+      science: [
+        [3, 'physics|chemistry|biology|astronomy|astrophysics|quantum|black hole|neuroscience|nasa|spacex|rocket launch|scientist|scientific|robotics|engineering|artificial intelligence|machine learning|tech review|gpu|cpu|semiconductor'],
+        [2, 'science|space|universe|galaxy|planet|evolution|dna|experiment|engineer|robot|ai|technology|tech|smartphone|iphone|android|laptop|gadget|electric vehicle|nvidia|chip'],
+        [1, 'review|unboxing|test'],
+      ],
+      business: [
+        [3, 'investing|investment|stock market|personal finance|entrepreneur|startup|cryptocurrency|bitcoin|economics|economy|inflation|recession|real estate|side hustle|passive income|dividend|index fund|etf|forex|venture capital'],
+        [2, 'business|finance|financial|money|stock|crypto|marketing|sales|wealth|millionaire|trading|budget|tax|salary|income|company|ceo|brand strategy'],
+      ],
+      news: [
+        [3, 'breaking news|news|headlines|election|prime minister|parliament|congress|senate|white house|press conference|live coverage|politics|political|geopolitics'],
+        [2, 'president|government|minister|war|ukraine|gaza|israel|russia|protest|policy|supreme court|report|reporter|journalist'],
+        [1, 'update|latest|today'],
+      ],
+      productivity: [
+        [3, 'productivity|productive|study with me|pomodoro|time management|deep work|procrastination|second brain|note taking|notion|obsidian|self improvement|self-improvement|habit tracker'],
+        [2, 'habit|focus|discipline|motivation|morning routine|planner|to-do|todo|goal setting|workflow|organize|organise|efficiency|journaling'],
+      ],
+      coding: [
+        [3, 'programming|programmer|coding|javascript|typescript|python|java|c\\+\\+|c#|rust|golang|kotlin|react|vue|angular|node\\.?js|django|flask|sql|leetcode|data structures|algorithm|github|git|linux|docker|kubernetes|devops|web development|web dev|frontend|backend|full stack|fullstack|html|css|api|compiler|debugging|vscode|neovim'],
+        [2, 'code|coder|developer|software|database|framework|aws|terminal|open source|app development|swift|swiftui'],
+      ],
+      health: [
+        [3, 'workout|fitness|gym|yoga|pilates|cardio|hiit|stretching|nutrition|weight loss|lose weight|fat loss|bodybuilding|calisthenics|mental health|physiotherapy|meal prep'],
+        [2, 'exercise|diet|healthy|health|muscle|protein|calorie|abs|meditation|sleep|therapy|anxiety|doctor|medical|running|stretch|wellness'],
+      ],
+      music: [
+        [3, 'official music video|music video|official video|official audio|lyric video|lyrics|lyric|album|remix|acoustic|live performance|concert|lofi|lo-fi|hip hop|rap|jazz|symphony|orchestra|karaoke|instrumental|song|music'],
+        [2, 'playlist|mix|beat|cover|piano|guitar|drum|single|feat|ft|band|singer|vocal'],
+      ],
+      gaming: [
+        [3, 'gameplay|gaming|gamer|video game|playthrough|walkthrough|let\'s play|lets play|speedrun|minecraft|fortnite|roblox|gta|call of duty|valorant|league of legends|overwatch|apex legends|elden ring|zelda|pokemon|nintendo|playstation|ps5|xbox|esports|counter-strike|cs2|dota|genshin|among us|boss fight|patch notes|warzone|skyrim|mario'],
+        [2, 'game|games|steam|cod|twitch|stream highlights|level|speed run|mod|mods'],
+      ],
+      entertainment: [
+        [3, 'prank|try not to laugh|funny moments|reaction|reacts|reacting|tier list|challenge|last to leave|i survived|24 hours|mrbeast|game show|talent show|got talent|magic trick'],
+        [2, 'compilation|entertainment|show|top 10|top ten|ranking|fails|experiment|vs'],
+        [1, 'crazy|insane|epic|viral|fun'],
+      ],
+      sports: [
+        [3, 'football|soccer|premier league|champions league|la liga|serie a|bundesliga|nfl|nba|mlb|nhl|ufc|mma|boxing|tennis|golf|cricket|rugby|formula 1|formula one|f1|grand prix|olympics|world cup|touchdown|super bowl|wwe|wrestling|tour de france|transfer news|match highlights'],
+        [2, 'highlights|match|goal|league|championship|athlete|coach|marathon|cycling|messi|ronaldo|lebron|fifa|ea fc|team'],
+      ],
+      lifestyle: [
+        [3, 'skincare|makeup|fashion|outfit|haul|room tour|home tour|apartment tour|house tour|decor|interior design|recipe|cooking|baking|clean with me|cleaning|gardening|minimalism|minimalist|beauty|hairstyle|travel guide|things to do in|wedding|parenting'],
+        [2, 'food|travel|hotel|diy|home|style|routine|family|relationship|pet|dog|cat'],
+      ],
+      vlogs: [
+        [3, 'vlog|day in my life|day in the life|week in my life|daily vlog|storytime|story time|grwm|get ready with me|come with me|life update|spend the day with me|weekend in my life'],
+        [2, 'my life|my week|my day|moving to|i moved'],
+      ],
+      podcasts: [
+        [3, 'podcast|full episode|the joe rogan experience|joe rogan|lex fridman|huberman lab|diary of a ceo|flagrant|impaulsive|in conversation with|conversation with'],
+        [2, 'episode|ep|interview|talks|sits down with'],
+      ],
+      movies: [
+        [3, 'movie|film|official trailer|trailer|teaser|full movie|tv show|tv series|season finale|netflix|hbo|disney\\+|marvel|star wars|anime|box office|movie review|film review|ending explained|behind the scenes|cinema|sitcom'],
+        [2, 'scene|clip|series|season|episode|actor|actress|director|cartoon|animation|recap'],
+      ],
+      documentaries: [
+        [3, 'documentary|full documentary|docuseries|the rise and fall|rise and fall of|untold story|true story|true crime|investigation|investigative|bbc earth|national geographic|nat geo|dw documentary|frontline|real stories'],
+        [2, 'the story of|the history of|inside the|how it became|what happened to'],
+      ],
+      comedy: [
+        [3, 'comedy|comedian|stand-up|stand up|standup|sketch|snl|saturday night live|parody|satire|roast|bloopers|skit'],
+        [2, 'funny|jokes|joke|meme|memes|hilarious|laugh'],
+      ],
+      celebrity: [
+        [3, 'celebrity|celebrities|kardashian|red carpet|met gala|gossip|influencer|youtuber|tiktoker|paparazzi|oscars|grammys|award show|apology video|exposed'],
+        [2, 'drama|feud|beef|dating|breakup|famous|star|taylor swift|drake|beyonce|justin bieber|logan paul|jake paul|ksi|sidemen|streamer'],
+      ],
+    };
+
+    // Channel names alone say a lot: "... - Topic" and VEVO channels are music,
+    // "... News" is news, and so on.
+    const CHANNEL_KEYWORDS = {
+      music: [[3, 'vevo|records|recordings|music']],
+      news: [[3, 'news|cnn|bbc news|sky news|fox news|al jazeera|reuters|nbc news|abc news|cbs news|msnbc|associated press']],
+      gaming: [[3, 'gaming|games|plays|gameplay']],
+      education: [[3, 'academy|university|institute|school|college|tutorials|education|khan academy|crashcourse|ted-ed']],
+      podcasts: [[3, 'podcast|pod']],
+      sports: [[3, 'fc|sports|espn|nba|nfl|ufc|formula 1|f1|sky sports|tnt sports']],
+      comedy: [[3, 'comedy|comedians']],
+      coding: [[3, 'fireship|freecodecamp|traversy media|the primeagen|web dev simplified|programming|code']],
+      science: [[3, 'veritasium|kurzgesagt|vsauce|smarter every day|mkbhd|linus tech tips|science|tech']],
+      documentaries: [[3, 'documentary|documentaries']],
+      movies: [[3, 'movieclips|trailers|pictures|studios|films|netflix|hbo|disney']],
+    };
+
+    // YouTube's own category (from the watch page), turned into our scores.
+    const GENRES = {
+      'education': { education: 4 },
+      'science & technology': { science: 4 },
+      'gaming': { gaming: 4 },
+      'music': { music: 4 },
+      'news & politics': { news: 4 },
+      'sports': { sports: 4 },
+      'comedy': { comedy: 4 },
+      'film & animation': { movies: 3 },
+      'entertainment': { entertainment: 2 },
+      'people & blogs': { vlogs: 1 },
+      'howto & style': { lifestyle: 2, education: 1 },
+      'travel & events': { lifestyle: 2, vlogs: 1 },
+      'autos & vehicles': { lifestyle: 1 },
+      'pets & animals': { lifestyle: 1, entertainment: 1 },
+      'nonprofits & activism': { news: 1 },
+    };
+
+    // One regex per weight per category. Word edges are "not a letter or digit",
+    // so "c++", "c#" and "let's play" work, and "ai" does not match "said".
+    const EDGE_BEFORE = '(?<![\\p{L}\\p{N}])';
+    const EDGE_AFTER = '(?![\\p{L}\\p{N}])';
+    function compile(table) {
+      const compiled = {};
+      for (const [category, rows] of Object.entries(table)) {
+        compiled[category] = rows.map(([weight, words]) => ({
+          weight,
+          pattern: new RegExp(`${EDGE_BEFORE}(?:${words})s?${EDGE_AFTER}`, 'gu'),
+        }));
+      }
+      return compiled;
+    }
+    const TITLE_RULES = compile(KEYWORDS);
+    const CHANNEL_RULES = compile(CHANNEL_KEYWORDS);
+
+    // Lower case, accents off ("Pokémon" -> "pokemon"), curly quotes straightened.
+    function normalize(text) {
+      return String(text || '')
+        .normalize('NFKD')
+        .replace(/\p{M}/gu, '')
+        .replace(/[‘’]/g, "'")
+        .toLowerCase();
+    }
+
+    // Adds `factor` x weight for each different keyword found in `text`.
+    function addScores(scores, rules, text, factor) {
+      if (!text) return;
+      for (const [category, rows] of Object.entries(rules)) {
+        for (const { weight, pattern } of rows) {
+          pattern.lastIndex = 0;
+          const found = new Set(text.match(pattern) || []);
+          if (found.size) scores[category] = (scores[category] || 0) + found.size * weight * factor;
+        }
+      }
+    }
+
+    /*
+     * Guesses a video's category from what the page shows about it:
+     *   { title, channel, text (description or snippet), genre (the site's own category) }
+     * Returns { category, confident, scores, close } where `close` lists every
+     * category near enough to the best one to count (used by decide()).
+     */
+    function classify(video) {
+      const scores = {};
+      const title = normalize(video && video.title);
+      const channel = normalize(video && video.channel);
+      addScores(scores, TITLE_RULES, title, 1);
+      addScores(scores, TITLE_RULES, channel, 1);
+      addScores(scores, CHANNEL_RULES, channel, 1);
+      addScores(scores, TITLE_RULES, normalize(video && video.text).slice(0, 600), 0.5);
+      // "Artist - Topic" channels are YouTube's auto-generated music channels, and
+      // "ArtistVEVO" ones are record labels'.
+      if (/ - topic$|vevo$/.test(channel)) scores.music = (scores.music || 0) + 4;
+      const genre = GENRES[normalize(video && video.genre).trim()];
+      if (genre) for (const [category, points] of Object.entries(genre)) scores[category] = (scores[category] || 0) + points;
+
+      let best = 'other';
+      let top = 0;
+      for (const [category, score] of Object.entries(scores)) {
+        if (score > top) {
+          best = category;
+          top = score;
+        }
+      }
+      if (top < CONFIDENT) return { category: 'other', confident: false, scores, close: ['other'] };
+      const close = Object.keys(scores).filter((category) => scores[category] >= Math.max(CONFIDENT, top * CLOSE));
+      return { category: best, confident: true, scores, close };
+    }
+
+    // The saved choices, cleaned up: { category: 'reduce' | 'hide' } (allowed
+    // categories are left out, to keep the synced settings small).
+    function normalizePrefs(prefs) {
+      const clean = {};
+      if (!prefs || typeof prefs !== 'object') return clean;
+      for (const id of IDS) {
+        if (prefs[id] === 'reduce' || prefs[id] === 'hide') clean[id] = prefs[id];
+      }
+      return clean;
+    }
+
+    const modeOf = (prefs, category) => (prefs && (prefs[category] === 'reduce' || prefs[category] === 'hide') ? prefs[category] : 'allow');
+
+    /*
+     * What to do with a classified video: 'allow', 'reduce' or 'hide'. When
+     * several categories are close, the gentlest choice among them wins.
+     */
+    function decide(result, prefs) {
+      let mode = 'allow';
+      let rank = -1;
+      for (const category of result.close) {
+        const candidate = modeOf(prefs, category);
+        const candidateRank = MODES.indexOf(candidate);
+        if (rank === -1 || candidateRank < rank) {
+          mode = candidate;
+          rank = candidateRank;
+        }
+      }
+      return mode;
+    }
+
+    // A correction wins over the guess: the category is certain.
+    function fixed(category) {
+      return { category, confident: true, scores: { [category]: Infinity }, close: [category] };
+    }
+
+    // The choices a preset makes.
+    function presetPrefs(id) {
+      const preset = PRESETS.find((entry) => entry.id === id);
+      if (!preset) return null;
+      const prefs = {};
+      for (const category of IDS) if (!preset.allow.includes(category)) prefs[category] = 'hide';
+      return prefs;
+    }
+
+    // The preset the saved choices match exactly, or null ("Custom").
+    function matchingPreset(prefs) {
+      const key = JSON.stringify(normalizePrefs(prefs));
+      const preset = PRESETS.find((entry) => JSON.stringify(normalizePrefs(presetPrefs(entry.id))) === key);
+      return preset ? preset.id : null;
+    }
+
+    // Corrections for one platform, cleaned up: { key: { category, label } },
+    // oldest first, at most MAX_FIXES. `key` is "name:<channel name>" or
+    // "video:<id>"; `label` is how the popup shows it.
+    function normalizeFixes(fixes) {
+      const clean = {};
+      if (!fixes || typeof fixes !== 'object') return clean;
+      const entries = [];
+      for (const [key, value] of Object.entries(fixes)) {
+        const category = value && typeof value === 'object' ? value.category : value;
+        if (!/^(name|video):./.test(key) || key.length > 120 || !IDS.includes(category)) continue;
+        const label = value && typeof value.label === 'string' ? value.label.slice(0, 80) : '';
+        entries.push([key, { category, label }]);
+      }
+      for (const [key, value] of entries.slice(-MAX_FIXES)) clean[key] = value;
+      return clean;
+    }
+
+    // A small, stable number for a video id, so "reduce" keeps the same third of
+    // a category's videos every time instead of flickering between them.
+    function bucket(id, buckets) {
+      let hash = 0;
+      for (const char of String(id || '')) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+      return hash % buckets;
+    }
+
+    global.ShortStopCategories = {
+      MODES,
+      CONFIDENT,
+      MAX_FIXES,
+      CATEGORIES,
+      LABELS,
+      PRESETS,
+      classify,
+      decide,
+      fixed,
+      modeOf,
+      normalizePrefs,
+      normalizeFixes,
+      presetPrefs,
+      matchingPreset,
+      bucket,
+    };
+  })(globalThis);
+
   /* ======== core.js ======== */
   /*
    * ShortStop core engine
@@ -424,6 +799,10 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
    *      re-checked once a second, so it comes back by itself when they end. A
    *      focus session (`focusUntil`) overrides that: every platform blocks until
    *      it ends.
+   *   7. Content preferences (`categories`, see content/category-filter.js):
+   *      while blocking is on, video cards in the areas the platform names are
+   *      sorted into categories and allowed, reduced or hidden, as chosen in the
+   *      popup. It runs after each scan, so it needs no observer of its own.
    *
    * Config shape (see the platform files for real examples):
    *   {
@@ -462,6 +841,7 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
    *       hrefOwner: (href) => name | null,
    *       label: (name) => '@name', href: (name) => '/@name',
    *     },
+   *     categories: { ... },                  // content preferences (content/category-filter.js)
    *     effects: [{                           // small actions run after every scan, e.g.
    *       name, page?, onlyIf?(options),      // switching a site's autoplay off
    *       run: () => void,
@@ -625,8 +1005,8 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
       const api = global.chrome;
 
       // Settings (including allowed times) live in sync storage. "Block now"
-      // skips of an allowed time live in this device's local storage and are
-      // merged in.
+      // skips of an allowed time and category corrections live in this device's
+      // local storage and are merged in.
       function readSettings() {
         const read = (area, key) =>
           new Promise((resolve) => {
@@ -639,9 +1019,11 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
               resolve({}); // Extension was reloaded: this script is orphaned.
             }
           });
-        return Promise.all([read('sync', 'settings'), read('local', 'scheduleSkips')]).then(
-          ([settings, scheduleSkips]) => ({ ...settings, scheduleSkips })
-        );
+        return Promise.all([
+          read('sync', 'settings'),
+          read('local', 'scheduleSkips'),
+          read('local', 'categoryFixes'),
+        ]).then(([settings, scheduleSkips, categoryFixes]) => ({ ...settings, scheduleSkips, categoryFixes }));
       }
 
       return {
@@ -666,13 +1048,25 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
             api.storage.onChanged.addListener((changes, area) => {
               if (
                 (area === 'sync' && changes.settings) ||
-                (area === 'local' && changes.scheduleSkips)
+                (area === 'local' && (changes.scheduleSkips || changes.categoryFixes))
               ) {
                 readSettings().then(callback);
               }
             });
           } catch (error) {
             /* Orphaned script; nothing to listen to. */
+          }
+        },
+        // Category corrections made on the page ("this channel is Education").
+        saveCategoryFixes(platform, fixes) {
+          try {
+            api.storage.local.get('categoryFixes', (result) => {
+              void api.runtime.lastError;
+              const all = (result && result.categoryFixes) || {};
+              api.storage.local.set({ categoryFixes: { ...all, [platform]: fixes } }, () => void api.runtime.lastError);
+            });
+          } catch (error) {
+            /* Orphaned script: the correction still applies in this tab. */
           }
         },
         count(platform, amount) {
@@ -843,6 +1237,9 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
         this.page = 'other';
         this.lastHref = environment.href();
         this.warnedRules = new Set();
+        // Content preferences, for platforms that describe their video cards.
+        const Filter = global.ShortStopCategoryFilter;
+        this.categoryFilter = config.categories && Filter && global.ShortStopCategories ? new Filter(this, config.categories) : null;
       }
 
       boot() {
@@ -895,6 +1292,7 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
         this.lastSettings = settings;
         this.focusOn = this.focusActive(settings);
         this.allowed = this.resolveAllowlist(settings);
+        if (this.categoryFilter) this.categoryFilter.apply(settings);
         this.setEnabled(this.isBlocking(settings));
       }
 
@@ -987,6 +1385,7 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
         for (const element of document.querySelectorAll(MARKED)) unmark(element);
         for (const element of document.querySelectorAll(`[${ATTR_ALLOWED}]`)) element.removeAttribute(ATTR_ALLOWED);
         this.removeCover();
+        if (this.categoryFilter) this.categoryFilter.clear();
         const root = document.documentElement;
         root.removeAttribute(ATTR_PAGE);
         root.removeAttribute(ATTR_OWNER);
@@ -1539,6 +1938,7 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
         }
         if (blocked) this.addCount(blocked);
         this.runEffects();
+        if (this.categoryFilter) this.categoryFilter.scan();
       }
 
       // Small actions that hiding cannot do (e.g. switching autoplay off). They
@@ -1605,6 +2005,536 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
     };
   })(typeof globalThis !== 'undefined' ? globalThis : window);
 
+  /* ======== category-filter.js ======== */
+  /*
+   * ShortStop: content category filter
+   * ==================================
+   * The page half of "Content preferences" (the categories and the classifier
+   * are in shared/categories.js). A platform turns it on by adding a
+   * `categories` object to its config; the engine (core.js) then hands it every
+   * settings change and runs it after each scan, so it adds no observer of its
+   * own and only looks at cards it has not sorted yet.
+   *
+   * For each video card in a filtered area it guesses the category, then:
+   *   allow   leaves the card alone;
+   *   reduce  hides two in three of that category's cards in recommendations
+   *           (always the same ones, picked from the video id);
+   *   hide    folds the card into a one-line note with "Show anyway" and a
+   *           menu to correct the category.
+   * Hovering (or tabbing into) a card shows a small chip with the guessed
+   * category, which is also a menu to correct it. A correction applies to the
+   * whole channel, is stored on this device only, and always beats the guess.
+   *
+   * Videos opened directly are left alone, unless the platform's `view` option
+   * is on: then a video in a hidden category shows a notice first, with
+   * "Watch anyway". Only a confident guess (or a correction) ever does that.
+   *
+   * Config shape (config.categories in a platform file):
+   *   {
+   *     setting: 'youtubeCategories',       // the choices, in the synced settings
+   *     enabled: (options) => boolean,      // the platform option that turns it on
+   *     items: 'css selector',              // video cards (the outermost match wins)
+   *     skip: 'css selector',               // cards inside these are left alone (ads)
+   *     areas: [{ page, within?, onlyIf?(options), reduce }], // where it filters;
+   *                                         // `reduce: false` leaves reduced ones in
+   *     read: (card) => ({ id, title, channel, owner?, text? }) | null, // null: not loaded yet
+   *     view: { page, onlyIf(options), read: (url) => ({ ...same, genre? }) | null },
+   *   }
+   */
+  (function (global) {
+    'use strict';
+
+    if (global.ShortStopCategoryFilter) return; // Already loaded in this world.
+
+    const ATTR_CATEGORY = 'data-shortstop-category'; // The card's guessed (or corrected) category.
+    const ATTR_FILTER = 'data-shortstop-filter'; // 'reduce' or 'hide'.
+    const ATTR_CHIP = 'data-shortstop-chip'; // The card the chip is on.
+    const NOTE_TAG = 'shortstop-note';
+    const CHIP_TAG = 'shortstop-chip';
+    const VIEW_TAG = 'shortstop-view';
+    const REDUCE_KEEP = 3; // "Reduce" keeps one card in three.
+
+    const asList = (value) => (value == null ? [] : [].concat(value));
+
+    const PAGE_CSS = `
+  [${ATTR_FILTER}="reduce"] { display: none !important; }
+  [${ATTR_FILTER}="hide"] > :not(${NOTE_TAG}) { display: none !important; }
+  [${ATTR_CHIP}] { position: relative !important; }`;
+
+    // The ShortStop mark, small, for the chip and the note.
+    function mark(size) {
+      const svgNs = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('viewBox', '0 0 100 100');
+      svg.setAttribute('width', String(size));
+      svg.setAttribute('height', String(size));
+      svg.setAttribute('aria-hidden', 'true');
+      for (const [tag, attributes] of [
+        ['polygon', { points: '29.3,0 70.7,0 100,29.3 100,70.7 70.7,100 29.3,100 0,70.7 0,29.3', fill: '#d62839' }],
+        ['rect', { x: 34, y: 22, width: 32, height: 56, rx: 7, fill: '#fff' }],
+        ['polygon', { points: '44,39 60,50 44,61', fill: '#d62839' }],
+      ]) {
+        const shape = document.createElementNS(svgNs, tag);
+        for (const [name, value] of Object.entries(attributes)) shape.setAttribute(name, String(value));
+        svg.appendChild(shape);
+      }
+      return svg;
+    }
+
+    function make(tag, className, text) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text) element.textContent = text;
+      return element;
+    }
+
+    // Styles live in shadow roots, so the site's CSS can't restyle them. The
+    // note follows the site's own light or dark theme (`theme` on its host).
+    const NOTE_CSS = `
+  :host { all: initial; display: block; box-sizing: border-box; width: 100%;
+    --text: #0f0f0f; --muted: #606060; --line: rgba(0, 0, 0, 0.2); --fill: rgba(0, 0, 0, 0.06); --fill-hover: rgba(0, 0, 0, 0.12);
+    color: var(--muted); font: 400 13px/1.4 Roboto, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  :host([theme="dark"]) { --text: #f1f1f1; --muted: #aaaaaa; --line: rgba(255, 255, 255, 0.24); --fill: rgba(255, 255, 255, 0.1); --fill-hover: rgba(255, 255, 255, 0.18); }
+  .note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 10px;
+    border: 1px dashed var(--line); border-radius: 12px; }
+  svg { flex: none; }
+  button, select { font: 500 13px/1.2 Roboto, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--text); }
+  button { padding: 5px 12px; border: 0; border-radius: 999px; background: var(--fill); cursor: pointer; }
+  button:hover { background: var(--fill-hover); }
+  select { min-width: 0; max-width: 190px; padding: 3px 4px; border: 1px solid var(--line); border-radius: 8px; background: transparent; cursor: pointer; }
+  option { color: #0f0f0f; background: #ffffff; }
+  button:focus-visible, select:focus-visible { outline: 2px solid #3ea6ff; outline-offset: 2px; }`;
+
+    const CHIP_CSS = `
+  :host { all: initial; position: absolute; top: 8px; left: 8px; z-index: 5; }
+  label { display: inline-flex; align-items: center; gap: 5px; padding: 3px 4px 3px 7px; border-radius: 999px;
+    background: rgba(15, 15, 15, 0.86); color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    font: 500 12px/1.2 Roboto, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  select { max-width: 170px; padding: 1px 2px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+  option { color: #0f0f0f; background: #fff; }
+  select:focus-visible { outline: 2px solid #6ea8ff; outline-offset: 1px; border-radius: 4px; }`;
+
+    // The notice in front of a video opened directly (only with the stricter option).
+    const VIEW_CSS = `
+  :host { all: initial; position: fixed; inset: 0; z-index: 2147483646; display: flex; align-items: center; justify-content: center;
+    box-sizing: border-box; padding: 48px 16px; overflow-y: auto; background: #e8edf1; color: #16233a;
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .panel { width: 100%; max-width: 416px; }
+  .mark { display: block; margin-bottom: 20px; }
+  h1 { margin: 0 0 8px; font: 700 30px/1.1 "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif; font-stretch: 75%; }
+  p { margin: 0 0 20px; color: #56657a; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  button { padding: 10px 16px; border: 1px solid #c9d2dc; border-radius: 8px; background: #fff; color: #16233a;
+    font: 600 15px/1.2 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; cursor: pointer; }
+  button.primary { border-color: #d62839; background: #d62839; color: #fff; }
+  label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: #56657a; }
+  select { padding: 6px 8px; border: 1px solid #c9d2dc; border-radius: 8px; background: #fff; color: #16233a; font: inherit; }
+  button:focus-visible, select:focus-visible { outline: 2px solid #1f6feb; outline-offset: 2px; }
+  @media (prefers-color-scheme: dark) {
+    :host { background: #111b2b; color: #e8edf1; }
+    p, label { color: #9aa8bb; }
+    button, select { background: #182538; border-color: #2b3b53; color: #e8edf1; }
+    button.primary { background: #ff5a67; border-color: #ff5a67; color: #111b2b; }
+    button:focus-visible, select:focus-visible { outline-color: #6ea8ff; }
+  }`;
+
+    class CategoryFilter {
+      constructor(engine, spec) {
+        this.engine = engine;
+        this.spec = spec;
+        this.shared = global.ShortStopCategories;
+        this.prefs = {};
+        this.fixes = {};
+        this.settingsKey = '';
+        this.epoch = 0; // Bumped when anything that changes a card's fate changes.
+        this.sorted = new WeakMap(); // card -> { key, info, result }
+        this.revealed = new Set(); // Video ids shown anyway, for this tab.
+        this.styleEl = null;
+        this.chip = null; // { host, select, card }
+        this.view = { host: null, id: null };
+        this.listening = false;
+      }
+
+      get platform() {
+        return this.engine.config.id;
+      }
+
+      /* ---------------- Settings ---------------- */
+
+      // Every settings change, before the engine scans.
+      apply(settings) {
+        const prefs = this.shared.normalizePrefs(settings[this.spec.setting]);
+        const fixes = this.shared.normalizeFixes((settings.categoryFixes || {})[this.platform]);
+        const key = JSON.stringify([prefs, fixes, [...this.engine.allowed]]);
+        if (key === this.settingsKey) return;
+        this.settingsKey = key;
+        this.prefs = prefs;
+        this.fixes = fixes;
+        this.epoch += 1;
+      }
+
+      active() {
+        return this.engine.enabled && !this.engine.redirecting && Boolean(this.spec.enabled(this.engine.options));
+      }
+
+      // Where corrections are stored: the channel's name (every card shows it),
+      // or the video itself when there is no name.
+      fixTarget(info) {
+        const name = String(info.channel || '').replace(/\s+/g, ' ').trim();
+        if (name) return { key: `name:${name.toLowerCase()}`, label: name, scope: 'channel' };
+        return { key: `video:${info.id}`, label: String(info.title || info.id).slice(0, 80), scope: 'video' };
+      }
+
+      resultFor(info) {
+        const fix = this.fixes[this.fixTarget(info).key] || this.fixes[`video:${info.id}`];
+        return fix ? this.shared.fixed(fix.category) : this.shared.classify(info);
+      }
+
+      // A correction from the chip, the note or the notice: saved on this device,
+      // applied at once.
+      saveFix(info, category) {
+        const { key, label } = this.fixTarget(info);
+        const fixes = { ...this.fixes };
+        delete fixes[key]; // Re-added at the end: the newest is kept longest.
+        if (category) fixes[key] = { category, label };
+        this.fixes = this.shared.normalizeFixes(fixes);
+        this.epoch += 1;
+        const env = this.engine.env;
+        if (env.saveCategoryFixes) env.saveCategoryFixes(this.platform, this.fixes);
+        this.engine.scheduleScan();
+      }
+
+      /* ---------------- Scanning ---------------- */
+
+      // The filtered area on this page, if any. Covered pages are hidden anyway.
+      area() {
+        if (this.engine.isCovered()) return null;
+        const options = this.engine.options;
+        return (
+          this.spec.areas.find(
+            (area) => asList(area.page).includes(this.engine.page) && (!area.onlyIf || area.onlyIf(options))
+          ) || null
+        );
+      }
+
+      cards(area) {
+        const items = this.spec.items;
+        let found;
+        try {
+          found = document.querySelectorAll(area.within ? `:is(${area.within}) :is(${items})` : items);
+        } catch (error) {
+          return [];
+        }
+        return Array.from(found).filter(
+          (card) =>
+            !(card.parentElement && card.parentElement.closest(items)) && // The outermost card only.
+            !(this.spec.skip && (card.closest(this.spec.skip) || card.querySelector(this.spec.skip))) && // Ads.
+            !card.closest('[data-shortstop-hidden]') // Already hidden by a rule (e.g. a Short).
+        );
+      }
+
+      // After every engine scan (so on every navigation and DOM change).
+      scan() {
+        if (!this.active()) {
+          this.clear();
+          return;
+        }
+        this.injectStyle();
+        this.listen();
+        const area = this.area();
+        const current = new Set(area ? this.cards(area) : []);
+        for (const card of current) this.sort(card, area);
+        // Cards that left the filtered area (another page, an option switched off).
+        for (const card of document.querySelectorAll(`[${ATTR_CATEGORY}]`)) {
+          if (!current.has(card)) this.unmark(card);
+        }
+        this.updateView();
+      }
+
+      sort(card, area) {
+        const info = this.spec.read(card);
+        if (!info || !info.id || !info.title) return; // Not rendered yet: the next scan.
+        const key = `${this.epoch}|${info.id}|${info.title}|${info.channel || ''}`;
+        const previous = this.sorted.get(card);
+        if (previous && previous.key === key) return;
+        const result = this.resultFor(info);
+        this.sorted.set(card, { key, info, result });
+
+        let mode = this.shared.decide(result, this.prefs);
+        if (info.owner && this.engine.allowed.has(info.owner)) mode = 'allow'; // An allowed channel.
+        if (this.revealed.has(info.id)) mode = 'allow';
+        // Reduce keeps one card in three, and only in recommendations.
+        if (mode === 'reduce' && (!area.reduce || this.shared.bucket(info.id, REDUCE_KEEP) === 0)) mode = 'allow';
+
+        card.setAttribute(ATTR_CATEGORY, result.category);
+        if (mode === 'allow') {
+          card.removeAttribute(ATTR_FILTER);
+          this.removeNote(card);
+        } else {
+          card.setAttribute(ATTR_FILTER, mode);
+          if (mode === 'hide') this.showNote(card, info, result);
+          else this.removeNote(card);
+        }
+        if (this.chip && this.chip.card === card) this.renderChip();
+      }
+
+      unmark(card) {
+        card.removeAttribute(ATTR_CATEGORY);
+        card.removeAttribute(ATTR_FILTER);
+        this.sorted.delete(card);
+        this.removeNote(card);
+        if (this.chip && this.chip.card === card) this.detachChip();
+      }
+
+      clear() {
+        for (const card of document.querySelectorAll(`[${ATTR_CATEGORY}], [${ATTR_FILTER}]`)) this.unmark(card);
+        this.detachChip();
+        this.hideView();
+        if (this.styleEl) {
+          this.styleEl.remove();
+          this.styleEl = null;
+        }
+      }
+
+      injectStyle() {
+        if (this.styleEl && this.styleEl.isConnected) return;
+        if (!this.styleEl) {
+          this.styleEl = document.createElement('style');
+          this.styleEl.id = `shortstop-categories-${this.platform}`;
+          this.styleEl.textContent = PAGE_CSS;
+        }
+        (document.head || document.documentElement).appendChild(this.styleEl);
+      }
+
+      /* ---------------- The correction menu ---------------- */
+
+      // A <select> of every category, set to the current one. Picking one saves
+      // a correction; "Use ShortStop's guess" removes it.
+      categoryMenu(info, result, label) {
+        const select = make('select');
+        select.setAttribute('aria-label', label);
+        const { key } = this.fixTarget(info);
+        for (const category of this.shared.CATEGORIES) {
+          const option = make('option', null, category.label);
+          option.value = category.id;
+          option.selected = category.id === result.category;
+          select.append(option);
+        }
+        if (this.fixes[key]) {
+          const reset = make('option', null, "Use ShortStop's guess");
+          reset.value = '';
+          select.append(reset);
+        }
+        select.addEventListener('change', () => this.saveFix(info, select.value));
+        // Keep the site's own handlers (e.g. opening the video) out of it.
+        for (const type of ['click', 'mousedown', 'pointerdown', 'keydown']) {
+          select.addEventListener(type, (event) => event.stopPropagation());
+        }
+        return select;
+      }
+
+      /* ---------------- Hidden cards: a note ---------------- */
+
+      showNote(card, info, result) {
+        let note = card.querySelector(`:scope > ${NOTE_TAG}`);
+        if (!note) {
+          note = document.createElement(NOTE_TAG);
+          note.attachShadow({ mode: 'open' });
+          card.prepend(note);
+        }
+        // YouTube's dark theme is an attribute on <html>, not the system setting.
+        note.setAttribute('theme', document.documentElement.hasAttribute('dark') ? 'dark' : 'light');
+        const label = this.shared.LABELS[result.category];
+        const shadow = note.shadowRoot;
+        // One short line, to fit a narrow column: "Hidden [Gaming v] Show anyway".
+        // The menu names the category and is also where it is corrected.
+        const box = make('div', 'note');
+        box.setAttribute('role', 'group');
+        box.setAttribute('aria-label', `${label} video hidden by ShortStop`);
+        const menu = this.categoryMenu(info, result, `Hidden as ${label}. Wrong category? Choose the right one for ${this.fixTarget(info).label}`);
+        menu.title = 'Wrong category? Choose the right one.';
+        const show = make('button', null, 'Show anyway');
+        show.type = 'button';
+        show.addEventListener('click', (event) => {
+          event.stopPropagation();
+          this.reveal(card, info);
+        });
+        box.append(mark(16), make('span', null, 'Hidden'), menu, show);
+        const style = make('style');
+        style.textContent = NOTE_CSS;
+        shadow.replaceChildren(style, box);
+      }
+
+      removeNote(card) {
+        const note = card.querySelector(`:scope > ${NOTE_TAG}`);
+        if (note) note.remove();
+      }
+
+      // "Show anyway": this video, for the rest of this tab's life.
+      reveal(card, info) {
+        this.revealed.add(info.id);
+        card.removeAttribute(ATTR_FILTER);
+        this.removeNote(card);
+        const link = card.querySelector('a[href]');
+        if (link) link.focus({ preventScroll: true });
+      }
+
+      /* ---------------- Visible cards: the chip ---------------- */
+
+      listen() {
+        if (this.listening) return;
+        this.listening = true;
+        const onEnter = (event) => this.onEnter(event);
+        document.addEventListener('mouseover', onEnter, { passive: true });
+        document.addEventListener('focusin', onEnter);
+        // A hidden video must not play behind the notice.
+        document.addEventListener(
+          'play',
+          (event) => {
+            if (this.view.host && this.view.host.isConnected && event.target instanceof HTMLMediaElement) event.target.pause();
+          },
+          true
+        );
+      }
+
+      onEnter(event) {
+        if (!this.active()) return;
+        const target = event.target instanceof Element ? event.target : null;
+        const card = target ? target.closest(`[${ATTR_CATEGORY}]`) : null;
+        if (this.chip && card === this.chip.card) return;
+        // Leave the chip alone while its menu is in use.
+        if (this.chip && this.chip.host.shadowRoot.activeElement) return;
+        this.detachChip();
+        if (card && !card.hasAttribute(ATTR_FILTER) && this.sorted.has(card)) this.attachChip(card);
+      }
+
+      attachChip(card) {
+        if (!this.chip) {
+          const host = document.createElement(CHIP_TAG);
+          host.attachShadow({ mode: 'open' });
+          this.chip = { host, card: null };
+        }
+        this.chip.card = card;
+        card.setAttribute(ATTR_CHIP, '');
+        this.renderChip();
+        card.append(this.chip.host);
+      }
+
+      renderChip() {
+        const { host, card } = this.chip;
+        const entry = this.sorted.get(card);
+        if (!entry) return;
+        const label = make('label');
+        label.title = "ShortStop's guess at this video's category. Change it to correct it for the whole channel.";
+        label.append(mark(12), this.categoryMenu(entry.info, entry.result, `ShortStop category for ${this.fixTarget(entry.info).label}`));
+        const style = make('style');
+        style.textContent = CHIP_CSS;
+        host.shadowRoot.replaceChildren(style, label);
+      }
+
+      detachChip() {
+        if (!this.chip || !this.chip.card) return;
+        this.chip.card.removeAttribute(ATTR_CHIP);
+        this.chip.host.remove();
+        this.chip.card = null;
+      }
+
+      /* ---------------- Videos opened directly (stricter option) ---------------- */
+
+      updateView() {
+        const found = this.viewToCheck();
+        if (!found) {
+          this.hideView();
+          return;
+        }
+        if (this.view.id === found.info.id && this.view.host && this.view.host.isConnected) return;
+        this.showView(found.info, found.result);
+      }
+
+      // The video on this page, if it is in a hidden category and the option is on.
+      viewToCheck() {
+        const view = this.spec.view;
+        const engine = this.engine;
+        if (!view || !asList(view.page).includes(engine.page)) return null;
+        if ((view.onlyIf && !view.onlyIf(engine.options)) || engine.viewAllowed || engine.isCovered()) return null;
+        let url;
+        try {
+          url = new URL(engine.env.href());
+        } catch (error) {
+          return null;
+        }
+        const info = view.read(url);
+        if (!info || !info.id || this.revealed.has(info.id)) return null;
+        if (info.owner && engine.allowed.has(info.owner)) return null;
+        const result = this.resultFor(info);
+        // Only a real guess (or a correction) ever stands between someone and a video.
+        if (!result.confident || this.shared.decide(result, this.prefs) !== 'hide') return null;
+        return { info, result };
+      }
+
+      showView(info, result) {
+        if (!this.view.host) {
+          this.view.host = document.createElement(VIEW_TAG);
+          this.view.host.attachShadow({ mode: 'open' });
+        }
+        const host = this.view.host;
+        this.view.id = info.id;
+        const label = this.shared.LABELS[result.category];
+        const panel = make('div', 'panel');
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-modal', 'true');
+        panel.setAttribute('aria-labelledby', 'shortstop-view-title');
+        const icon = mark(48);
+        icon.setAttribute('class', 'mark');
+        const article = /^[aeiou]/i.test(label) ? 'an' : 'a';
+        const title = make('h1', null, `This looks like ${article} ${label} video.`);
+        title.id = 'shortstop-view-title';
+        const message = make(
+          'p',
+          null,
+          `You chose to hide ${label} on YouTube. ShortStop guesses from the title, channel and description, so it can be wrong.`
+        );
+        const watch = make('button', 'primary', 'Watch anyway');
+        watch.type = 'button';
+        watch.addEventListener('click', () => {
+          this.revealed.add(info.id);
+          this.hideView();
+        });
+        const back = make('button', null, 'Go back');
+        back.type = 'button';
+        back.addEventListener('click', () => {
+          if (global.history.length > 1) global.history.back();
+          else this.engine.env.navigate(new URL('/', this.engine.env.href()).href, false);
+        });
+        const actions = make('div', 'actions');
+        actions.append(watch, back);
+        const scope = this.fixTarget(info).scope;
+        const fix = make('label', null, `Wrong category? This ${scope} is:`);
+        fix.append(this.categoryMenu(info, result, `Category for ${this.fixTarget(info).label}`));
+        panel.append(icon, title, message, actions, fix);
+        const style = make('style');
+        style.textContent = VIEW_CSS;
+        host.shadowRoot.replaceChildren(style, panel);
+        if (!host.isConnected) (document.body || document.documentElement).appendChild(host);
+        for (const media of document.querySelectorAll('video, audio')) {
+          try {
+            media.pause();
+          } catch (error) {
+            /* Media we can't control. */
+          }
+        }
+        watch.focus({ preventScroll: true });
+      }
+
+      hideView() {
+        if (this.view.host) this.view.host.remove();
+        this.view.id = null;
+      }
+    }
+
+    global.ShortStopCategoryFilter = CategoryFilter;
+  })(typeof globalThis !== 'undefined' ? globalThis : window);
+
   /* ---- Userscript environment: fixed settings, no storage, no counter ---- */
   ShortStop.useEnv({
     href: () => location.href,
@@ -1651,6 +2581,13 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
    * because the Shorts player would scroll straight on into other channels.
    * The home feed, Trending and Up next stay blocked: they are recommendations.
    *
+   * Content preferences (`categories`, off by default): where videos are still
+   * shown (home and Up next with 'shorts', search, and Subscriptions if chosen),
+   * each card is sorted into a category from its title, channel and description
+   * snippet, then allowed, reduced or hidden as chosen in the popup. A video
+   * opened directly is only checked with the stricter option, from the watch
+   * page's own details (which include YouTube's category).
+   *
    * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
    * that slipped through, and add or adjust a rule below. See README.md.
    */
@@ -1663,6 +2600,64 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
     const player = document.querySelector(`ytd-watch-flexy[video-id="${video}"]`);
     const link = player && player.querySelector('ytd-video-owner-renderer a[href^="/@"], #owner a[href^="/@"]');
     return link ? ShortStopAllowlist.sites.youtube.hrefOwner(link.getAttribute('href')) : null;
+  }
+
+  // The video id in a /watch link, or null.
+  function youtubeVideoId(href) {
+    try {
+      const id = new URL(href, 'https://www.youtube.com').searchParams.get('v');
+      return id && /^[\w-]{6,}$/.test(id) ? id : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // What a video card shows about its video, for content preferences: search
+  // results (ytd-video-renderer), the new lockups (home, Up next, search) and
+  // the mobile site's cards. Null until the card has rendered.
+  function youtubeCardVideo(card) {
+    const link = card.querySelector('a[href*="/watch?v="]');
+    const id = link && youtubeVideoId(link.getAttribute('href'));
+    if (!id) return null;
+    const heading = card.querySelector('#video-title, h3[title], h3, .media-item-headline');
+    const channel = card.querySelector(
+      'ytd-channel-name #text, ytd-channel-name a, .ytContentMetadataViewModelMetadataText, .yt-content-metadata-view-model__metadata-text, .ytm-badge-and-byline-item-byline'
+    );
+    const channelLink = card.querySelector('ytd-channel-name a[href^="/@"], a[href^="/@"]');
+    const snippet = card.querySelector('.metadata-snippet-text, #description-text');
+    return {
+      id,
+      title: heading ? (heading.getAttribute('title') || heading.textContent).trim() : '',
+      channel: channel ? channel.textContent.trim() : '',
+      owner: channelLink ? ShortStopAllowlist.sites.youtube.hrefOwner(channelLink.getAttribute('href')) : null,
+      text: snippet ? snippet.textContent : '',
+    };
+  }
+
+  // The video on a /watch page, from the page's structured data, which also
+  // carries YouTube's own category. It is only trusted once it describes THIS
+  // video: during in-page navigation it can still be the previous one's.
+  function youtubeWatchVideo(url) {
+    const id = url.pathname === '/watch' ? youtubeVideoId(url.href) : null;
+    const script = id && document.querySelector('ytd-player-microformat-renderer script, #microformat script');
+    if (!script) return null;
+    let data;
+    try {
+      data = JSON.parse(script.textContent);
+    } catch (error) {
+      return null;
+    }
+    const embedded = String((data && data.embedUrl) || '').split('/embed/')[1] || '';
+    if (embedded.split(/[?&#]/)[0] !== id) return null;
+    const author = data.author && typeof data.author === 'object' ? data.author.name : data.author;
+    return {
+      id,
+      title: String(data.name || ''),
+      channel: String(author || ''),
+      owner: youtubeVideoOwner(url),
+      text: String(data.description || ''),
+      genre: String(data.genre || ''),
+    };
   }
 
   // Rules and covered pages for the feeds: on in 'feeds' and 'all', off in 'shorts'.
@@ -1704,6 +2699,41 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
         values: ['all', 'feeds', 'shorts'],
         duringFocus: (mode) => (mode === 'shorts' ? 'feeds' : mode),
       },
+      // Content preferences (see `categories` below).
+      categoryFilter: { setting: 'youtubeCategoryFilter', default: false },
+      categorySubscriptions: { setting: 'youtubeCategorySubscriptions', default: false },
+      categoryWatch: { setting: 'youtubeCategoryWatch', default: false },
+    },
+
+    // Content preferences, chosen in the popup under YouTube: which categories
+    // of video to allow, reduce or hide where videos are still shown.
+    categories: {
+      setting: 'youtubeCategories',
+      enabled: (options) => options.categoryFilter,
+      items:
+        'ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer, ytd-grid-video-renderer, yt-lockup-view-model, ytm-video-with-context-renderer, ytm-compact-video-renderer, ytm-rich-item-renderer',
+      skip: 'ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer, ytd-promoted-video-renderer, ytm-promoted-video-renderer',
+      areas: [
+        // YouTube keeps pages it has shown in memory, so each area is scoped to its own page.
+        { page: 'home', within: 'ytd-browse[page-subtype="home"], ytm-browse', reduce: true },
+        {
+          page: 'watch',
+          within:
+            'ytd-watch-next-secondary-results-renderer, ytm-item-section-renderer[section-identifier="related-items"], ytm-watch-next-secondary-results-renderer',
+          reduce: true,
+        },
+        // Search is asked for, so "reduce" leaves it alone; "hide" still applies.
+        { page: 'search', within: 'ytd-search, ytm-search', reduce: false },
+        {
+          page: 'subscriptions',
+          within: 'ytd-browse[page-subtype="subscriptions"], ytm-browse',
+          onlyIf: (options) => options.categorySubscriptions,
+          reduce: true,
+        },
+      ],
+      read: youtubeCardVideo,
+      // Videos opened directly: only with the stricter option.
+      view: { page: 'watch', onlyIf: (options) => options.categoryWatch, read: youtubeWatchVideo },
     },
 
     redirects: [
@@ -1725,6 +2755,7 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
       explore: /^\/(?:feed\/(?:trending|explore)|gaming)(?:\/|$)/,
       watch: /^\/watch(?:\/|$)/,
       search: /^\/results(?:\/|$)/,
+      subscriptions: /^\/feed\/subscriptions\/?$/,
     },
 
     cover: {
@@ -1746,6 +2777,7 @@ const SNAPCHAT_ALLOWED_ACCOUNTS = [];
           (youtubeBlocksFeeds(options) ? { message: 'Trending, Explore and Gaming are switched off.' } : null),
         watch: youtubeBlockedPage,
         search: youtubeBlockedPage,
+        subscriptions: youtubeBlockedPage,
         other: youtubeBlockedPage, // Every page no pattern above names: channels, feeds, playlists...
       },
       search: {
