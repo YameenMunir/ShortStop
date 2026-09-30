@@ -31,6 +31,13 @@
  * because the Shorts player would scroll straight on into other channels.
  * The home feed, Trending and Up next stay blocked: they are recommendations.
  *
+ * Content preferences (`categories`, off by default): where videos are still
+ * shown (home and Up next with 'shorts', search, and Subscriptions if chosen),
+ * each card is sorted into a category from its title, channel and description
+ * snippet, then allowed, reduced or hidden as chosen in the popup. A video
+ * opened directly is only checked with the stricter option, from the watch
+ * page's own details (which include YouTube's category).
+ *
  * WHEN YOUTUBE CHANGES: open DevTools on the page, inspect the Shorts element
  * that slipped through, and add or adjust a rule below. See README.md.
  */
@@ -43,6 +50,64 @@ function youtubeVideoOwner(url) {
   const player = document.querySelector(`ytd-watch-flexy[video-id="${video}"]`);
   const link = player && player.querySelector('ytd-video-owner-renderer a[href^="/@"], #owner a[href^="/@"]');
   return link ? ShortStopAllowlist.sites.youtube.hrefOwner(link.getAttribute('href')) : null;
+}
+
+// The video id in a /watch link, or null.
+function youtubeVideoId(href) {
+  try {
+    const id = new URL(href, 'https://www.youtube.com').searchParams.get('v');
+    return id && /^[\w-]{6,}$/.test(id) ? id : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// What a video card shows about its video, for content preferences: search
+// results (ytd-video-renderer), the new lockups (home, Up next, search) and
+// the mobile site's cards. Null until the card has rendered.
+function youtubeCardVideo(card) {
+  const link = card.querySelector('a[href*="/watch?v="]');
+  const id = link && youtubeVideoId(link.getAttribute('href'));
+  if (!id) return null;
+  const heading = card.querySelector('#video-title, h3[title], h3, .media-item-headline');
+  const channel = card.querySelector(
+    'ytd-channel-name #text, ytd-channel-name a, .ytContentMetadataViewModelMetadataText, .yt-content-metadata-view-model__metadata-text, .ytm-badge-and-byline-item-byline'
+  );
+  const channelLink = card.querySelector('ytd-channel-name a[href^="/@"], a[href^="/@"]');
+  const snippet = card.querySelector('.metadata-snippet-text, #description-text');
+  return {
+    id,
+    title: heading ? (heading.getAttribute('title') || heading.textContent).trim() : '',
+    channel: channel ? channel.textContent.trim() : '',
+    owner: channelLink ? ShortStopAllowlist.sites.youtube.hrefOwner(channelLink.getAttribute('href')) : null,
+    text: snippet ? snippet.textContent : '',
+  };
+}
+
+// The video on a /watch page, from the page's structured data, which also
+// carries YouTube's own category. It is only trusted once it describes THIS
+// video: during in-page navigation it can still be the previous one's.
+function youtubeWatchVideo(url) {
+  const id = url.pathname === '/watch' ? youtubeVideoId(url.href) : null;
+  const script = id && document.querySelector('ytd-player-microformat-renderer script, #microformat script');
+  if (!script) return null;
+  let data;
+  try {
+    data = JSON.parse(script.textContent);
+  } catch (error) {
+    return null;
+  }
+  const embedded = String((data && data.embedUrl) || '').split('/embed/')[1] || '';
+  if (embedded.split(/[?&#]/)[0] !== id) return null;
+  const author = data.author && typeof data.author === 'object' ? data.author.name : data.author;
+  return {
+    id,
+    title: String(data.name || ''),
+    channel: String(author || ''),
+    owner: youtubeVideoOwner(url),
+    text: String(data.description || ''),
+    genre: String(data.genre || ''),
+  };
 }
 
 // Rules and covered pages for the feeds: on in 'feeds' and 'all', off in 'shorts'.
@@ -84,6 +149,41 @@ ShortStop.start({
       values: ['all', 'feeds', 'shorts'],
       duringFocus: (mode) => (mode === 'shorts' ? 'feeds' : mode),
     },
+    // Content preferences (see `categories` below).
+    categoryFilter: { setting: 'youtubeCategoryFilter', default: false },
+    categorySubscriptions: { setting: 'youtubeCategorySubscriptions', default: false },
+    categoryWatch: { setting: 'youtubeCategoryWatch', default: false },
+  },
+
+  // Content preferences, chosen in the popup under YouTube: which categories
+  // of video to allow, reduce or hide where videos are still shown.
+  categories: {
+    setting: 'youtubeCategories',
+    enabled: (options) => options.categoryFilter,
+    items:
+      'ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer, ytd-grid-video-renderer, yt-lockup-view-model, ytm-video-with-context-renderer, ytm-compact-video-renderer, ytm-rich-item-renderer',
+    skip: 'ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer, ytd-promoted-video-renderer, ytm-promoted-video-renderer',
+    areas: [
+      // YouTube keeps pages it has shown in memory, so each area is scoped to its own page.
+      { page: 'home', within: 'ytd-browse[page-subtype="home"], ytm-browse', reduce: true },
+      {
+        page: 'watch',
+        within:
+          'ytd-watch-next-secondary-results-renderer, ytm-item-section-renderer[section-identifier="related-items"], ytm-watch-next-secondary-results-renderer',
+        reduce: true,
+      },
+      // Search is asked for, so "reduce" leaves it alone; "hide" still applies.
+      { page: 'search', within: 'ytd-search, ytm-search', reduce: false },
+      {
+        page: 'subscriptions',
+        within: 'ytd-browse[page-subtype="subscriptions"], ytm-browse',
+        onlyIf: (options) => options.categorySubscriptions,
+        reduce: true,
+      },
+    ],
+    read: youtubeCardVideo,
+    // Videos opened directly: only with the stricter option.
+    view: { page: 'watch', onlyIf: (options) => options.categoryWatch, read: youtubeWatchVideo },
   },
 
   redirects: [
@@ -105,6 +205,7 @@ ShortStop.start({
     explore: /^\/(?:feed\/(?:trending|explore)|gaming)(?:\/|$)/,
     watch: /^\/watch(?:\/|$)/,
     search: /^\/results(?:\/|$)/,
+    subscriptions: /^\/feed\/subscriptions\/?$/,
   },
 
   cover: {
@@ -126,6 +227,7 @@ ShortStop.start({
         (youtubeBlocksFeeds(options) ? { message: 'Trending, Explore and Gaming are switched off.' } : null),
       watch: youtubeBlockedPage,
       search: youtubeBlockedPage,
+      subscriptions: youtubeBlockedPage,
       other: youtubeBlockedPage, // Every page no pattern above names: channels, feeds, playlists...
     },
     search: {

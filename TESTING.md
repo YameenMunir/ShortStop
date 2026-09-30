@@ -307,6 +307,34 @@ These selectors haven't been checked on the live site yet, so note anything that
       greyed out, and the allowed channel is blocked like everything else until it ends.
 - [ ] Facebook, Reddit and X have no allowed-accounts list.
 
+## Content preferences (YouTube, popup)
+
+- [ ] Unfold YouTube: **Content preferences**, **Filter video categories** is off, and nothing
+      on YouTube changes.
+- [ ] Turn it on: the note under it says where it applies ("Filters search results…" with
+      **Block feeds and Shorts**). Switch YouTube to **Block YouTube Shorts only**: it now says
+      "Filters the home feed, Up next and search results…".
+- [ ] **Choose**: every category is on **Allow**. Set **Gaming** to **Hide**: the summary says
+      "Hiding Gaming." Search YouTube for `minecraft`: game videos become a one-line note,
+      *Hidden [Gaming ▾] Show anyway*, without a reload. Check the note in YouTube's light and
+      dark themes.
+- [ ] **Show anyway** brings that video back, and it stays back while you use the page.
+- [ ] Point at a video that isn't hidden: a small chip with its category appears on the
+      thumbnail. Pick another category in it: that channel's videos follow at once, and the
+      correction is listed under **Your corrections** in the popup. Remove it with **×**.
+- [ ] Set **Gaming** to **Reduce** instead. On the home feed (with *Shorts only*), about a third of
+      game videos stay, and the same ones stay after a reload. Search results keep them all.
+- [ ] **Focus** preset: coding, education and science videos show, the rest of the home feed and
+      Up next is hidden. Change one category: no preset is highlighted any more. **Allow all**
+      clears everything.
+- [ ] Allow a channel under **Allowed channels**: its videos are never hidden, whatever their
+      category.
+- [ ] **Filter Subscriptions too**: your subscriptions feed follows the same choices.
+- [ ] **Check videos I open**, with a category hidden: open a video of that category directly. A
+      notice says "This looks like a … video.", the video is paused, and **Watch anyway** lets it
+      play. **Go back** goes back. A vague title (no clear category) never shows the notice.
+- [ ] Switch YouTube off, or turn the filter off: every note and chip disappears at once.
+
 ## More popup checks
 - [ ] Switch Facebook and TikTok off and back on (the panel disappears, the feed returns, and
       it's blocked again as soon as you switch it back on).

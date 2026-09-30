@@ -74,7 +74,9 @@
       "js": [
         "shared/schedule.js",
         "shared/allowlist.js",
+        "shared/categories.js",
         "content/core.js",
+        "content/category-filter.js",
         "content/youtube.js"
       ],
       "run_at": "document_start"

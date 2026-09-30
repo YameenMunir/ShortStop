@@ -91,6 +91,55 @@
           </span>
         </label>
         </div>
+        <!-- Content preferences: shape what YouTube shows rather than block it. popup.js adds
+             the presets and the category list to the body. Off by default. -->
+        <div class="categories" id="categories-youtube" data-platform="youtube">
+          <p class="categories-heading">Content preferences</p>
+          <label class="categories-toggle" for="option-youtube-categories">
+            <span class="option-text">
+              <span class="option-title">Filter video categories</span>
+              <span class="option-detail">Allow, reduce or hide kinds of video where YouTube still shows them.</span>
+            </span>
+            <input
+              class="switch switch-small"
+              type="checkbox"
+              role="switch"
+              id="option-youtube-categories"
+              data-setting="youtubeCategoryFilter"
+              data-parent="youtube"
+            />
+          </label>
+          <div class="categories-body" id="categories-body-youtube" hidden>
+            <label class="categories-toggle" for="option-youtube-category-subscriptions">
+              <span class="option-text">
+                <span class="option-title">Filter Subscriptions too</span>
+                <span class="option-detail">Your subscriptions feed follows the same choices.</span>
+              </span>
+              <input
+                class="switch switch-small"
+                type="checkbox"
+                role="switch"
+                id="option-youtube-category-subscriptions"
+                data-setting="youtubeCategorySubscriptions"
+                data-parent="youtube"
+              />
+            </label>
+            <label class="categories-toggle" for="option-youtube-category-watch">
+              <span class="option-text">
+                <span class="option-title">Check videos I open</span>
+                <span class="option-detail">A video in a hidden category shows a notice first, with Watch anyway.</span>
+              </span>
+              <input
+                class="switch switch-small"
+                type="checkbox"
+                role="switch"
+                id="option-youtube-category-watch"
+                data-setting="youtubeCategoryWatch"
+                data-parent="youtube"
+              />
+            </label>
+          </div>
+        </div>
         </div>
       </li>
       <li class="platform">
@@ -291,6 +340,7 @@
     <script src="../shared/pause.js"></script>
     <script src="../shared/schedule.js"></script>
     <script src="../shared/allowlist.js"></script>
+    <script src="../shared/categories.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

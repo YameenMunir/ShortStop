@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Content categories (shared/categories.js)</title>
+    <script src="../../extension/shared/categories.js"></script>
+  </head>
+  <body>
+    <script>
+      // Unit checks for the content-preferences classifier, presets and saved choices.
+      (function () {
+        'use strict';
+        const C = globalThis.ShortStopCategories;
+        const results = [];
+        const check = (name, pass, detail) => results.push({ name, pass: Boolean(pass), detail: detail || '' });
+        const guess = (video) => C.classify(video);
+        const expectCategory = (name, video, expected) => {
+          const result = guess(video);
+          check(name, result.category === expected, `got ${result.category} ${JSON.stringify(result.scores)}`);
+        };
+
+        // The list.
+        const ids = C.CATEGORIES.map((category) => category.id);
+        check('19 categories, none repeated', ids.length === 19 && new Set(ids).size === 19, ids.join(','));
+        check('"Other" is the last category', ids[ids.length - 1] === 'other');
+        check('every category has a label', C.CATEGORIES.every((category) => C.LABELS[category.id] === category.label && category.label));
+
+        // Guesses from real-looking titles and channel names.
+        expectCategory('a coding course', { title: '100+ JavaScript Concepts you Need to Know', channel: 'Fireship' }, 'coding');
+        expectCategory('a physics video', { title: 'The Most Misunderstood Concept in Physics', channel: 'Veritasium' }, 'science');
+        expectCategory('a game', { title: 'Elden Ring DLC - All Bosses', channel: 'Fextralife' }, 'gaming');
+        expectCategory('a music video, not the Swift language', { title: 'Taylor Swift - Anti-Hero (Official Music Video)', channel: 'TaylorSwiftVEVO' }, 'music');
+        expectCategory('an auto-generated "- Topic" channel is music', { title: 'Blinding Lights', channel: 'The Weeknd - Topic' }, 'music');
+        expectCategory('football highlights', { title: 'Man City vs Arsenal | Premier League Highlights', channel: 'Sky Sports Premier League' }, 'sports');
+        expectCategory('a podcast episode', { title: 'Joe Rogan Experience #2154 - Elon Musk', channel: 'PowerfulJRE' }, 'podcasts');
+        expectCategory('productivity tips', { title: 'How I Manage My Time - 10 Productivity Tips', channel: 'Ali Abdaal' }, 'productivity');
+        expectCategory('a vlog', { title: 'A day in my life living in Tokyo', channel: 'Rachel & Jun' }, 'vlogs');
+        expectCategory('investing', { title: 'Stock Market Crash: What to do with your money', channel: 'Graham Stephan' }, 'business');
+        expectCategory('news from a news channel', { title: 'Election results live', channel: 'Sky News' }, 'news');
+        expectCategory('a film trailer', { title: 'Dune: Part Two | Official Trailer', channel: 'Warner Bros. Pictures' }, 'movies');
+        expectCategory('a documentary', { title: 'The Rise and Fall of Blockbuster', channel: 'Company Man' }, 'documentaries');
+        expectCategory('stand-up comedy', { title: 'Kevin Hart: Stand Up Comedy Special', channel: 'Netflix Is A Joke' }, 'comedy');
+        expectCategory('celebrity gossip', { title: 'Kardashians Red Carpet Drama', channel: 'Pop Buzz' }, 'celebrity');
+        expectCategory('a workout', { title: '30 Minute Full Body Workout - No Equipment', channel: 'MadFit' }, 'health');
+        expectCategory('a recipe', { title: 'Easy 15 minute pasta recipe', channel: 'Joshua Weissman' }, 'lifestyle');
+        expectCategory('a challenge video', { title: 'Last To Leave The Circle Wins $500,000', channel: 'MrBeast' }, 'entertainment');
+        expectCategory('a maths course', { title: 'Calculus 1 - Full College Course', channel: 'freeCodeCamp.org' }, 'education');
+        expectCategory('accents are ignored ("Pokémon")', { title: 'Pokémon Legends Z-A Review', channel: 'Some Channel' }, 'gaming');
+        expectCategory('"C++" is a whole word', { title: 'C++ in 100 seconds', channel: 'Someone' }, 'coding');
+        expectCategory('YouTube\'s own category counts', { title: 'Episode 4', channel: 'Someone', genre: 'Gaming' }, 'gaming');
+
+        // Uncertain: "Other", never a confident guess.
+        const unsure = guess({ title: 'My cat does something weird', channel: 'Some Person' });
+        check('a video with little to go on is "Other"', unsure.category === 'other' && !unsure.confident, JSON.stringify(unsure));
+        check('"ai" does not match inside "said"', !guess({ title: 'She said what?', channel: 'x' }).scores.science);
+        check(
+          'a keyword only in the description is not enough on its own',
+          guess({ title: 'Watch this', channel: 'Someone', text: 'A quick tutorial.' }).category === 'other'
+        );
+        check('empty input is "Other"', guess({}).category === 'other' && guess(null).category === 'other');
+
+        // Deciding.
+        const gaming = guess({ title: 'Elden Ring DLC - All Bosses', channel: 'Fextralife' });
+        check('Gaming hidden: a game is hidden', C.decide(gaming, { gaming: 'hide' }) === 'hide');
+        check('Gaming reduced: a game is reduced', C.decide(gaming, { gaming: 'reduce' }) === 'reduce');
+        check('nothing chosen: a game is allowed', C.decide(gaming, {}) === 'allow');
+        const both = guess({ title: 'Minecraft coding tutorial: build a mod in Java', channel: 'Kaupenjoe' });
+        check(
+          'close call (coding and gaming): the gentler choice wins',
+          both.close.includes('gaming') && both.close.includes('coding') && C.decide(both, { gaming: 'hide' }) === 'allow',
+          JSON.stringify(both)
+        );
+        check('close call: hidden only when both are hidden', C.decide(both, { gaming: 'hide', coding: 'hide', education: 'hide' }) === 'hide');
+        check('"Other" is allowed unless chosen', C.decide(unsure, {}) === 'allow' && C.decide(unsure, { other: 'hide' }) === 'hide');
+        check('a correction is certain', C.fixed('education').confident && C.decide(C.fixed('education'), { education: 'hide' }) === 'hide');
+
+        // Saved choices.
+        check(
+          'saved choices keep only reduce and hide for known categories',
+          JSON.stringify(C.normalizePrefs({ gaming: 'hide', music: 'reduce', news: 'allow', nope: 'hide', sports: 'block' })) ===
+            JSON.stringify({ music: 'reduce', gaming: 'hide' })
+        );
+        check('no saved choices: nothing changed', JSON.stringify(C.normalizePrefs(undefined)) === '{}' && JSON.stringify(C.normalizePrefs('x')) === '{}');
+
+        // Presets.
+        const focus = C.presetPrefs('focus');
+        check('Focus preset: coding and education allowed', !focus.coding && !focus.education && !focus.science);
+        check('Focus preset: gaming and celebrity hidden', focus.gaming === 'hide' && focus.celebrity === 'hide');
+        check('presets never hide "Other" (an uncertain guess)', !focus.other && !C.presetPrefs('study').other);
+        check('Study preset: documentaries allowed, coding hidden', !C.presetPrefs('study').documentaries && C.presetPrefs('study').coding === 'hide');
+        check('"Allow all" clears every choice', JSON.stringify(C.presetPrefs('all')) === '{}');
+        check('the Focus preset is recognised', C.matchingPreset(focus) === 'focus');
+        check('nothing chosen is "Allow all"', C.matchingPreset({}) === 'all');
+        check('a changed preset is Custom', C.matchingPreset({ ...focus, news: 'reduce' }) === null);
+        check('an unknown preset gives nothing', C.presetPrefs('nope') === null);
+
+        // Corrections.
+        const fixes = C.normalizeFixes({
+          'name:veritasium': { category: 'science', label: 'Veritasium' },
+          'video:abc123': 'gaming',
+          'name:bad': { category: 'nope' },
+          weird: { category: 'music' },
+        });
+        check(
+          'corrections: known categories and keys only, labels kept',
+          JSON.stringify(fixes) ===
+            JSON.stringify({ 'name:veritasium': { category: 'science', label: 'Veritasium' }, 'video:abc123': { category: 'gaming', label: '' } }),
+          JSON.stringify(fixes)
+        );
+        const many = {};
+        for (let i = 0; i < C.MAX_FIXES + 5; i += 1) many[`name:channel ${i}`] = { category: 'music', label: `Channel ${i}` };
+        const kept = Object.keys(C.normalizeFixes(many));
+        check(
+          `corrections: at most ${C.MAX_FIXES}, the newest kept`,
+          kept.length === C.MAX_FIXES && kept[0] === 'name:channel 5' && kept[kept.length - 1] === `name:channel ${C.MAX_FIXES + 4}`
+        );
+
+        // Reduce keeps a stable third.
+        check('reduce: the same video always lands in the same place', C.bucket('dQw4w9WgXcQ', 3) === C.bucket('dQw4w9WgXcQ', 3));
+        let kept3 = 0;
+        for (let i = 0; i < 3000; i += 1) if (C.bucket(`video-${i}-${i * 7}`, 3) === 0) kept3 += 1;
+        check('reduce: about a third of videos are kept', kept3 > 850 && kept3 < 1150, `${kept3} of 3000`);
+
+        // Fast enough for a page of cards.
+        const started = performance.now();
+        for (let i = 0; i < 500; i += 1) guess({ title: `Learn Python part ${i} - full course`, channel: 'Someone', text: 'In this video we look at lists.' });
+        const each = (performance.now() - started) / 500;
+        check('a guess takes well under a millisecond', each < 1, `${each.toFixed(3)} ms`);
+
+        const output = document.createElement('pre');
+        output.id = 'results';
+        output.textContent = JSON.stringify(results);
+        document.documentElement.appendChild(output);
+      })();
+    </script>
+  </body>
+</html>

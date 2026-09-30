@@ -76,6 +76,7 @@
           await load('../../extension/shared/pause.js');
           await load('../../extension/shared/schedule.js');
           await load('../../extension/shared/allowlist.js');
+          await load('../../extension/shared/categories.js');
           try { localStorage.removeItem('shortstop.openSites'); } catch (error) {}
           globalThis.ShortStopPause.OFF_WAIT_SECONDS = 2;
           globalThis.ShortStopPause.OFF_WINDOW_SECONDS = 5;
@@ -188,6 +189,132 @@
           await chrome.storage.sync.set({ settings: { ...stores.sync.settings, youtube: true, youtubeMode: 'feeds' } });
           await step();
           check('the choices come back with YouTube', !choice('feeds').disabled && choice('feeds').checked);
+
+          /* ---- YouTube: content preferences ---- */
+          const youtubeFold = $('[aria-controls="details-youtube"]');
+          if (youtubeFold.getAttribute('aria-expanded') !== 'true') youtubeFold.click();
+          const catSwitch = $('#option-youtube-categories');
+          const catBody = $('#categories-body-youtube');
+          const catList = $('#category-list-youtube');
+          const catSummary = () => catBody.querySelector('.categories-summary').textContent;
+          const catWhere = () => catBody.querySelector('.categories-note').textContent;
+          const catPick = (id, mode) => $(`input[name="category-youtube-${id}"][value="${mode}"]`);
+          const catSaved = () => JSON.stringify(stores.sync.settings.youtubeCategories || {});
+          const preset = (id) => catBody.querySelector(`[data-preset="${id}"]`);
+          const pressedPreset = () =>
+            Array.from(catBody.querySelectorAll('[data-preset]'))
+              .filter((node) => node.getAttribute('aria-pressed') === 'true')
+              .map((node) => node.dataset.preset)
+              .join(',');
+          const catIds = globalThis.ShortStopCategories.CATEGORIES.map((category) => category.id);
+          check('content preferences are off by default', !catSwitch.checked && catBody.hidden);
+          check('they sit under YouTube, headed "Content preferences"', catSwitch.closest('#details-youtube') && $('#categories-youtube .categories-heading').textContent === 'Content preferences');
+          catSwitch.click();
+          await step();
+          check('turning the filter on saves it', stores.sync.settings.youtubeCategoryFilter === true);
+          check('the presets and the summary appear', shown(catBody) && shown(preset('focus')) && shown(preset('study')) && shown(preset('all')));
+          check('every category has Allow, Reduce and Hide', catIds.every((id) => catPick(id, 'allow') && catPick(id, 'reduce') && catPick(id, 'hide')));
+          check('every category starts allowed', catIds.every((id) => catPick(id, 'allow').checked));
+          check('nothing chosen: "Allow all" is pressed', pressedPreset() === 'all', pressedPreset());
+          check('the summary says everything is allowed', catSummary() === 'Every category is allowed. Pick a preset or choose your own.', catSummary());
+          check(
+            'it says where it applies with "Block feeds and Shorts"',
+            catWhere() === 'Filters search results, and Subscriptions if you like. The home feed and Up next are blocked already.',
+            catWhere()
+          );
+          check('the category list is folded behind Choose', catList.hidden);
+          catBody.querySelector('[data-action="edit-categories"]').click();
+          await step();
+          check('Choose opens the list', shown(catList) && catBody.querySelector('[data-action="edit-categories"]').getAttribute('aria-expanded') === 'true');
+          check('each category is a named radio group', catList.querySelectorAll('[role="radiogroup"][aria-labelledby]').length === catIds.length);
+          catPick('gaming', 'hide').click();
+          await step();
+          check('hiding a category saves it at once', catSaved() === '{"gaming":"hide"}', catSaved());
+          check('the summary follows', catSummary() === 'Hiding Gaming.', catSummary());
+          check('a hand-picked choice is Custom (no preset pressed)', pressedPreset() === '', pressedPreset());
+          catPick('entertainment', 'reduce').click();
+          await step();
+          check('reducing one saves it too', catSaved() === '{"gaming":"hide","entertainment":"reduce"}', catSaved());
+          check('the summary names both', catSummary() === 'Hiding Gaming. Fewer Entertainment.', catSummary());
+          catPick('gaming', 'allow').click();
+          await step();
+          check('allowing one again drops it from the saved choices', catSaved() === '{"entertainment":"reduce"}', catSaved());
+          preset('focus').click();
+          await step();
+          check('the Focus preset sets every category at once', catSaved() === JSON.stringify(globalThis.ShortStopCategories.presetPrefs('focus')), catSaved());
+          check('Focus is pressed', pressedPreset() === 'focus', pressedPreset());
+          check('Focus allows coding and hides gaming', catPick('coding', 'allow').checked && catPick('gaming', 'hide').checked && catPick('other', 'allow').checked);
+          check('the summary describes the preset', catSummary().startsWith('Focus: Education, Science & Technology'), catSummary());
+          catPick('news', 'allow').click();
+          await step();
+          check('changing a preset makes it Custom', pressedPreset() === '' && stores.sync.settings.youtubeCategories.news === undefined);
+          preset('all').click();
+          await step();
+          check('"Allow all" clears every choice', catSaved() === '{}' && pressedPreset() === 'all', catSaved());
+          check('the Subscriptions and "videos I open" switches start off', !$('#option-youtube-category-subscriptions').checked && !$('#option-youtube-category-watch').checked);
+          $('#option-youtube-category-subscriptions').click();
+          $('#option-youtube-category-watch').click();
+          await step();
+          check(
+            'they save like any option',
+            stores.sync.settings.youtubeCategorySubscriptions === true && stores.sync.settings.youtubeCategoryWatch === true
+          );
+          await chrome.storage.sync.set({ settings: { ...stores.sync.settings, youtubeMode: 'shorts' } });
+          await step();
+          check('it says where it applies with "Shorts only"', catWhere() === 'Filters the home feed, Up next and search results, and Subscriptions if you like.', catWhere());
+          await chrome.storage.sync.set({ settings: { ...stores.sync.settings, youtubeMode: 'all' } });
+          await step();
+          check('with all of YouTube blocked it says there is nothing to filter', catWhere() === 'All of YouTube is blocked right now, so there is nothing to filter.', catWhere());
+          await chrome.storage.sync.set({
+            settings: { ...stores.sync.settings, youtubeMode: 'feeds', youtubeCategories: { gaming: 'hide' } },
+          });
+          await step();
+          check('choices saved elsewhere show up live', catPick('gaming', 'hide').checked && catSummary() === 'Hiding Gaming.');
+
+          // Corrections made on YouTube.
+          const fixList = () => Array.from(catBody.querySelectorAll('.categories-fixes li span')).map((node) => node.textContent);
+          check('no corrections: the list is hidden', !shown(catBody.querySelector('.categories-fixes')));
+          await chrome.storage.local.set({
+            categoryFixes: {
+              youtube: {
+                'name:veritasium': { category: 'science', label: 'Veritasium' },
+                'video:abc123': { category: 'gaming', label: 'Some video' },
+              },
+            },
+          });
+          await step();
+          check(
+            'corrections made on YouTube are listed, newest first',
+            JSON.stringify(fixList()) === JSON.stringify(['Some video: Gaming', 'Veritasium: Science & Technology']),
+            JSON.stringify(fixList())
+          );
+          catBody.querySelector('.categories-fixes [aria-label="Remove the correction for Veritasium"]').click();
+          await step();
+          check(
+            'removing a correction saves at once',
+            JSON.stringify(Object.keys(stores.local.categoryFixes.youtube)) === '["video:abc123"]' && JSON.stringify(fixList()) === '["Some video: Gaming"]',
+            JSON.stringify(stores.local.categoryFixes)
+          );
+
+          toggle('youtube').click();
+          await step();
+          check(
+            'with YouTube off, the choices are greyed out',
+            $('#categories-youtube').classList.contains('is-disabled') && catPick('gaming', 'hide').disabled && preset('focus').disabled
+          );
+          toggle('youtube').click();
+          await step();
+          check('with YouTube back on, they can be changed again', !catPick('gaming', 'hide').disabled && !preset('focus').disabled);
+          catSwitch.click();
+          await step();
+          check(
+            'turning the filter off folds it away and keeps the choices',
+            stores.sync.settings.youtubeCategoryFilter === false && catBody.hidden && catSaved() === '{"gaming":"hide"}'
+          );
+          await chrome.storage.sync.set({
+            settings: { ...stores.sync.settings, youtubeCategories: {}, youtubeCategorySubscriptions: false, youtubeCategoryWatch: false },
+          });
+          await step();
 
           /* ---- Instagram and TikTok: what to block ---- */
           const pick = (platform, value) => $(`input[name="${platform}-mode"][value="${value}"]`);

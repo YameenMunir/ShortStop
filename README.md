@@ -30,6 +30,7 @@
 - [What it does](#what-it-does)
   - [Switching a site off](#switching-a-site-off)
   - [Allowed accounts](#allowed-accounts)
+  - [Content preferences](#content-preferences)
   - [Allowed times](#allowed-times)
   - [Focus sessions](#focus-sessions)
   - [First-run welcome page](#first-run-welcome-page)
@@ -61,13 +62,16 @@
 - **Allowed accounts.** Let one YouTube channel, or an Instagram, TikTok or Snapchat account,
   through on purpose: its own page, videos, LIVE, Stories and Shorts get through, while the
   feeds stay blocked.
+- **Content preferences.** Optional and off by default: shape what YouTube shows instead of
+  blocking it. Allow, reduce or hide each kind of video (Gaming, News, Education and 16 more),
+  or pick the *Focus* or *Study* preset. Hidden videos keep a *Show anyway* button.
 - **Allowed times.** Let a site through at set times, like YouTube from 8 to 9pm on weekdays
   or Instagram at weekends. Blocking switches off and on by itself.
 - **Focus sessions.** Block every site for 30 minutes, 1 hour or 2 hours, with the switches
   locked until it ends. Start one from the popup, or press **Alt+Shift+F twice** for an hour.
 - **Private by design.** No data collection, no analytics, no network requests, and only
   the permissions it needs.
-- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,705
+- **Plain JavaScript and CSS.** Chrome Manifest V3, no build step, no libraries, and 1,894
   automated checks. Built for Chrome, Edge and Brave, with a Firefox build and an iPhone
   Safari userscript.
 
@@ -83,7 +87,7 @@
 | **X** | **Focus mode.** The **Home timeline** (For you and Following both live at `/home`), **Explore** with its trending tabs, and topic timelines are replaced by the panel, with an X search box and links to **Messages**, **Bookmarks** and **your profile**. The Home and Explore links are hidden, and so are "What's happening" and "Who to follow" in the right-hand column. On a blocked timeline, X's J/K and Space shortcuts are swallowed and videos are paused. **Search**, **messages**, **profiles**, **single posts**, **bookmarks** and **lists** keep working. **Notifications** are blocked unless you turn on *Allow notifications* in the popup. Works on x.com and twitter.com. |
 | **Snapchat** | **Focus mode.** **Spotlight** (the feed, single Spotlight links, which play on into the next video, and a profile's Spotlight) and the **Discover** and **Explore** pages are replaced by the panel, with a link to **Snapchat for web** (chat). Links into Spotlight, Discover and Explore are hidden. Chat and public profiles keep working. |
 
-The popup has a switch per platform, plus a choice of what to block under YouTube, Instagram and TikTok, *Allow notifications* under Instagram,
+The popup has a switch per platform, plus a choice of what to block under YouTube, Instagram and TikTok, *Content preferences* under YouTube, *Allow notifications* under Instagram,
 Facebook, TikTok and X, *Allow Marketplace search* under Facebook, and *Allowed times* under each.
 To keep it on one screen, each site's options stay folded away: click a site's name to unfold
 them, and the popup remembers which sites you left open. The switch next to the name works
@@ -120,6 +124,53 @@ Maybe you follow one creator on purpose. Under YouTube, Instagram, TikTok and Sn
   the first place, only their feeds.
 
 The list is saved with your other settings, so it follows your browser profile.
+
+### Content preferences
+
+*Shape what you see, rather than blocking the internet.* Under YouTube, **Filter video
+categories** (off by default) sorts each video into a category and lets you choose, per
+category, what happens to it:
+
+| Choice | What it does |
+| --- | --- |
+| **Allow** | Shown as normal (every category starts here). |
+| **Reduce** | Fewer of them in recommendations: about one in three stays, always the same ones, so the feed doesn't flicker. Search results are left alone, because you asked for them. |
+| **Hide** | Folded into a one-line note, *Hidden [Gaming ▾] Show anyway*, in recommendations and search results. |
+
+The categories are Education, Science & Technology, Business & Finance, News, Productivity,
+Coding / Programming, Health & Fitness, Music, Gaming, Entertainment, Sports, Lifestyle, Vlogs,
+Podcasts, Movies / TV, Documentaries, Comedy, Celebrity / Influencer, and Other (anything
+ShortStop can't place). **Presets** set every category at once, and are only a starting point:
+
+- **Focus:** Education, Science & Technology, Productivity, Coding and Business shown, the rest
+  hidden.
+- **Study:** Education, Science & Technology (maths included) and Documentaries shown, the rest
+  hidden.
+- **Allow all:** clears every choice.
+
+**Where it applies.** Wherever YouTube still shows videos. With *Block YouTube Shorts only*,
+that's the home feed, Up next and search results. With *Block feeds and Shorts* (the default),
+the home feed and Up next are already blocked, so it's search results. *Filter Subscriptions
+too* adds your subscriptions feed. Channel pages, playlists and history are never filtered. A
+video you open directly always plays, unless you turn on **Check videos I open**: then a video
+in a hidden category shows a notice first, with **Watch anyway** and **Go back**.
+
+**How it guesses.** From what the page shows: the title, the channel's name, the description
+snippet, and on the watch page YouTube's own category. It's a keyword match, done on your
+device, so it's a best guess and it's treated as one:
+
+- A category needs clear evidence. Anything less is **Other**, which is allowed unless you
+  choose otherwise, and an unsure guess never stands in front of a video you opened.
+- When two categories are close (a coding tutorial that's also about Minecraft), the gentler
+  choice wins.
+- Your allowed channels are never filtered.
+- **Correcting it.** Point at a video on YouTube to see its category in a small chip on the
+  thumbnail. The chip, a hidden video's note and the notice are all menus: pick the right
+  category and it applies to that channel from then on. Corrections are listed in the popup,
+  where you can remove them.
+
+Choices are saved with your other settings straight away, with no wait, because they shape
+what you see rather than switch blocking off. Corrections stay on this device.
 
 ### Allowed times
 
@@ -203,10 +254,12 @@ makes no network requests.
 - **Minimum permissions:** `storage`, plus host access to the seven sites it works on
   (YouTube, Instagram, Facebook, TikTok, Reddit, X and Snapchat). It can't see any other
   website.
-- Your platform switches, options, allowed accounts, allowed times and a running focus session's
-  end time are saved with `chrome.storage.sync`, so they follow your browser profile. The daily
-  counter, a waiting change (an allowed time or account) and any *Block now* live in
-  `chrome.storage.local`, on your device only.
+- Your platform switches, options, allowed accounts, content preferences, allowed times and a
+  running focus session's end time are saved with `chrome.storage.sync`, so they follow your
+  browser profile. The daily counter, a waiting change (an allowed time or account), any *Block
+  now* and your category corrections live in `chrome.storage.local`, on your device only.
+- Sorting videos into categories happens entirely on your device, from what the page already
+  shows. Nothing is looked up or sent anywhere.
 
 ## Install
 
@@ -335,11 +388,17 @@ const YOUTUBE_ALLOWED_CHANNELS = [];
 const INSTAGRAM_ALLOWED_ACCOUNTS = [];
 const TIKTOK_ALLOWED_ACCOUNTS = [];
 const SNAPCHAT_ALLOWED_ACCOUNTS = [];
+
+// Content preferences, off by default. Categories to change, as 'reduce' or 'hide'.
+const YOUTUBE_FILTER_CATEGORIES = false;
+const YOUTUBE_CATEGORIES = {};                  // e.g. { gaming: 'hide', entertainment: 'reduce' }
+const YOUTUBE_FILTER_SUBSCRIPTIONS = false;
+const YOUTUBE_CHECK_OPENED_VIDEOS = false;
 ```
 
 The userscript has no popup, daily counter, allowed times, focus sessions or keyboard shortcut,
 because Safari userscripts have no shared storage. To switch a platform off, set its constant to
-`false`, and back to `true` later.
+`false`, and back to `true` later. Category corrections made on the page last until it closes.
 
 ## How it works
 
@@ -352,8 +411,10 @@ extension/
 ├── shared/pause.js          The 30-second wait before loosening allowed times, shared by popup and welcome page
 ├── shared/schedule.js       Allowed times: is a platform allowed now, until when, and is a change looser
 ├── shared/allowlist.js      Allowed accounts: reading a typed name or link, and spotting an account's pages and links
+├── shared/categories.js     Content preferences: the categories, presets and the on-device keyword classifier
 ├── content/
 │   ├── core.js              The engine: CSS generation, MutationObserver, SPA navigation, redirects
+│   ├── category-filter.js   Content preferences on the page: sorting cards, the note, chip and notice
 │   ├── nav-hook.js          Runs in the page's own JS world; wraps history.pushState/replaceState
 │   ├── youtube.js           YouTube: the three choices (all, feeds and Shorts, Shorts only), Shorts
 │   │                        redirects, the covered home feed and autoplay effects
@@ -422,10 +483,21 @@ Each platform file is a single config object, and `core.js` does the work:
    Items inside an allowed item follow it. YouTube reuses cards, so the marks are re-checked on
    every scan. If a covered page turns out to belong to an allowed account, the panel goes, the
    blocked-today count is taken back and the sound ShortStop muted is given back.
-6. **Effects.** Some things can't be hidden, only changed: YouTube's autoplay is switched off
+6. **Content preferences.** A config can describe its video cards (`categories`): which
+   elements are cards, how to read a card's title, channel and snippet, and which areas of
+   which pages to filter. [content/category-filter.js](extension/content/category-filter.js)
+   runs after every engine scan, so it adds no observer of its own, and only reads cards it
+   hasn't sorted yet (YouTube reuses cards, so a card is re-read when its video changes). Each
+   card is classified by [shared/categories.js](extension/shared/categories.js) and marked with
+   `data-shortstop-category` and, if reduced or hidden, `data-shortstop-filter`, which a small
+   stylesheet acts on. The note, chip and notice are built in shadow roots. On live YouTube,
+   sorting a page of 20 search results takes about 5 ms, and a scan with nothing new about 2 ms.
+   The classifier knows nothing about YouTube, so Instagram, TikTok or Facebook could use it by
+   describing their own cards.
+7. **Effects.** Some things can't be hidden, only changed: YouTube's autoplay is switched off
    through its own toggle, and a running autoplay countdown is cancelled. Effects run after
    every scan and are safe to repeat.
-7. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
+8. **Live settings.** Content scripts listen to `chrome.storage.onChanged`. Switching a
    platform or option off removes the stylesheet, un-hides everything and removes the panel,
    and switching it on re-applies everything. No reload needed. Allowed times
    (`shared/schedule.js`, loaded before `core.js`) are checked once a second, and the
@@ -503,7 +575,7 @@ once and carries on with the other rules.
 All tooling is Python 3 standard library, with no `pip install` needed.
 
 ```bash
-python tests/run_tests.py          # 1,705 checks in headless Chrome/Edge against mock site markup
+python tests/run_tests.py          # 1,894 checks in headless Chrome/Edge against mock site markup
 python tools/build_userscript.py   # regenerate userscript/shortstop.user.js from extension/content/
 python tools/make_icons.py         # regenerate extension/icons/*.png
 python tools/package.py            # build dist/ShortStop-<version>-{chromium,firefox}.zip
@@ -594,13 +666,29 @@ platform it checks:
   videos included), and everything left alone once TikTok is switched off
 - Facebook Marketplace: home and city browsing blocked; search, categories, listings and
   selling allowed; everything but listings and selling blocked when search is switched off
+- YouTube content preferences (`youtube-categories.html`): off by default; hidden videos folded
+  into a note with *Show anyway*, which stays shown when the choices change; close calls and
+  unsure guesses left alone; lockups sorted, ads and Shorts left to their own rules; a card
+  sorted once its title arrives; corrections from the note and the chip applying to the whole
+  channel, and stored corrections replacing them; allowed channels never filtered; *Reduce*
+  keeping the same third on the home feed and leaving search alone; a covered home feed,
+  Subscriptions (unless chosen) and a blocked Up next left unsorted; the watch-page notice
+  only with *Check videos I open*, pausing the video, *Watch anyway*, a previous video's
+  details never trusted, an unsure guess never shown (even with Other hidden), YouTube's own
+  category counting, and a correction taking it away; and everything cleared when YouTube or
+  the filter is switched off
 - YouTube: Up next hidden while the playlist panel and live chat stay, end screens removed,
   the autoplay toggle switched off exactly once, the countdown cancelled, and the
   miniplayer left playing on the covered home page
 - every redirect rule
 - redirects triggered by SPA navigation
 
-Three more pages have no site markup. `schedule.html` unit-tests
+Four more pages have no site markup. `categories.html` unit-tests
+[shared/categories.js](extension/shared/categories.js): real-looking titles landing in the
+right category (including "Taylor Swift" not being the Swift language, "- Topic" and VEVO
+channels, accents and "C++"), unsure videos being Other, the gentler choice winning close
+calls, cleaning up saved choices and corrections (at most 200, newest kept), the presets, the
+stable third that *Reduce* keeps, and speed. `schedule.html` unit-tests
 [shared/schedule.js](extension/shared/schedule.js): weekday, all-day and past-midnight times,
 back-to-back times, bad data, and which edits count as looser. `popup.html` loads the real
 popup with an in-memory `chrome.storage` and clicks through it: leftovers from the retired
@@ -611,7 +699,11 @@ off, the row's description following them, and raised during a focus session),
 adding a time (waits), shortening and removing one (instant), a time with no days,
 *Block now*, a focus session starting, locking everything and unlocking by itself, and the
 shortcut line under it: the switch turning the shortcut off and on, the link to the browser's
-shortcut settings, and the no-key and Firefox cases.
+shortcut settings, and the no-key and Firefox cases. It also covers content preferences: off by
+default, every category starting at Allow, choices saved at once, the summary, the presets
+(pressed, and turning Custom when changed), the note on where it applies for each YouTube
+choice, the Subscriptions and "videos I open" switches, corrections listed and removed, and
+everything greyed out while YouTube is off.
 `background.html` loads the real [background.js](extension/background.js) with a fake `chrome`
 API and "presses" the keyboard shortcut: the first press only shows **1h?** and clears after 5
 seconds, a second press starts the hour and shows **60m**, a press during a session shows the
@@ -633,6 +725,13 @@ A manual checklist for real accounts is in [TESTING.md](TESTING.md).
   some in mixed shelves, stay hidden. With *Block all of YouTube*, an allowed channel's video
   is covered for a moment until YouTube shows who uploaded it, and then waits for you to press
   play.
+- **Content preferences** are a keyword guess, in English. Titles in other languages, or with
+  little to go on, usually come out as Other, which is allowed unless you change it. Cards in
+  YouTube's newer layout don't link their channel's `@handle`, so corrections are kept by the
+  channel's display name. With *Check videos I open*, a video opened directly can start for a
+  moment before the notice appears, while YouTube loads its details. It was checked on live
+  YouTube search results and watch pages (signed out); the signed-in home feed and
+  Subscriptions, and m.youtube.com, were only tested against mock pages.
 - **Testing coverage.** The engine is tested against mock pages for every platform, and
   YouTube and TikTok were also checked on the live sites (signed out) in Edge. Instagram and
   Facebook need a signed-in account, so run their sections of [TESTING.md](TESTING.md) on real
